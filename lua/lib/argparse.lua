@@ -1079,11 +1079,7 @@ function ParseState:finalize()
    end
 end
 
-function ParseState:parse(...)
-   local args = ...
-   if type(args) ~= "table" then
-      args = {...}
-   end
+function ParseState:parse(args)
    for _, arg in ipairs(args) do
       local plain = true
 
@@ -1152,7 +1148,15 @@ function Parser:_parse(args, error_handler)
    return ParseState(self, error_handler):parse(args or default_cmdline)
 end
 
-function Parser:parse(args)
+function Parser:parse(...)
+   local args = ...
+   if type(args) ~= "table" then
+      args = {...}
+      -- undo phobos pre-parsing of numbers
+      for i, v in ipairs(args) do
+         args[i] = tostring(v)
+      end
+   end
    return self:_parse(args, self.error)
 end
 
