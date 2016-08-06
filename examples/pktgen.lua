@@ -1,9 +1,11 @@
 --- A simple UDP packet generator
-local phobos = require "phobos"
-local device = require "device"
-local stats  = require "stats"
-local log    = require "log"
-local memory = require "memory"
+local phobos   = require "phobos"
+local device   = require "device"
+local stats    = require "stats"
+local log      = require "log"
+local memory   = require "memory"
+local arp      = require "proto.arp"
+local argparse = require "argparse"
 
 -- set addresses here
 local DST_MAC       = nil -- resolved via ARP on GW_IP or DST_IP, can be overriden with a string here
@@ -13,32 +15,72 @@ local DST_IP        = "10.1.0.10"
 local SRC_PORT_BASE = 1234 -- actual port will be SRC_PORT_BASE * random(NUM_FLOWS)
 local DST_PORT      = 1234
 local NUM_FLOWS     = 1000
--- answer ARP requests for this IP on the rx port
-local RX_IP		= DST_IP
+-- used as source IP to resolve GW_IP to DST_MAC
+-- also respond to ARP queries on this IP
+local ARP_IP	= SRC_IP
 -- used to resolve DST_MAC
 local GW_IP		= DST_IP
--- used as source IP to resolve GW_IP to DST_MAC
-local ARP_IP	= SRC_IP
 
-function master(port1, port2)
+function master(...)
 	log:info("Check out MoonGen (built on Phobos) if you are looking for a fully featured packet generator")
 	log:info("https://github.com/emmericp/MoonGen")
-	local dev1 = device.config{ port = port1 }
-	local dev2 = device.config{ port = port2 }
+
+	-- parse cli arguments
+	local parser = argparse():description("Edit the source to modify constants like IPs and ports.")
+	parser:argument("dev", "Devices to use."):args("+"):convert(tonumber)
+	parser:option("-t --threads", "Number of threads per device."):args(1):convert(tonumber):default(1)
+	parser:option("-r --rate", "Transmit rate in Mbit/s per device."):args(1)
+	parser:flag("-a --arp", "Use ARP.")
+	local args = parser:parse(...)
+
+	-- configure devices and queues
+	local arpQueues = {}
+	for i, dev in ipairs(args.dev) do
+		-- arp needs extra queues
+		local dev = device.config{
+			port = dev,
+			txQueues = args.threads + (args.arp and 1 or 0),
+			rxQueues = args.arp and 2 or 1
+		}
+		args.dev[i] = dev
+		table.insert(arpQueues, { rxQueue = dev:getRxQueue(1), txQueue = dev:getTxQueue(args.threads), ips = ARP_IP })
+	end
 	device.waitForLinks()
-	phobos.startTask("txSlave", dev1:getTxQueue(0))
-	phobos.startTask("txSlave", dev2:getTxQueue(0))
+
+	-- start ARP task and do ARP lookup (if not hardcoded above)
+	if args.arp then
+		phobos.startSharedTask(arp.arpTask, arpQueues)
+		if not DST_MAC then
+			log:info("Performing ARP lookup on %s, timeout 3 seconds.", GW_IP)
+			DST_MAC = arp.blockingLookup(GW_IP, 3)
+			if not DST_MAC then
+				log:info("ARP lookup failed, using default destination mac address")
+				DST_MAC = "01:23:45:67:89:ab"
+			end
+		end
+		log:info("Destination mac: %s", DST_MAC)
+	end
+
+	-- configure tx rates and start transmit slaves
+	for i, dev in ipairs(args.dev) do
+		for i = 1, args.threads do
+			local queue = dev:getTxQueue(i - 1)
+			if args.rate then
+				queue:setRate(args.rate / args.threads)
+			end
+			phobos.startTask("txSlave", queue, DST_MAC)
+		end
+	end
 	phobos.waitForTasks()
 end
 
-function txSlave(queue)
-	queue:setRate(1500)
+function txSlave(queue, dstMac)
 	-- memory pool with default values for all packets, this is our archetype
 	local mempool = memory.createMemPool(function(buf)
 		buf:getUdpPacket():fill{
 			-- fields not explicitly set here are initialized to reasonable defaults
 			ethSrc = queue, -- MAC of the tx device
-			ethDst = DST_MAC,
+			ethDst = dstMac,
 			ip4Src = SRC_IP,
 			ip4Dst = DST_IP,
 			udpSrc = SRC_PORT,
