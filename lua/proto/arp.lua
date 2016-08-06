@@ -20,6 +20,7 @@ local dpdk = require "dpdk"
 local memory = require "memory"
 local filter = require "filter"
 local ns = require "namespaces"
+local phobos = require "phobos"
 
 local eth = require "proto.ethernet"
 
@@ -427,7 +428,7 @@ local function arpTask(qs)
 	local ipToMac = {}
 	-- loop over NICs/Queues
 	for _, nic in pairs(qs) do
-		if nic.txQueue.dev ~= nic.rxQueue.dev then
+		if nic.txQueue.id ~= nic.rxQueue.id then
 			error("both queues must belong to the same device")
 		end
 
@@ -452,7 +453,7 @@ local function arpTask(qs)
 	
 	arpTable.taskRunning = true
 
-	while dpdk.running() do
+	while phobos.running() do
 		
 		for _, nic in pairs(qs) do
 			rx = nic.rxQueue:tryRecvIdle(rxBufs, 1000)
@@ -480,7 +481,7 @@ local function arpTask(qs)
 						-- learn from all arp replies we see (arp cache poisoning doesn't matter here)
 						local mac = rxPkt.arp:getHardwareSrcString()
 						local ip = rxPkt.arp:getProtoSrcString()
-						arpTable[tostring(parseIPAddress(ip))] = { mac = mac, timestamp = dpdk.getTime() }
+						arpTable[tostring(parseIPAddress(ip))] = { mac = mac, timestamp = phobos.getTime() }
 					end
 				end
 				rxBufs:freeAll()
@@ -511,7 +512,7 @@ local function arpTask(qs)
 				nic.txQueue:send(txBufs)
 			end
 		end)
-		dpdk.sleepMillisIdle(1)
+		phobos.sleepMillisIdle(1)
 	end
 end
 
@@ -529,7 +530,7 @@ function arp.lookup(ip)
 	if not arpTable.taskRunning then
 		local waitForArpTask = 0
 		while not arpTable.taskRunning and waitForArpTask < 10 do
-			dpdk.sleepMillis(100)
+			phobos.sleepMillis(100)
 		end
 		if not arpTable.taskRunning then
 			error("ARP task is not running")
@@ -552,14 +553,14 @@ end
 --- @param timeout TODO
 --- @todo FIXME: this only sends a single request
 function arp.blockingLookup(ip, timeout)
-	local timeout = dpdk.getTime() + timeout
+	local timeout = phobos.getTime() + timeout
 	repeat
 		local mac, ts = arp.lookup(ip)
 		if mac then
 			return mac, ts
 		end
-		dpdk.sleepMillisIdle(1000)
-	until dpdk.getTime() >= timeout
+		phobos.sleepMillisIdle(1000)
+	until phobos.getTime() >= timeout
 end
 
 __MG_ARP_TASK = arpTask

@@ -545,7 +545,7 @@ function rxQueue:tryRecv(bufArray, maxWait)
 		if maxWait < 0 then
 			break
 		end
-		dpdk.sleepMicros(1)
+		phobos.sleepMicros(1)
 	end
 	return 0
 end
@@ -564,7 +564,7 @@ function rxQueue:tryRecvIdle(bufArray, maxWait)
 		if maxWait < 0 then
 			break
 		end
-		dpdk.sleepMicrosIdle(1)
+		phobos.sleepMicrosIdle(1)
 	end
 	return 0
 end
