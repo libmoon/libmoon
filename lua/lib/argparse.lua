@@ -581,7 +581,7 @@ function Parser:mutex(...)
    return self
 end
 
-local max_usage_width = 70
+local max_usage_width = 120
 local usage_welcome = "Usage: "
 
 function Parser:get_usage()
@@ -663,7 +663,7 @@ function Parser:get_usage()
 end
 
 local margin_len = 3
-local margin_len2 = 25
+local margin_len2 = 40
 local margin = (" "):rep(margin_len)
 local margin2 = (" "):rep(margin_len2)
 
