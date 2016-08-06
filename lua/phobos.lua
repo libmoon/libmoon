@@ -7,6 +7,7 @@ local ffi        = require "ffi"
 local serpent    = require "Serpent"
 
 mod.config = namespaces:get()
+mod.config.appName = "phobos"
 
 local function checkCore()
 	if MOONGEN_TASK_NAME ~= "master" then
@@ -206,6 +207,13 @@ end
 
 function mod.disableBadSocketWarning()
 	MOONGEN_IGNORE_BAD_NUMA_MAPPING = true
+end
+
+-- patch argparse to use the script as default name
+local parser = require "argparse"
+local old = package.loaded.argparse
+package.loaded.argparse = function(...)
+	return old(...):name(mod.config.appName .. " " .. mod.config.userscript)
 end
 
 return mod
