@@ -1079,7 +1079,11 @@ function ParseState:finalize()
    end
 end
 
-function ParseState:parse(args)
+function ParseState:parse(...)
+   local args = ...
+   if type(args) ~= "table" then
+      args = {...}
+   end
    for _, arg in ipairs(args) do
       local plain = true
 
