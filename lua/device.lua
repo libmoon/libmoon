@@ -479,7 +479,7 @@ end
 
 function txQueue:sendN(bufs, n)
 	self.used = true
-	dpdkc.send_all_packets(self.id, self.qid, bufs.array, n)
+	dpdkc.dpdk_send_all_packets(self.id, self.qid, bufs.array, n)
 	return n
 end
 
