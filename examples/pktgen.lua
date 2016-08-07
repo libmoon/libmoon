@@ -61,6 +61,9 @@ function master(...)
 		log:info("Destination mac: %s", DST_MAC)
 	end
 
+	-- print statistics
+	stats.startStatsTask{devices = args.dev}
+
 	-- configure tx rates and start transmit slaves
 	for i, dev in ipairs(args.dev) do
 		for i = 1, args.threads do
@@ -90,8 +93,6 @@ function txSlave(queue, dstMac)
 	end)
 	-- a bufArray is just a list of buffers from a mempool that is processed as a single batch
 	local bufs = mempool:bufArray()
-	local txCtr = stats:newDevTxCounter(queue, "plain")
-	local rxCtr = stats:newDevRxCounter(queue, "plain")
 	while phobos.running() do -- check if Ctrl+c was pressed
 		-- this actually allocates some buffers from the mempool the array is associated with
 		-- this has to be repeated for each send because sending is asynchronous, we cannot reuse the old buffers here
@@ -106,10 +107,6 @@ function txSlave(queue, dstMac)
 		bufs:offloadUdpChecksums()
 		-- send out all packets and frees old bufs that have been sent
 		queue:send(bufs)
-		txCtr:update()
-		rxCtr:update()
 	end
-	txCtr:finalize()
-	rxCtr:finalize()
 end
 
