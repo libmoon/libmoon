@@ -250,7 +250,7 @@ end
 
 --- Base class
 function rxCounter:finalize(sleep)
-	finalizeCounter(self, self.sleep or 0)
+	finalizeCounter(self, sleep or self.sleep or 0)
 end
 
 function rxCounter:print(event, ...)
@@ -372,7 +372,7 @@ end
 
 --- Base class
 function txCounter:finalize(sleep)
-	finalizeCounter(self, self.sleep or 0)
+	finalizeCounter(self, sleep or self.sleep or 0)
 end
 
 function txCounter:print(event, ...)
