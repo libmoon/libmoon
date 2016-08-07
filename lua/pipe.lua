@@ -80,7 +80,7 @@ slowPipe.__index = slowPipe
 --- A pipe can only be used by exactly two tasks: a single reader and a single writer.
 --- Slow pipes are called slow pipe because they are slow (duh).
 --- Any objects passed to it will be *serialized* as strings.
---- This means that it supports arbitrary Lua objects following MoonGens usual serialization rules.
+--- This means that it supports arbitrary Lua objects following Phobos' usual serialization rules.
 --- Use a 'fast pipe' if you need fast inter-task communication. Fast pipes are restricted to LuaJIT FFI objects.
 function mod:newSlowPipe()
 	return setmetatable({

@@ -26,7 +26,7 @@ require "proto.proto"
 --require("jit.v").on()
 
 local function getStackTrace(err)
-	print(red("[FATAL] Lua error in task %s", MOONGEN_TASK_NAME))
+	print(red("[FATAL] Lua error in task %s", PHOBOS_TASK_NAME))
 	print(stp.stacktrace(err, 2))
 end
 
@@ -58,7 +58,7 @@ local function parseCommandLineArgs(...)
 end
 
 local function master(_, file, ...)
-	MOONGEN_TASK_NAME = "master"
+	PHOBOS_TASK_NAME = "master"
 	local args, cfgFile = parseCommandLineArgs(...)
 	phobos.config.dpdkConfig = cfgFile
 	phobos.config.userscript = file
@@ -85,8 +85,8 @@ local function slave(args)
 	end
 	--require("jit.p").start("l")
 	--require("jit.dump").on()
-	MOONGEN_TASK_NAME = func
-	MOONGEN_TASK_ID = taskId
+	PHOBOS_TASK_NAME = func
+	PHOBOS_TASK_ID = taskId
 	local results = { select(2, xpcall(_G[func], getStackTrace, select(3, unpackAll(args)))) }
 	local vals = serpent.dump(results)
 	local buf = ffi.new("char[?]", #vals + 1)

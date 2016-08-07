@@ -478,7 +478,7 @@ function packetResolveLastHeader(self)
 	local headers = self:getHeaders()
 	local nextHeader = headers[#headers]:resolveNextHeader()
 
-	-- unable to resolve: either there is no next header, or MoonGen does not support it yet
+	-- unable to resolve: either there is no next header, or Phobos does not support it yet
 	-- either case, we stop and return current type of packet
 	if not nextHeader then
 		return self

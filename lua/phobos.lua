@@ -10,7 +10,7 @@ mod.config = namespaces:get()
 mod.config.appName = "phobos"
 
 local function checkCore()
-	if MOONGEN_TASK_NAME ~= "master" then
+	if PHOBOS_TASK_NAME ~= "master" then
 		log:fatal("This function is only available on the master task.", 2)
 	end
 end
@@ -206,7 +206,7 @@ function mod.getCore()
 end
 
 function mod.disableBadSocketWarning()
-	MOONGEN_IGNORE_BAD_NUMA_MAPPING = true
+	PHOBOS_IGNORE_BAD_NUMA_MAPPING = true
 end
 
 -- patch argparse to use the script as default name

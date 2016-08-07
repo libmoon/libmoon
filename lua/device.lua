@@ -263,7 +263,7 @@ end
 
 local warningShown = {} -- per-core
 function dev:checkSocket()
-	if MOONGEN_TASK_NAME ~= "master" and not MOONGEN_IGNORE_BAD_NUMA_MAPPING then
+	if PHOBOS_TASK_NAME ~= "master" and not PHOBOS_IGNORE_BAD_NUMA_MAPPING then
 		-- check the NUMA association if we are running in a worker thread
 		-- (it's okay to do the initial config from the wrong socket, but sending packets from it is a bad idea)
 		local devSocket = self:getSocket()

@@ -1,9 +1,4 @@
----------------------------------
---- @file utils.lua
---- @brief Defines general utility functions.
---- @todo TODO docu
---- @todo local unpackers ... crashes lua2dox parser
----------------------------------
+--- General utility functions.
 local colors = require "colors"
 
 local bor, band, bnot, rshift, lshift, bswap = bit.bor, bit.band, bit.bnot, bit.rshift, bit.lshift, bit.bswap
@@ -184,7 +179,7 @@ function checksum(data, len)
 		end
 	end
 	-- missing the very last uint_8 for odd sized packets
-	-- note that this access is always valid in MoonGen
+	-- note that this access is always valid in Phobos
 	--  * buffers are a fixed even size >= pkt len
 	--  * pkt length is just metadata and not the actual length of the buffer
 	if (len % 2) == 1 then

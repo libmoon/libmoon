@@ -14,7 +14,7 @@ extern "C" {
 
 namespace phobos {
 	void print_usage() {
-		std::cout << "Usage: MoonGen <script> [--dpdk-config=<config>] [script args...]\n" << std::endl;
+		std::cout << "Usage: phobos <script> [--dpdk-config=<config>] [script args...]\n" << std::endl;
 	}
 }
 
