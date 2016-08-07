@@ -173,6 +173,9 @@ function mod.config(args)
 	if args.rssQueues > 1 then
 		dev:setRssQueues(args.rssQueues, args.rssBaseQueue)
 	end
+	if dev.init then
+		dev:init()
+	end
 	dev:setPromisc(true)
 	return dev
 end
@@ -429,6 +432,7 @@ end
 --- Get ethernet statistics.
 --- Warning: the exact meaning of the results may vary between NICs, especially when packets are dropped due to full rx queues.
 --- Also, they may sometimes be clear-on-read and sometimes running totals; stats are just wildly inconsistent in DPDK.
+--- In case of clear-on-read counters, there will be interactions between this function and get[Rx|Tx]Stats
 --- Counting packets at the application-level might be a good idea if you want to support different NICs.
 function dev:getStats()
 	if not ethStatsType then
@@ -443,6 +447,8 @@ do
 	local stats
 	--- Get the total number of packets and bytes transmitted successfully.
 	--- This does not include packets that were queued but not yet sent by the NIC.
+	--- This counter should include the CRC checksum, but drivers are inconsistent here.
+	--- Phobos tries to correct this inconsistency, currently tested with ixgbe, i40e and igb NICs.
 	--- @return packets, bytes
 	function dev:getTxStats()
 		if not ethStatsType then
@@ -453,13 +459,16 @@ do
 		end
 		dpdkc.rte_eth_stats_get(self.id, stats)
 		-- in case you are wondering: the precision of a double starts the become a minor problem after 4.17 days at 100 gbit/s
-		return tonumber(stats.opackets), tonumber(stats.obytes)
+		-- but we ignore that here as packets are >= 64 bytes
+		local pkts = tonumber(stats.opackets)
+		local bytes = tonumber(stats.obytes)
+		return pkts, bytes + (self.txStatsIgnoreCrc and pkts * 4 or 0)
 	end
 	
 	--- Get the number packets and bytes received at the physical layer regardless whether they were received by the driver.
-	--- The drivers may be inconsistent regarding counting of packets dropped due to insufficient buffer space, tested with
-	--- ixgbe, igb, and i40e NICs.
-	--- Use dev:getStats() to distinguish between packets delivered to the driver and packets dropped by the NIC.
+	--- The drivers may be inconsistent regarding counting of packets dropped due to insufficient buffer space...
+	--- Phobos has custom implementations for this function for ixgbe and i40e that work correctly.
+	--- Use dev:getStats() to get the full statistics exposed by DPDK.
 	--- @return packets, bytes
 	function dev:getRxStats()
 		if not ethStatsType then
@@ -469,6 +478,10 @@ do
 			stats = ethStatsType()
 		end
 		dpdkc.rte_eth_stats_get(self.id, stats)
+		-- the meaning of the packet stats is completely inconsistent between drivers
+		-- for example, i40e reports some random value that corresponds to about 25% of the number of packets received...
+		-- the bytes are mostly fine, though
+		-- there are custom implementations for i40e and ixgbe
 		return tonumber(stats.ipackets + stats.imissed + stats.rx_nombuf), tonumber(stats.ibytes)
 	end
 end
