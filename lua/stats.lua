@@ -89,6 +89,38 @@ local function getPlainFinal(direction)
 	end
 end
 
+local headersShown = {}
+local function getCsvInit(direction)
+	return function(stats, file)
+		if not headersShown[file] then
+			headersShown[file] = true
+			file:write("Time,Device,Direction,PacketRate,Mbit,MbitWithFraming,TotalPackets,TotalBytes\n")
+		end
+	end
+end
+
+local function getCsvUpdate(direction)
+	return function(stats, file, total, mpps, mbit, wireMbit, totalBytes)
+		file:write(("%d,%s,%s,%s,%s,%s,%s,%s\n"):format(
+			time(), stats.name, direction,
+			mpps, mbit, wireMbit,
+			total, totalBytes
+		))
+		file:flush()
+	end
+end
+
+local function getCsvFinal(direction)
+	return function(stats, file)
+		file:write(("%d,%s,%s,%s,%s,%s,%s,%s\n"):format(
+			time(), stats.name, direction,
+			0, 0, 0,
+			stats.total, stats.totalBytes
+		))
+		file:flush()
+	end
+end
+
 local formatters = {}
 formatters["plain"] = {
 	rxStatsInit = function() end, -- nothing for plain, machine-readable formats can print a header here
@@ -99,6 +131,17 @@ formatters["plain"] = {
 	txStatsUpdate = getPlainUpdate("TX"),
 	txStatsFinal = getPlainFinal("TX"),
 }
+
+formatters["CSV"] = {
+	rxStatsInit = getCsvInit("RX"),
+	rxStatsUpdate = getCsvUpdate("RX"),
+	rxStatsFinal = getCsvFinal("RX"),
+
+	txStatsInit = getCsvInit("TX"),
+	txStatsUpdate = getCsvUpdate("TX"),
+	txStatsFinal = getCsvFinal("TX"),
+}
+formatters["csv"] = formatters["CSV"]
 
 -- Formatter that does nothing
 formatters["nil"] = {
@@ -111,7 +154,6 @@ formatters["nil"] = {
 	txStatsFinal = function () end,
 }
 
-formatters["CSV"] = formatters["plain"] -- TODO
 
 --- base constructor for rx and tx counters
 local function newCounter(ctrType, name, dev, format, file)
@@ -168,7 +210,7 @@ local function updateCounter(self, time, pkts, bytes, dontPrint)
 	self.total = pkts
 	self.totalBytes = bytes
 	if not dontPrint then
-		self:print("Update", self.total, mpps, mbit, wireRate)
+		self:print("Update", self.total, mpps, mbit, wireRate, self.totalBytes)
 	end
 	table.insert(self.mpps, mpps)
 	table.insert(self.mbit, mbit)
