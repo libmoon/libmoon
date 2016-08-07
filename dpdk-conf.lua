@@ -1,11 +1,11 @@
--- configuration for all DPDK command line parameters
--- see DPDK documentation at http://dpdk.org/doc/guides/testpmd_app_ug/run_app.html for details
--- MoonGen tries to choose reasonable defaults, so this config file can almost always be empty
--- Be careful when running MoonGen in a VM that also uses another virtio NIC, e.g., for internet access.
--- In this case it may be necessary to use the blacklist or whitelist feature in some configurations
+-- Configuration for all DPDK command line parameters.
+-- See DPDK documentation at http://dpdk.org/doc/guides/testpmd_app_ug/run_app.html for details.
+-- Phobos tries to choose reasonable defaults, so this config file can almost always be empty.
+-- Be careful when running Phobos in a VM that also uses another virtio NIC, e.g., for internet access.
+-- In this case it may be necessary to use the blacklist or whitelist features in some configurations.
 DPDKConfig {
 	-- configure the CPU cores to use, default: all cores
-	--cores = {0, 1, 3, 5},
+	--cores = {0, 10, 11, 12, 13, 14, 15},
 	
 	-- max number of shared tasks running on core 0
 	--sharedCores = 8,
