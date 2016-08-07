@@ -457,12 +457,24 @@ function mod.startStatsTask(args)
 	phobos.startSharedTask("__PHOBOS_STATS_TASK", args)
 end
 
+local function removeDuplicates(tbl)
+	local seen = {}
+	for i = #tbl, 1, -1 do
+		if seen[tbl[i].id] then
+			table.remove(tbl, i)
+		end
+		seen[tbl[i].id] = true
+	end
+end
+
 local function statsTask(args)
 	local counters = {}
 	for i, v in ipairs(args.devices) do
 		table.insert(args.rxDevices, v)
 		table.insert(args.txDevices, v)
 	end
+	removeDuplicates(args.rxDevices)
+	removeDuplicates(args.txDevices)
 	for i, dev in ipairs(args.rxDevices) do
 		table.insert(counters, mod:newDevRxCounter(dev, args.format, args.file))
 	end
