@@ -30,6 +30,10 @@ function dev:__tostring()
 	return ("[Device: id=%d]"):format(self.id)
 end
 
+function dev:__eq(other)
+	return self.id == other.id
+end
+
 function dev:__serialize()
     return "require 'device' local dev = " .. serpent.addMt(serpent.dumpRaw(self), "require('device').__devicePrototype") .. " dev:checkSocket() return dev", true
 end
@@ -41,6 +45,10 @@ function txQueue:__tostring()
 	return ("[TxQueue: id=%d, qid=%d]"):format(self.id, self.qid)
 end
 
+function txQueue:__eq(other)
+	return self.id == other.id and self.qid == other.qid
+end
+
 function txQueue:__serialize()
 	return ('local dev = require "device" return dev.get(%d):getTxQueue(%d)'):format(self.id, self.qid), true
 end
@@ -50,6 +58,10 @@ rxQueue.__index = rxQueue
 
 function rxQueue:__tostring()
 	return ("[RxQueue: id=%d, qid=%d]"):format(self.id, self.qid)
+end
+
+function rxQueue:__eq(other)
+	return self.id == other.id and self.qid == other.qid
 end
 
 function rxQueue:__serialize()
