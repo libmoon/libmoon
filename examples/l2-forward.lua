@@ -26,9 +26,11 @@ function master(...)
 
 	-- start forwarding tasks
 	for i = 1, args.threads do
-		-- bidirectional fowarding
 		phobos.startTask("forward", args.dev[1]:getRxQueue(i - 1), args.dev[2]:getTxQueue(i - 1))
-		phobos.startTask("forward", args.dev[2]:getRxQueue(i - 1), args.dev[1]:getTxQueue(i - 1))
+		-- bidirectional fowarding only if two different devices where passed
+		if args.dev[1] ~= args.dev[2] then
+			phobos.startTask("forward", args.dev[2]:getRxQueue(i - 1), args.dev[1]:getTxQueue(i - 1))
+		end
 	end
 	phobos.waitForTasks()
 end
