@@ -529,6 +529,8 @@ end
 --- Restarts all tx queues that were actively used by this task.
 --- 'Actively used' means that :send() was called from the current task.
 function mod.reclaimTxBuffers()
+	local old = PHOBOS_IGNORE_BAD_NUMA_MAPPING
+	PHOBOS_IGNORE_BAD_NUMA_MAPPING = true
 	devices:forEach(function(_, dev)
 		for _, queue in pairs(dev.txQueues) do
 			if queue.used then
@@ -537,6 +539,7 @@ function mod.reclaimTxBuffers()
 			end
 		end
 	end)
+	PHOBOS_IGNORE_BAD_NUMA_MAPPING = old
 end
 
 --- Receive packets from a rx queue.
