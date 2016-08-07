@@ -18,6 +18,7 @@ local memory = require "memory"
 local filter = require "filter"
 local ns     = require "namespaces"
 local eth    = require "proto.ethernet"
+local phobos = require "phobos"
 
 require "headers"
 

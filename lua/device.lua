@@ -508,7 +508,7 @@ end
 --- Returns as soon as at least one packet is available.
 function rxQueue:recv(bufArray, numpkts)
 	numpkts = numpkts or bufArray.size
-	while dpdk.running() do
+	while phobos.running() do
 		local rx = dpdkc.rte_eth_rx_burst_export(self.id, self.qid, bufArray.array, math.min(bufArray.size, numpkts))
 		if rx > 0 then
 			return rx

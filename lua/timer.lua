@@ -1,8 +1,4 @@
----------------------------------
---- @file timer.lua
---- @brief Timer ...
---- @todo TODO docu
----------------------------------
+--- Simple timer class.
 
 local mod = {}
 
@@ -35,11 +31,11 @@ function timer:reset(time)
 end
 
 --- Perform a busy wait on the timer.
--- Returns early if MoonGen is stopped (mg.running() == false).
+-- Returns early if Phobos is stopped (phobos.running() == false).
 function timer:busyWait()
-	while not self:expired() and dpdk.running() do
+	while not self:expired() and phobos.running() do
 	end
-	return dpdk.running()
+	return phobos.running()
 end
 
 --- Perform a non-busy wait on the timer.

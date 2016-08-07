@@ -16,6 +16,7 @@ local memory	= require "memory"
 local timer		= require "timer"
 local log		= require "log"
 local filter	= require "filter"
+local phobos    = require "phobos"
 
 require "proto.ptp"
 
@@ -405,7 +406,7 @@ local function getTimestamp(wait, f, ...)
 		end
 		dpdk.sleepMicros(math.min(10, wait))
 		wait = wait - 10
-		if not dpdk.running() then
+		if not phobos.running() then
 			break
 		end
 	until wait < 0
