@@ -443,5 +443,44 @@ function manualTxCounter:getThroughput()
 	return pkts, bytes
 end
 
+--- Start a shared task that counts statistics
+--- @param args arguments as table
+---    devices: list of devices to track both rx and tx stats
+---    rxDevices: list of devices to track rx stats
+---    txDevices: list of devices to track tx stats
+---    format: output format, cf. stats tracking documentation, default: plain
+---    file: file to write to, default: stdout
+function mod.startStatsTask(args)
+	args.devices = args.devices or {}
+	args.rxDevices = args.rxDevices or {}
+	args.txDevices = args.txDevices or {}
+	phobos.startSharedTask("__PHOBOS_STATS_TASK", args)
+end
+
+local function statsTask(args)
+	local counters = {}
+	for i, v in ipairs(args.devices) do
+		table.insert(args.rxDevices, v)
+		table.insert(args.txDevices, v)
+	end
+	for i, dev in ipairs(args.rxDevices) do
+		table.insert(counters, mod:newDevRxCounter(dev, args.format, args.file))
+	end
+	for i, dev in ipairs(args.txDevices) do
+		table.insert(counters, mod:newDevTxCounter(dev, args.format, args.file))
+	end
+	while phobos.running() do
+		for i, ctr in ipairs(counters) do
+			ctr:update()
+		end
+		phobos.sleepMillisIdle(100)
+	end
+	for i, ctr in ipairs(counters) do
+		ctr:finalize()
+	end
+end
+
+__PHOBOS_STATS_TASK = statsTask
+
 return mod
 
