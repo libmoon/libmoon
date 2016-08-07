@@ -36,7 +36,7 @@ function dev:__eq(other)
 end
 
 function dev:__serialize()
-    return "require 'device' local dev = " .. serpent.addMt(serpent.dumpRaw(self), "require('device').__devicePrototype") .. " dev:checkSocket() return dev", true
+    return "require 'device' local dev = " .. serpent.addMt(serpent.dumpRaw(self), "require('device').__devicePrototype") .. " require('drivers').initDriver(dev) dev:checkSocket() return dev", true
 end
 
 local txQueue = {}
@@ -234,10 +234,7 @@ function mod.get(id)
 		obj = setmetatable({id = id, rxQueues = {}, txQueues = {}}, dev)
 		devices[idStr] = obj
 	end
-	local driver = drivers[obj:getDriverName()]
-	if driver then
-		driver.initDriver(obj)
-	end
+	drivers.initDriver(obj)
 	return obj
 end
 
