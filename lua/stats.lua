@@ -78,8 +78,8 @@ end
 
 local function getPlainFinal(direction)
 	return function(stats, file)
-		file:write(("[%s] %s: %.2f (StdDev %.2f) Mpps, %.0f (StdDev %.0f) Mbit/s (%.0f Mbit/s with framing), total %d packets with %d bytes (incl. CRC)\n"):format(
-			stats.name, direction,
+		file:write(("%s[%s] %s%s: %.2f (StdDev %.2f) Mpps, %.0f (StdDev %.0f) Mbit/s (%.0f Mbit/s with framing), total %d packets with %d bytes (incl. CRC)\n"):format(
+			getColorCode(colors[direction]), stats.name, direction, getColorCode(),
 			stats.mpps.avg, stats.mpps.stdDev,
 			stats.mbit.avg, stats.mbit.stdDev,
 			stats.wireMbit.avg,
