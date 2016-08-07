@@ -77,6 +77,11 @@ end
 local function slave(args)
 	-- must be done before parsing the args as they might rely on deserializers loaded by the script
 	run(phobos.config.userscript)
+	-- core > max core means this is a shared task
+	if phobos.getCore() > phobos.config.cores[#phobos.config.cores] then
+		-- disabling this warning must be done before deserializing the arguments
+		phobos.disableBadSocketWarning()
+	end
 	args = loadstring(args)()
 	local taskId = args[1]
 	local func = args[2]
