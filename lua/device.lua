@@ -25,6 +25,7 @@ end
 
 local dev = {}
 dev.__index = dev
+dev.__type = "device"
 
 function dev:__tostring()
 	return ("[Device: id=%d]"):format(self.id)
@@ -40,6 +41,7 @@ end
 
 local txQueue = {}
 txQueue.__index = txQueue
+txQueue.__type = "txQueue"
 
 function txQueue:__tostring()
 	return ("[TxQueue: id=%d, qid=%d]"):format(self.id, self.qid)
@@ -55,6 +57,7 @@ end
 
 local rxQueue = {}
 rxQueue.__index = rxQueue
+rxQueue.__type = "rxQueue"
 
 function rxQueue:__tostring()
 	return ("[RxQueue: id=%d, qid=%d]"):format(self.id, self.qid)

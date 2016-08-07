@@ -188,6 +188,7 @@ ffi.cdef[[
 	int rte_eal_get_lcore_state(int core);
 	enum rte_lcore_state_t rte_eal_get_lcore_state(unsigned int slave_id);
 	int rte_eal_wait_lcore(int core);
+	uint32_t rte_lcore_to_socket_id_export(uint32_t lcore_id);
 	uint32_t get_current_core();
 	uint32_t get_current_socket();
 

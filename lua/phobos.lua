@@ -70,19 +70,66 @@ function task:isRunning()
 	return dpdkc.rte_eal_get_lcore_state(core) == dpdkc.RUNNING
 end
 
+local function findDevices(result, ...)
+	if select("#", ...) <= 1 then
+		local arg = ...
+		if type(arg) == "table" then
+			if arg.__type == "device" and type(arg.getSocket) == "function" then
+				table.insert(result, arg)
+			else
+				for k, v in pairs(arg) do
+					findDevices(result, v)
+				end
+			end
+		end
+	else
+		for i = 1, select("#", ...) do
+			findDevices(result, (select(i, ...)))
+		end
+	end
+end
 
+local function getBestSocket(devices)
+	local sockets = {}
+	for i, dev in ipairs(devices) do
+		sockets[dev:getSocket()] = (sockets[dev:getSocket()] or 0) + 1
+	end
+	local sorted = {}
+	for i, v in pairs(sockets) do
+		table.insert(sorted, {count = v, socket = i})
+	end
+	table.sort(sorted, function(v1, v2) return v1.count > v2.count end)
+	return sorted[1] and sorted[1].socket or -1
+end
+
+local function getCoreOnSocket(socket)
+	for i = 2, #mod.config.cores do -- skip master
+		local core = mod.config.cores[i]
+		local status = dpdkc.rte_eal_get_lcore_state(core)
+		if (status == dpdkc.FINISHED or status == dpdkc.WAIT)
+		and (socket == -1 or dpdkc.rte_lcore_to_socket_id_export(core) == socket) then
+			return core
+		end
+	end
+end
 
 --- Start a new task on the first free non-shared core
 function mod.startTask(...)
 	checkCore()
-	for i = 2, #mod.config.cores do -- skip master
-		local core = mod.config.cores[i]
-		local status = dpdkc.rte_eal_get_lcore_state(core)
-		if status == dpdkc.FINISHED or status == dpdkc.WAIT then
-			return mod.startTaskOnCore(core, ...)
+	local devices = {}
+	findDevices(devices, ...)
+	local socket = getBestSocket(devices)
+	local core = getCoreOnSocket(socket)
+	if not core then
+		core = getCoreOnSocket()
+		if core then
+			log:warn("Tried to map task to socket %d, but all cores are in use. Using different socket.", socket)
 		end
 	end
-	log:fatal("Not enough cores to start this task")
+	if not core then
+		log:fatal("Not enough cores to start this task")
+	end
+	mod.startTaskOnCore(core, ...)
 end
 
 function mod.startSharedTask(...)

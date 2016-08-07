@@ -122,12 +122,16 @@ void calc_ipv6_pseudo_header_checksums(struct rte_mbuf** data, int n, int offset
 }
 
 
-// rte_lcore/socket_id are static in rte_lcore.h
+// static functions from rte_lcore.h
 uint32_t get_current_core() {
 	return rte_lcore_id();
 }
 
 uint32_t get_current_socket() {
 	return rte_socket_id();
+}
+
+uint32_t rte_lcore_to_socket_id_export(uint32_t lcore_id) {
+	return rte_lcore_to_socket_id(lcore_id);
 }
 
