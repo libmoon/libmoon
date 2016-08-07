@@ -62,7 +62,7 @@ local devices = namespaces:get()
 --- Configure a device
 --- @param args A table containing the following named arguments
 ---   port Port to configure
----   mempool optional (default = create a new mempool) RX mempool to associate with the device
+---   mempools optional (default = create new mempools) RX mempools to associate with the queues
 ---   rxQueues optional (default = 1) Number of RX queues to configure 
 ---   txQueues optional (default = 1) Number of TX queues to configure 
 ---   rxDescs optional (default = 512)
@@ -121,17 +121,27 @@ function mod.config(args)
 	if args.dropEnable == nil then
 		args.dropEnable = true
 	end
-	-- create a mempool with enough memory to hold rx descriptors
-	-- (tx descriptors for forwarding applications when rx descriptors from one of the device are directly put into a tx queue of another device)
-	args.mempool = args.mempool or memory.createMemPool{n = math.max(2047, args.rxQueues * args.rxDescs * 1.5), socket = dpdkc.dpdk_get_socket(args.port)}
+	-- create mempools for rx queues
+	if not args.mempools then
+		args.mempools = {}
+		for i = 1, args.rxQueues do
+			table.insert(args.mempools, memory.createMemPool{n = 2047, socket = dpdkc.dpdk_get_socket(args.port)})
+		end
+	elseif #args.mempools ~= args.rxQueues then
+		log:fatal("number of mempools must equal number of rx queues")
+	end
 	args.speed = args.speed or 0
 	if args.rxQueues == 0 or args.txQueues == 0 then
 		-- dpdk does not like devices without rx/tx queues :(
 		log:fatal("Cannot initialize device without %s queues", args.rxQueues == 0 and args.txQueues == 0 and "rx and tx" or args.rxQueues == 0 and "rx" or "tx")
 	end
+	local mempools = ffi.new("struct mempool*[?]", args.rxQueues)
+	for i, v in ipairs(args.mempools) do
+		mempools[i - 1] = v
+	end
 	local rc = dpdkc.dpdk_configure_device(ffi.new("struct phobos_device_config", {
 		port = args.port,
-		mempool = args.mempool,
+		mempools = mempools,
 		rx_queues = args.rxQueues,
 		tx_queues = args.txQueues,
 		rx_descs = args.rxDescs,

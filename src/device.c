@@ -53,7 +53,7 @@ int dpdk_get_max_ports() {
 
 struct phobos_device_config {
 	uint32_t port;
-	struct rte_mempool* mempool;
+	struct rte_mempool** mempools;
 	uint16_t rx_queues;
 	uint16_t tx_queues;
 	uint16_t rx_descs;
@@ -166,7 +166,7 @@ int dpdk_configure_device(struct phobos_device_config* cfg) {
 		},
 	};
 	for (int i = 0; i < cfg->rx_queues; i++) {
-		rc = rte_eth_rx_queue_setup(cfg->port, i, cfg->rx_descs ? cfg->rx_descs : DEFAULT_RX_DESCS, SOCKET_ID_ANY, &rx_conf, cfg->mempool);
+		rc = rte_eth_rx_queue_setup(cfg->port, i, cfg->rx_descs ? cfg->rx_descs : DEFAULT_RX_DESCS, SOCKET_ID_ANY, &rx_conf, cfg->mempools[i]);
 		if (rc != 0) {
 			printf("could not configure rx queue %d\n", i);
 			return rc;

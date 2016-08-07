@@ -166,7 +166,7 @@ ffi.cdef[[
 
 	struct phobos_device_config {
 		uint32_t port;
-		struct mempool* mempool;
+		struct mempool** mempools;
 		uint16_t rx_queues;
 		uint16_t tx_queues;
 		uint16_t rx_descs;
