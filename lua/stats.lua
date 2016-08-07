@@ -469,14 +469,14 @@ local function statsTask(args)
 	for i, dev in ipairs(args.txDevices) do
 		table.insert(counters, mod:newDevTxCounter(dev, args.format, args.file))
 	end
-	while phobos.running() do
+	while phobos.running(200) do
 		for i, ctr in ipairs(counters) do
 			ctr:update()
 		end
-		phobos.sleepMillisIdle(100)
+		phobos.sleepMillisIdle(10)
 	end
 	for i, ctr in ipairs(counters) do
-		ctr:finalize()
+		ctr:finalize(0)
 	end
 end
 
