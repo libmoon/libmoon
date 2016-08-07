@@ -129,7 +129,7 @@ function mod.startTask(...)
 	if not core then
 		log:fatal("Not enough cores to start this task")
 	end
-	mod.startTaskOnCore(core, ...)
+	return mod.startTaskOnCore(core, ...)
 end
 
 function mod.startSharedTask(...)
