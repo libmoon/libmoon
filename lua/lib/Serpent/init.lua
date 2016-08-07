@@ -104,8 +104,13 @@ local function s(t, opts, ignoreMt)
       return tag..globerr(t, level)
     elseif ttype == 'function' then
       seen[t] = insref or spath
-      local ok, res = pcall(string.dump, t)
-      local func = ok and ((opts.nocode and "function() --[[..skipped..]] end" or
+      local ok, res
+      if opts.nocode then
+        ok = true
+      else
+		ok, res = pcall(string.dump, t)
+      end
+      local func = ok and ((opts.nocode and "nil" or
         "((loadstring or load)("..safestr(res)..",'@serialized'))")..comment(t, level))
       return tag..(func or globerr(t, level))
     else return tag..safestr(t) end -- handle all other types
@@ -133,9 +138,9 @@ end
 local function merge(a, b) if b then for k,v in pairs(b) do a[k] = v end end; return a; end
 return { _NAME = n, _COPYRIGHT = c, _DESCRIPTION = d, _VERSION = v, serialize = s,
   load = deserialize,
-  dump = function(a, opts) return s(a, merge({name = '_', compact = true, sparse = true}, opts)) end,
-  dumpRaw = function(a, opts) return s(a, merge({name = '_', compact = true, sparse = true}, opts), true) end,
-  line = function(a, opts) return s(a, merge({sortkeys = true, comment = true}, opts)) end,
-  block = function(a, opts) return s(a, merge({indent = '  ', sortkeys = true, comment = true}, opts)) end,
+  dump = function(a, opts) return s(a, merge({name = '_', compact = true, sparse = true, nocode = true}, opts)) end,
+  dumpRaw = function(a, opts) return s(a, merge({name = '_', compact = true, sparse = true, nocode = true}, opts), true) end,
+  line = function(a, opts) return s(a, merge({sortkeys = true, comment = true, nocode = true}, opts)) end,
+  block = function(a, opts) return s(a, merge({indent = '  ', sortkeys = true, comment = true, nocode = true}, opts)) end,
   addMt = function(buf, mt) return 'setmetatable((function() ' .. buf .. ' end)(), ' .. mt .. ')' end,
  }
