@@ -24,6 +24,9 @@ function master(...)
 	end
 	device.waitForLinks()
 
+	-- print stats
+	stats.startStatsTask{devices = args.dev}
+
 	-- start forwarding tasks
 	for i = 1, args.threads do
 		phobos.startTask("forward", args.dev[1]:getRxQueue(i - 1), args.dev[2]:getTxQueue(i - 1))
