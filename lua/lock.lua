@@ -1,9 +1,4 @@
----------------------------------
---- @file lock.lua
---- @brief Lock ...
---- @todo TODO docu
----------------------------------
-
+--- Locks
 local mod = {}
 
 local ffi	= require "ffi"
@@ -29,10 +24,12 @@ function mod:new()
 	return C.make_lock()
 end
 
+--- Acquire the lock
 function lock:lock()
 	C.lock_lock(self)
 end
 
+--- Release the lock
 function lock:unlock()
 	C.lock_unlock(self)
 end

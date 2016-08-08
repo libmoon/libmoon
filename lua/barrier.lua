@@ -1,9 +1,4 @@
----------------------------------
---- @file barrier.lua
---- @brief Barrier ...
---- @todo TODO docu
----------------------------------
- 
+--- Barriers to synchronize execution of different tasks
 local mod = {}
 
 local ffi = require "ffi"
@@ -21,20 +16,17 @@ local C = ffi.C
 local barrier = {}
 barrier.__index = barrier
 
----
---- @param n
-function mod.new(n)
+--- @param n number of tasks
+function mod:new(n)
     return C.make_barrier(n)
 end
 
---- 
 function barrier:wait()
     C.barrier_wait(self)
 end
 
----
---- only call if NO threads are waiting on this barrier
---- @param n
+--- Can only be called if no tasks are waiting, i.e., after wait() returned
+--- @param n number of tasks
 function barrier:reinit(n)
     C.barrier_reinit(self, n)
 end
