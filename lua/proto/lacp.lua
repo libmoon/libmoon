@@ -275,6 +275,19 @@ ffi.metatype("struct lacp_header", lacpHeader)
 
 lacp.lacpTask = "__MG_LACP_TASK"
 
+--- Start a shared LACP task
+--- @param name identifier for other functions like lacp:waitForLink(name)
+--- @param queues list of queue pairs to use, entries: {rxQueue = rxQueue, txQueue = txQueue}
+-- this is only a very simplistic implementation of 802.3ad and lacks some features
+-- (for example, it does not check whether the IDs on all links match and the rate is hardcoded)
+-- use the DPDK implementation if you need something that handles all cases
+-- 
+-- I actually didn't read the spec, so this may be completely wrong.
+-- tested against an Arista 7060CX MLAG LACP running EOS 4.15.3FX
+function lacp.startLacpTask(name, queues)
+	phobos.startSharedTask(lacp.lacpTask, name, queues)
+end
+
 local LACP_TIMEOUT = 30
 
 local status = ns:get()
@@ -284,7 +297,7 @@ function lacp:waitForLink(name, minLinks)
 		return lacp:waitForLink(self, name)
 	end
 	if not status[name] then
-		dpdk.sleepMillisIdle(100)
+		phobos.sleepMillisIdle(100)
 	end
 	if not status[name] then
 		-- yes, this is technically speaking a race condition if the other thread takes >= 100ms to startup...
@@ -302,7 +315,7 @@ function lacp:waitForLink(name, minLinks)
 				break
 			end
 		end
-		dpdk.sleepMillisIdle(100)
+		phobos.sleepMillisIdle(100)
 	end
 end
 
@@ -313,16 +326,8 @@ function lacp:getMac(name)
 	return status[name].mac
 end
 
--- TODO: support multiple channels (e.g. by passing multiple arguments)
--- this is only a very simplistic implementation of 802.3ad and lacks some features
--- (for example, it does not check whether the IDs on all links match and the rate is hardcoded)
--- use the DPDK implementation if you need something that handles all cases
--- 
--- I actually didn't read the spec, so this may be completely wrong.
--- tested against an Arista 7060CX MLAG LACP running EOS 4.15.3FX
-local function lacpTask(channel)
-	local ports = channel.ports
-	local lacpMac = ports[1].tx.dev:getMacString()
+local function lacpTask(name, queues)
+	local lacpMac = queues[1].txQueue.dev:getMacString()
 	local mem = memory.createMemPool(function(buf)
 		buf:getLacpPacket():fill{
 			lacpActorSysId = lacpMac,
@@ -332,8 +337,8 @@ local function lacpTask(channel)
 	end)
 	local bufs = memory.bufArray(1)
 	local txBufs = mem:bufArray(1)
-	for i, port in ipairs(ports) do
-		port.rx.dev:l2Filter(eth.TYPE_LACP, port.rx)
+	for i, port in ipairs(queues) do
+		port.rxQueue.dev:l2Filter(eth.TYPE_LACP, port.rxQueue)
 		-- receive state machine
 		port.rxState = "EXPIRED"
 		port.rxStateTimeout = 0
@@ -341,12 +346,12 @@ local function lacpTask(channel)
 		port.actorInfo = ffi.new("struct lacp_info")
 		port.stateFlags = bit.bor(lacp.STATE_ACT, lacp.STATE_AGG, lacp.STATE_DEF, lacp.STATE_EXP)
 	end
-	status[channel.name] = { up = 0, numPorts = #ports, mac = lacpMac }
+	status[name] = { up = 0, numPorts = #queues, mac = lacpMac }
 	local lastUpdate = 0
-	while dpdk.running() do
-		for i, port in ipairs(ports) do
+	while phobos.running() do
+		for i, port in ipairs(queues) do
 			-- receive
-			local rx = port.rx:tryRecvIdle(bufs, 100)
+			local rx = port.rxQueue:tryRecvIdle(bufs, 100)
 			for i = 1, rx do
 				local pkt = bufs[1]:getLacpPacket()
 				if pkt.lacp:validate() then
@@ -381,7 +386,7 @@ local function lacpTask(channel)
 			bufs:free(rx)
 			-- transmit every second
 			if getMonotonicTime() > lastUpdate + 1 then
-				for i, port in ipairs(ports) do
+				for i, port in ipairs(queues) do
 					if getMonotonicTime() > port.rxStateTimeout then
 						port.rxState = "EXPIRED"
 						port.stateFlags = bit.bor(lacp.STATE_ACT, lacp.STATE_AGG, lacp.STATE_DEF, lacp.STATE_EXP)
@@ -395,27 +400,27 @@ local function lacpTask(channel)
 					end
 					txBufs:alloc(lacp.PKT_SIZE)
 					local pkt = txBufs[1]:getLacpPacket()
-					pkt.eth.src:setString(port.tx.dev:getMacString())
+					pkt.eth.src:setString(port.txQueue.dev:getMacString())
 					pkt.lacp.actor:setKey(1) -- TODO: change to support multiple channels
-					pkt.lacp.actor:setPortId(port.tx.id + 1000)
+					pkt.lacp.actor:setPortId(port.txQueue.id + 1000)
 					pkt.lacp.actor:setState(port.stateFlags)
 					ffi.copy(port.actorInfo, pkt.lacp.actor, ffi.sizeof("struct lacp_info"))
 					ffi.copy(pkt.lacp.partner, port.partnerInfo, ffi.sizeof("struct lacp_info"))
 					--print("Sending")
 					--txBufs[1]:dump()
-					port.tx:send(txBufs)
+					port.txQueue:send(txBufs)
 				end
 				lastUpdate = getMonotonicTime()
 			end
 		end
 		local numPortsUp = 0
-		for i, port in ipairs(ports) do
+		for i, port in ipairs(queues) do
 			if port.up then
 				numPortsUp = numPortsUp + 1
 			end
 		end
-		status[channel.name] = { up = numPortsUp, numPorts = #ports, mac = lacpMac }
-		dpdk.sleepMillisIdle(1)
+		status[name] = { up = numPortsUp, numPorts = #queues, mac = lacpMac }
+		phobos.sleepMillisIdle(1)
 	end
 end
 
