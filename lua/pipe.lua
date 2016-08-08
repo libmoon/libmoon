@@ -1,16 +1,11 @@
----------------------------------
---- @file pipe.lua
---- @brief Pipe ...
---- @todo TODO docu
----------------------------------
-
+--- Inter-task communication via pipes
 local mod = {}
 
-local memory	= require "memory"
-local ffi		= require "ffi"
-local serpent	= require "Serpent"
-local dpdk		= require "dpdk"
-local log		= require "log"
+local memory   = require "memory"
+local ffi      = require "ffi"
+local serpent  = require "Serpent"
+local phobos   = require "phobos"
+local log      = require "log"
 
 ffi.cdef [[
 	// dummy
@@ -107,7 +102,7 @@ function slowPipe:tryRecv(wait)
 		if wait < 0 then
 			break
 		end
-		dpdk.sleepMicros(10)
+		phobos.sleepMicrosIdle(10)
 	end
 end
 
@@ -168,7 +163,7 @@ function fastPipe:tryRecv(wait)
 		if wait < 0 then
 			break
 		end
-		dpdk.sleepMicros(10)
+		phobos.sleepMicros(10)
 	end
 end
 
