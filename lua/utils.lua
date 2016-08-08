@@ -152,7 +152,7 @@ do
 	function getMonotonicTime()
 		-- CLOCK_MONOTONIC = 1
 		ffi.C.clock_gettime(1, ts)
-		return tonumber(ts.tv_sec) + tonumber(ts.tv_nsec) / 10^6
+		return tonumber(ts.tv_sec) + tonumber(ts.tv_nsec) / 10^9
 	end
 end
 
