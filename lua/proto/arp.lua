@@ -412,7 +412,7 @@ pkt.getArpPacket = packetCreate("eth", "arp")
 arp.arpTask = "__MG_ARP_TASK"
 
 --- Start the ARP task on a shared cores
---- @param queues array of queue pairs to use, each entry has the followg format
+--- @param queues array of queue pairs to use, each entry has the following format
 --- {rxQueue = rxQueue, txQueue = txQueue, ips = "ip" | {"ip", ...}}
 function arp.startArpTask(queues)
 	phobos.startSharedTask(arp.arpTask, queues)
