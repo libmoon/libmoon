@@ -157,7 +157,7 @@ formatters["nil"] = {
 
 --- base constructor for rx and tx counters
 local function newCounter(ctrType, name, dev, format, file)
-	format = format or "CSV"
+	format = format or "plain"
 	file = file or io.stdout
 	local closeFile = false
 	if type(file) == "string" then
@@ -253,7 +253,7 @@ manualRxCounter.__index = manualRxCounter
 --- Create a new rx counter using device statistics registers.
 --- @param name the name of the counter, included in the output. defaults to the device name
 --- @param dev the device to track
---- @param format the output format, "CSV" (default) and "plain" are currently supported
+--- @param format the output format, "CSV" and "plain" (default) are currently supported
 --- @param file the output file, defaults to standard out
 function mod:newDevRxCounter(name, dev, format, file)
 	if type(name) == "table" then
@@ -274,7 +274,7 @@ end
 
 --- Create a new rx counter that can be updated by passing packet buffers to it.
 --- @param name the name of the counter, included in the output
---- @param format the output format, "CSV" (default) and "plain" are currently supported
+--- @param format the output format, "CSV" and "plain" (default) are currently supported
 --- @param file the output file, defaults to standard out
 function mod:newPktRxCounter(name, format, file)
 	local obj = newCounter("pkt", name, nil, format, file)
@@ -283,7 +283,7 @@ end
 
 --- Create a new rx counter that has to be updated manually.
 --- @param name the name of the counter, included in the output
---- @param format the output format, "CSV" (default) and "plain" are currently supported
+--- @param format the output format, "CSV" and "plain" (default) are currently supported
 --- @param file the output file, defaults to standard out
 function mod:newManualRxCounter(name, format, file)
 	local obj = newCounter("manual", name, nil, format, file)
@@ -375,7 +375,7 @@ manualTxCounter.__index = manualTxCounter
 --- Create a new tx counter using device statistics registers.
 --- @param name the name of the counter, included in the output. defaults to the device name
 --- @param dev the device to track
---- @param format the output format, "CSV" (default) and "plain" are currently supported
+--- @param format the output format, "CSV" and "plain" (default) are currently supported
 --- @param file the output file, defaults to standard out
 function mod:newDevTxCounter(name, dev, format, file)
 	if type(name) == "table" then
@@ -396,7 +396,7 @@ end
 
 --- Create a new tx counter that can be updated by passing packet buffers to it.
 --- @param name the name of the counter, included in the output
---- @param format the output format, "CSV" (default) and "plain" are currently supported
+--- @param format the output format, "CSV" and "plain" (default) are currently supported
 --- @param file the output file, defaults to standard out
 function mod:newPktTxCounter(name, format, file)
 	local obj = newCounter("pkt", name, nil, format, file)
@@ -405,7 +405,7 @@ end
 
 --- Create a new tx counter that has to be updated manually.
 --- @param name the name of the counter, included in the output
---- @param format the output format, "CSV" (default) and "plain" are currently supported
+--- @param format the output format, "CSV" and "plain" (default) are currently supported
 --- @param file the output file, defaults to standard out
 function mod:newManualTxCounter(name, format, file)
 	local obj = newCounter("manual", name, nil, format, file)
