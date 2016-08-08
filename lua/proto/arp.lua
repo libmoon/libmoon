@@ -409,16 +409,18 @@ pkt.getArpPacket = packetCreate("eth", "arp")
 --- Arp handler task, responds to ARP queries for given IPs and performs arp lookups
 --- @todo TODO implement garbage collection/refreshing entries \n
 --- the current implementation does not handle large tables efficiently \n
---- @todo TODO multi-NIC support
 arp.arpTask = "__MG_ARP_TASK"
 
---- Arp table
---- TODO docu
+--- Start the ARP task on a shared cores
+--- @param queues array of queue pairs to use, each entry has the followg format
+--- {rxQueue = rxQueue, txQueue = txQueue, ips = "ip" | {"ip", ...}}
+function arp.startArpTask(queues)
+	phobos.startSharedTask(arp.arpTask, queues)
+end
+
+-- Arp table
 local arpTable = ns:get()
 
---- Arp handler task
---- @param qs TODO
---- @todo TODO docu
 local function arpTask(qs)
 	-- two ways to call this: single nic or array of nics
 	if qs[1] == nil and qs.rxQueue then

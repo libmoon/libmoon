@@ -49,7 +49,7 @@ function master(...)
 
 	-- start ARP task and do ARP lookup (if not hardcoded above)
 	if args.arp then
-		phobos.startSharedTask(arp.arpTask, arpQueues)
+		arp.startArpTask(arpQueues)
 		if not DST_MAC then
 			log:info("Performing ARP lookup on %s, timeout 3 seconds.", GW_IP)
 			DST_MAC = arp.blockingLookup(GW_IP, 3)
