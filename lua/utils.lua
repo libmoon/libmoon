@@ -138,21 +138,21 @@ do
 		return tv.tv_sec, tv.tv_usec
 	end
 	
---- Return the current wall clock time
---- @return The time in seconds (as a double)
+	--- Return the current wall clock time
+	--- @return The time in seconds (as a double)
 	function time()
-		sec, usec = gettimeofday()
-		return tonumber(sec + usec / 10^6)
+		local sec, usec = gettimeofday()
+		return tonumber(sec) + tonumber(usec) / 10^6
 	end
 
 	local ts = ffi.new("struct timespec")
 
---- Return the current monotonic clock time
---- @return The time in seconds (as a double)
+	--- Return the current monotonic clock time
+	--- @return The time in seconds (as a double)
 	function getMonotonicTime()
 		-- CLOCK_MONOTONIC = 1
 		ffi.C.clock_gettime(1, ts)
-		return ts.tv_sec + ts.tv_nsec / 10^9
+		return tonumber(ts.tv_sec) + tonumber(ts.tv_nsec) / 10^6
 	end
 end
 
