@@ -275,15 +275,15 @@ ffi.metatype("struct lacp_header", lacpHeader)
 
 lacp.lacpTask = "__MG_LACP_TASK"
 
---- Start a shared LACP task
+--- Start a shared LACP task. Use multiple tasks for multiple channels.
 --- @param name identifier for other functions like lacp:waitForLink(name)
 --- @param queues list of queue pairs to use, entries: {rxQueue = rxQueue, txQueue = txQueue}
 -- this is only a very simplistic implementation of 802.3ad and lacks some features
 -- (for example, it does not check whether the IDs on all links match and the rate is hardcoded)
 -- use the DPDK implementation if you need something that handles all cases
 -- 
--- I actually didn't read the spec, so this may be completely wrong.
--- tested against an Arista 7060CX MLAG LACP running EOS 4.15.3FX
+-- I actually didn't read the spec, so this may be slightly wrong
+-- tested against an Arista EOS 4.15.3FX MLAG LACP and Linux bonding
 function lacp.startLacpTask(name, queues)
 	phobos.startSharedTask(lacp.lacpTask, name, queues)
 end
@@ -327,7 +327,15 @@ function lacp:getMac(name)
 end
 
 local function lacpTask(name, queues)
+	if name == "channelId" then
+		log:fatal("name channelId is reserved")
+	end
 	local lacpMac = queues[1].txQueue.dev:getMacString()
+	-- generate unique key for this channel to support multiple tasks
+	status.lock:lock()
+	local key = (status.channelId or 0) + 1
+	status.channelId = key
+	status.lock:unlock()
 	local mem = memory.createMemPool(function(buf)
 		buf:getLacpPacket():fill{
 			lacpActorSysId = lacpMac,
@@ -358,8 +366,6 @@ local function lacpTask(name, queues)
 					port.rxState = "CURRENT"
 					port.rxStateTimeout = getMonotonicTime() + LACP_TIMEOUT
 					ffi.copy(port.partnerInfo, pkt.lacp.actor, ffi.sizeof("struct lacp_info"))
-					--print("Received")
-					--bufs[1]:dump()
 					if port.actorInfo:equalsIgnoreState(pkt.lacp.partner) then
 						port.stateFlags = bit.bor(port.stateFlags, lacp.STATE_SYNC)
 						port.stateFlags = bit.band(port.stateFlags, bit.bnot(lacp.STATE_DEF))
@@ -401,13 +407,11 @@ local function lacpTask(name, queues)
 					txBufs:alloc(lacp.PKT_SIZE)
 					local pkt = txBufs[1]:getLacpPacket()
 					pkt.eth.src:setString(port.txQueue.dev:getMacString())
-					pkt.lacp.actor:setKey(1) -- TODO: change to support multiple channels
+					pkt.lacp.actor:setKey(key)
 					pkt.lacp.actor:setPortId(port.txQueue.id + 1000)
 					pkt.lacp.actor:setState(port.stateFlags)
 					ffi.copy(port.actorInfo, pkt.lacp.actor, ffi.sizeof("struct lacp_info"))
 					ffi.copy(pkt.lacp.partner, port.partnerInfo, ffi.sizeof("struct lacp_info"))
-					--print("Sending")
-					--txBufs[1]:dump()
 					port.txQueue:send(txBufs)
 				end
 				lastUpdate = getMonotonicTime()
