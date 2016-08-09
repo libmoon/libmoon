@@ -5,24 +5,31 @@ local device = require "device"
 local memory = require "memory"
 local arp    = require "proto.arp"
 local eth    = require "proto.ethernet"
+local argparse = require "argparse"
 
-function master(rxPort)
-	local dev = device.config{port = rxPort, txQueues = 2}
+function master(...)
+	local parser = argparse()
+	parser:argument("dev", "Device to use"):args(1):convert(tonumber)
+	parser:option("-a --arp", "Respond to ARP queries on the given IP."):argname("ip")
+	local args = parser:parse(...)
+	local dev = device.config{port = args.dev, txQueues = args.arp and 2 or 1}
 	device.waitForLinks()
-	arp.startArpTask{txQueue = dev:getTxQueue(1), ips = "172.17.0.20"}
-	arp.waitForStartup() -- race condition with arp.handlePacket() otherwise
-	phobos.startTask("dumper", dev:getRxQueue(0))
+	if args.arp then
+		arp.startArpTask{txQueue = dev:getTxQueue(1), ips = args.arp}
+		arp.waitForStartup() -- race condition with arp.handlePacket() otherwise
+	end
+	phobos.startTask("dumper", dev:getRxQueue(0), args.arp)
 	phobos.waitForTasks()
 end
 
-function dumper(queue)
+function dumper(queue, handleArp)
 	local bufs = memory.bufArray()
 	while phobos.running() do
 		local rx = queue:tryRecv(bufs, 100)
 		for i = 1, rx do
 			local buf = bufs[i]
 			buf:dump()
-			if buf:getEthernetPacket().eth:getType() == eth.TYPE_ARP then
+			if handleArp and buf:getEthernetPacket().eth:getType() == eth.TYPE_ARP then
 				-- inject arp packets to the ARP task
 				-- this is done this way instead of using filters to also dump ARP packets here
 				arp.handlePacket(buf)
