@@ -36,7 +36,7 @@ Hence, [MoonGen's examples](https://github.com/emmericp/MoonGen/blob/master/exam
 Just run `build.sh` and `setup-hugetlbfs.sh`
 
 ```
-sudo apt-get install build-essential cmake linux-headers-`uname -r` lshw
+sudo apt-get install git build-essential cmake linux-headers-`uname -r` lshw
 git clone https://github.com/Phobos-Framework/phobos
 cd phobos
 ./build.sh
