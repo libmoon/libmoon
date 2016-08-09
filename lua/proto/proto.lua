@@ -17,5 +17,6 @@ proto.esp = require "proto.esp"
 proto.ah = require "proto.ah"
 proto.dns = require "proto.dns"
 proto.ipfix = require "proto.ipfix"
+proto.sflow = require "proto.sflow"
 
 return proto
