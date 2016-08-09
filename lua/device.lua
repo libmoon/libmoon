@@ -168,7 +168,7 @@ function mod.config(args)
 		strip_vlan = args.stripVlan
 	}))
 	if rc ~= 0 then
-	    log:fatal("Could not configure device %d: error %d", args.port, strError(rc))
+	    log:fatal("Could not configure device %d: error %s", args.port, strError(rc))
 	end
 	local dev = mod.get(args.port)
 	dev.initialized = true
