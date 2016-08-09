@@ -140,6 +140,10 @@ function pkt:dump(bytes, stream, colorized)
 	self:get():dump(bytes or self.pkt_len, stream or io.stdout, colorized)
 end
 
+function pkt:free()
+	dpdkc.rte_pktmbuf_free_export(self)
+end
+
 -------------------------------------------------------------------------------------------------------
 ---- IPSec offloading
 -------------------------------------------------------------------------------------------------------
