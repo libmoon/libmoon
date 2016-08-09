@@ -87,7 +87,8 @@ local devices = namespaces:get()
 ---   rssQueues optional (default = 0) Number of queues to use for RSS
 ---   rssBaseQueue optional (default = 0) The first queue to use for RSS, packets will go to queues rssBaseQueue up to rssBaseQueue + rssQueues - 1
 ---   rssFunctions optional (default = all supported functions) Table with hash functions specified in dpdk.ETH_RSS_*
----	  disableOffloads optional (default = false) Disable all offloading features, this significantly speeds up some drivers (e.g. ixgbe)
+---	  disableOffloads optional (default = false) Disable all offloading features, this significantly speeds up some drivers (e.g., ixgbe).
+---                   set by default for drivers that do not support offloading (e.g., virtio)
 ---   stripVlan (default = true) Strip the VLAN tag on the NIC.
 function mod.config(args)
 	if not args or not args.port then
@@ -108,6 +109,9 @@ function mod.config(args)
 	args.rxDescs = args.rxDescs or 512
 	args.txDescs = args.txDescs or 1024
 	args.rssQueues = args.rssQueues or 0
+	if args.disableOffloads == nil then
+		args.disableOffloads = drivers.getDriverInfo(args.port).disableOffloads
+	end
 	args.rssFunctions = args.rssFunctions or {
 		dpdk.ETH_RSS_IPV4,
 		dpdk.ETH_RSS_FRAG_IPV4,

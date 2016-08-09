@@ -123,7 +123,7 @@ int dpdk_configure_device(struct phobos_device_config* cfg) {
 			.mq_mode = cfg->enable_rss ? ETH_MQ_RX_RSS : ETH_MQ_RX_NONE,
 			.split_hdr_size = 0,
 			.header_split = 0,
-			.hw_ip_checksum = 1,
+			.hw_ip_checksum = !cfg->disable_offloads,
 			.hw_vlan_filter = 0,
 			.jumbo_frame = 0,
 			.hw_strip_crc = 1,
