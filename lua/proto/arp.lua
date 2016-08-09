@@ -21,6 +21,8 @@ local memory = require "memory"
 local filter = require "filter"
 local ns = require "namespaces"
 local phobos = require "phobos"
+local pipe = require "pipe"
+local log = require "log"
 
 local eth = require "proto.ethernet"
 
@@ -414,34 +416,69 @@ arp.arpTask = "__MG_ARP_TASK"
 --- Start the ARP task on a shared cores
 --- @param queues array of queue pairs to use, each entry has the following format
 --- {rxQueue = rxQueue, txQueue = txQueue, ips = "ip" | {"ip", ...}}
+--- rxQueue is optional, packets can alternatively be provided through the pipe API, see arp.handlePacket()
 function arp.startArpTask(queues)
 	phobos.startSharedTask(arp.arpTask, queues)
 end
 
 -- Arp table
 local arpTable = ns:get()
+local pipes = ns:get()
+
+local function handleArpPacket(rxBufs, txBufs, nic, ipToMac)
+	local rxPkt = rxBufs[1]:getArpPacket()
+	if rxPkt.eth:getType() == eth.TYPE_ARP then
+		if rxPkt.arp:getOperation() == arp.OP_REQUEST then
+			local ip = rxPkt.arp:getProtoDst()
+			local mac = ipToMac[ip]
+			if mac then
+				txBufs:alloc(60)
+				-- TODO: a single-packet API would be nice for things like this
+				local pkt = txBufs[1]:getArpPacket()
+				pkt.eth:setSrcString(mac)
+				pkt.eth:setDst(rxPkt.eth:getSrc())
+				pkt.arp:setOperation(arp.OP_REPLY)
+				pkt.arp:setHardwareDst(rxPkt.arp:getHardwareSrc())
+				pkt.arp:setHardwareSrcString(mac)
+				pkt.arp:setProtoDst(rxPkt.arp:getProtoSrc())
+				pkt.arp:setProtoSrc(ip)
+				nic.txQueue:send(txBufs)
+			end
+		elseif rxPkt.arp:getOperation() == arp.OP_REPLY then
+			-- learn from all arp replies we see (yes, that makes arp cache poisoning easy)
+			local mac = rxPkt.arp:getHardwareSrcString()
+			local ip = rxPkt.arp:getProtoSrcString()
+			arpTable[tostring(parseIPAddress(ip))] = { mac = mac, timestamp = phobos.getTime() }
+		end
+	end
+	rxBufs:freeAll()
+end
 
 local function arpTask(qs)
 	-- two ways to call this: single nic or array of nics
-	if qs[1] == nil and qs.rxQueue then
+	if qs[1] == nil and qs.txQueue then
 		return arpTask({ qs })
 	end
 
 	local ipToMac = {}
 	-- loop over NICs/Queues
-	for _, nic in pairs(qs) do
-		if nic.txQueue.id ~= nic.rxQueue.id then
+	for i, nic in ipairs(qs) do
+		if nic.rxQueue and nic.txQueue.id ~= nic.rxQueue.id then
 			error("both queues must belong to the same device")
 		end
 
 		if type(nic.ips) == "string" then
 			nic.ips = { nic.ips }
 		end
-
 		for _, ip in pairs(nic.ips) do
 			ipToMac[parseIPAddress(ip)] = nic.txQueue.dev:getMacString()
 		end
-		nic.txQueue.dev:l2Filter(eth.TYPE_ARP, nic.rxQueue)
+		if nic.rxQueue then
+			nic.txQueue.dev:l2Filter(eth.TYPE_ARP, nic.rxQueue)
+		end
+		local pipe = pipe:newFastPipe()
+		nic.pipe = pipe
+		pipes[tostring(i)] = pipe
 	end
 
 	local rxBufs = memory.createBufArray(1)
@@ -458,35 +495,17 @@ local function arpTask(qs)
 	while phobos.running() do
 		
 		for _, nic in pairs(qs) do
-			rx = nic.rxQueue:tryRecvIdle(rxBufs, 1000)
-			assert(rx <= 1)
-			if rx > 0 then
-				local rxPkt = rxBufs[1]:getArpPacket()
-				if rxPkt.eth:getType() == eth.TYPE_ARP then
-					if rxPkt.arp:getOperation() == arp.OP_REQUEST then
-						local ip = rxPkt.arp:getProtoDst()
-						local mac = ipToMac[ip]
-						if mac then
-							txBufs:alloc(60)
-							-- TODO: a single-packet API would be nice for things like this
-							local pkt = txBufs[1]:getArpPacket()
-							pkt.eth:setSrcString(mac)
-							pkt.eth:setDst(rxPkt.eth:getSrc())
-							pkt.arp:setOperation(arp.OP_REPLY)
-							pkt.arp:setHardwareDst(rxPkt.arp:getHardwareSrc())
-							pkt.arp:setHardwareSrcString(mac)
-							pkt.arp:setProtoDst(rxPkt.arp:getProtoSrc())
-							pkt.arp:setProtoSrc(ip)
-							nic.txQueue:send(txBufs)
-						end
-					elseif rxPkt.arp:getOperation() == arp.OP_REPLY then
-						-- learn from all arp replies we see (arp cache poisoning doesn't matter here)
-						local mac = rxPkt.arp:getHardwareSrcString()
-						local ip = rxPkt.arp:getProtoSrcString()
-						arpTable[tostring(parseIPAddress(ip))] = { mac = mac, timestamp = phobos.getTime() }
-					end
+			if nic.rxQueue then
+				rx = nic.rxQueue:tryRecvIdle(rxBufs, 1000)
+				assert(rx <= 1)
+				if rx > 0 then
+					handleArpPacket(rxBufs, txBufs, nic, ipToMac)
 				end
-				rxBufs:freeAll()
+			end
+			local pkt = nic.pipe:tryRecv(100)
+			if pkt then
+				rxBufs[1] = pkt
+				handleArpPacket(rxBufs, txBufs, nic, ipToMac)
 			end
 		end
 
@@ -516,6 +535,20 @@ local function arpTask(qs)
 		end)
 		phobos.sleepMillisIdle(1)
 	end
+end
+
+--- Send a buf containing an ARP to the ARP task.
+--- The buf is free'd by the ARP task, do not free this (or increase ref count).
+--- @param buf the arp packet
+--- @param nic the ID of the NIC from which the packt was received, defaults to 1
+---            corresponds to the index in the queue array passed to the arp task
+function arp.handlePacket(buf, nic)
+	nic = nic or 1
+	local pipe = pipes[tostring(nic)]
+	if not pipe then
+		log:fatal("NIC %s not found", nic)
+	end
+	pipe:send(buf)
 end
 
 --- Perform a lookup in the ARP table.
@@ -563,6 +596,12 @@ function arp.blockingLookup(ip, timeout)
 		end
 		phobos.sleepMillisIdle(1000)
 	until phobos.getTime() >= timeout
+end
+
+function arp.waitForStartup()
+	while not arpTable.taskRunning do
+		phobos.sleepMillisIdle(1)
+	end
 end
 
 __MG_ARP_TASK = arpTask
