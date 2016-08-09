@@ -10,7 +10,7 @@ modprobe uio
 i=0
 for id in $(tools/dpdk-devbind.py --status | grep -v Active | grep unused=igb_uio | cut -f 1 -d " ")
 do
-	if tools/dpdk-devbind.py --status | grep $id > /dev/null
+	if tools/dpdk-devbind.py --status | grep $id | grep -i virtio > /dev/null
 	then
 		echo "Found VirtIO NIC $id"
 		echo "Not binding VirtIO NIC to DPDK due to buggy activity detection in dpdk-devbind.py"
