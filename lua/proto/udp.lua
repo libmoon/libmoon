@@ -37,6 +37,7 @@ udp.PORT_PTP_EVENTS = 319
 udp.PORT_PTP_GENERAL_MESSAGES = 320
 --- Well known port for VXLAN (RFC7348)
 udp.PORT_VXLAN = 4789
+udp.PORT_SFLOW = 6343
 
 
 ---------------------------------------------------------------------------
@@ -175,6 +176,7 @@ end
 local mapNamePort = {
 	ptp = { udp.PORT_PTP_EVENTS, udp.PORT_PTP_GENERAL_MESSAGES },
 	vxlan = udp.PORT_VXLAN,
+	sflow = udp.PORT_SFLOW
 }
 
 --- Resolve which header comes after this one (in a packet).

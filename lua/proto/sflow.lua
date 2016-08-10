@@ -11,7 +11,7 @@ local format = string.format
 
 -- http://www.sflow.org/SFLOW-DATAGRAM5.txt
 ffi.cdef[[
-struct __attribute__((__packed__)) sflowv5_ipv4_header {
+struct __attribute__((__packed__)) sflow_header {
 	uint32_t version;
 	uint32_t agent_ip_type;
 	union ip4_address agent_ip;
@@ -19,9 +19,10 @@ struct __attribute__((__packed__)) sflowv5_ipv4_header {
 	uint32_t seq;
 	uint32_t uptime;
 	uint32_t num_samples;
+	union payload_t payload; // use with a noPayload proto stack
 };
 
-struct __attribute__((__packed__)) sflowv5_ipv6_header {
+struct __attribute__((__packed__)) sflow_ipv6_header {
 	uint32_t version;
 	uint32_t agent_ip_type;
 	union ip6_address agent_ip;
@@ -29,6 +30,7 @@ struct __attribute__((__packed__)) sflowv5_ipv6_header {
 	uint32_t seq;
 	uint32_t uptime;
 	uint32_t num_samples;
+	union payload_t payload; // use with a noPayload proto stack
 };
 
 struct __attribute__((__packed__)) sflow_unknown_entry {
@@ -46,7 +48,8 @@ struct __attribute__((__packed__)) sflow_flow_sample {
 	uint32_t drops;
 	uint32_t input_port;
 	uint32_t output_port;
-	uint32_t num_records;
+	uint32_t num_entries;
+	union payload_t payload;
 };
 
 struct __attribute__((__packed__)) sflow_ext_switch_data {
@@ -72,16 +75,111 @@ struct __attribute__((__packed__)) sflow_raw_packet {
 --- sflow protocol constants
 local sflow = {}
 
+sflow.RECORD_TYPE_FLOW_SAMPLE_BE = hton(0x01)
+sflow.RECORD_TYPE_EXT_SWITCH_DATA_BE = 0xe9030000
+sflow.RECORD_TYPE_RAW_PACKET_BE = hton(0x01)
+
 local sflowHeader = {}
 sflowHeader.__index = sflowHeader
 
-function sflowHeader:setVersion(int)
-	int = int or 0
-	self.version = hton(int)
+local sflowUnknownEntry = {}
+sflowUnknownEntry.__index = sflowUnknownEntry
+
+local sflowFlowSample = {}
+sflowFlowSample.__index = sflowFlowSample
+
+local sflowExtSwitchData = {}
+sflowExtSwitchData.__index = sflowExtSwitchData
+
+local sflowRawPacket = {}
+sflowRawPacket.__index = sflowRawPacket
+
+local function genIntSetter(field)
+	return function(self, int)
+		self[field] = hton(int or 0)
+	end
+end
+local function genIntGetter(field)
+	return function(self, int)
+		return ntoh(self[field])
+	end
 end
 
-function sflowHeader:getVersion()
-	return ntoh(self.version)
+sflowHeader.setVersion = genIntSetter("version")
+sflowHeader.setSubAgentId = genIntSetter("sub_agent_id")
+sflowHeader.setSeq = genIntSetter("seq")
+sflowHeader.setUptime = genIntSetter("uptime")
+sflowHeader.setNumSamples = genIntSetter("num_samples")
+
+sflowHeader.getVersion = genIntGetter("version")
+sflowHeader.getSubAgentId = genIntGetter("sub_agent_id")
+sflowHeader.getSeq = genIntGetter("seq")
+sflowHeader.getUptime = genIntGetter("uptime")
+sflowHeader.getNumSamples = genIntGetter("num_samples")
+
+
+sflowUnknownEntry.setType = genIntSetter("type")
+sflowUnknownEntry.setLen = genIntSetter("len")
+
+sflowUnknownEntry.getType = genIntGetter("type")
+sflowUnknownEntry.getLen = genIntGetter("len")
+
+
+sflowFlowSample.setType = genIntSetter("type")
+sflowFlowSample.setLen = genIntSetter("len")
+sflowFlowSample.setSeq = genIntSetter("seq")
+sflowFlowSample.setSourceId = genIntSetter("source_id")
+sflowFlowSample.setSamplingRate = genIntSetter("sampling_rate")
+sflowFlowSample.setSamplePool = genIntSetter("sample_pool")
+sflowFlowSample.setDrops = genIntSetter("drops")
+sflowFlowSample.setInputPort = genIntSetter("input_port")
+sflowFlowSample.setOutputPort = genIntSetter("output_port")
+sflowFlowSample.setNumEntries = genIntSetter("num_entries")
+
+sflowFlowSample.getType = genIntGetter("type")
+sflowFlowSample.getLen = genIntGetter("len")
+sflowFlowSample.getSeq = genIntGetter("seq")
+sflowFlowSample.getSourceId = genIntGetter("source_id")
+sflowFlowSample.getSamplingRate = genIntGetter("sampling_rate")
+sflowFlowSample.getSamplePool = genIntGetter("sample_pool")
+sflowFlowSample.getDrops = genIntGetter("drops")
+sflowFlowSample.getInputPort = genIntGetter("input_port")
+sflowFlowSample.getOutputPort = genIntGetter("output_port")
+sflowFlowSample.getNumEntries = genIntGetter("num_entries")
+
+
+sflowExtSwitchData.setType = genIntSetter("type")
+sflowExtSwitchData.setLen = genIntSetter("len")
+sflowExtSwitchData.setSrcVlan = genIntSetter("src_vlan")
+sflowExtSwitchData.setSrcPrio = genIntSetter("src_prio")
+sflowExtSwitchData.setDstVlan = genIntSetter("dst_vlan")
+sflowExtSwitchData.setDstPrio = genIntSetter("dst_prio")
+
+sflowExtSwitchData.getType = genIntGetter("type")
+sflowExtSwitchData.getLen = genIntGetter("len")
+sflowExtSwitchData.getSrcVlan = genIntGetter("src_vlan")
+sflowExtSwitchData.getSrcPrio = genIntGetter("src_prio")
+sflowExtSwitchData.getDstVlan = genIntGetter("dst_vlan")
+sflowExtSwitchData.getDstPrio = genIntGetter("dst_prio")
+
+
+sflowRawPacket.setType = genIntSetter("type")
+sflowRawPacket.setLen = genIntSetter("len")
+sflowRawPacket.setProto = genIntSetter("proto")
+sflowRawPacket.setPacketLen = genIntSetter("packet_len")
+sflowRawPacket.setStrippedBytes = genIntSetter("stripped_bytes")
+sflowRawPacket.setHeaderSize = genIntSetter("header_size")
+
+sflowRawPacket.getType = genIntGetter("type")
+sflowRawPacket.getLen = genIntGetter("len")
+sflowRawPacket.getProto = genIntGetter("proto")
+sflowRawPacket.getPacketLen = genIntGetter("packet_len")
+sflowRawPacket.getStrippedBytes = genIntGetter("stripped_bytes")
+sflowRawPacket.getHeaderSize = genIntGetter("header_size")
+
+
+function sflowFlowSample:getNumEntries()
+	return ntoh(self.num_entries)
 end
 
 function sflowHeader:setAgentIp(ip)
@@ -99,41 +197,6 @@ function sflowHeader:getAgentIpString()
 	return self.agent_ip:getString()
 end
 
-function sflowHeader:setSubAgentId(int)
-	int = int or 0
-	self.sub_agent_id = hton(int)
-end
-
-function sflowHeader:getSubAgentId()
-	return ntoh(self.sub_agent_id)
-end
-
-function sflowHeader:setSeq(int)
-	int = int or 0
-	self.seq = hton(int)
-end
-
-function sflowHeader:getSeq()
-	return ntoh(self.seq)
-end
-
-function sflowHeader:setUptime(int)
-	int = int or 0
-	self.uptime = hton(int)
-end
-
-function sflowHeader:getUptime()
-	return ntoh(self.uptime)
-end
-
-function sflowHeader:setNumSamples(int)
-	int = int or 0
-	self.num_samples = hton(int)
-end
-
-function sflowHeader:getUptime()
-	return ntoh(self.num_samples)
-end
 
 --- Set all members of the sFlow header.
 --- Per default, all members are set to default values specified in the respective set function.
@@ -180,9 +243,40 @@ end
 --- Retrieve the values of all members.
 --- @return Values in string format.
 function sflowHeader:getString()
-	return ("sFlowv5, agent IP %s, agent id %d, seq %d, uptime %d, samples %d "):format(
-		self:getAgentIpString(), self:getAgentId(), self:getSeq(), self:getUptime(), self:getNumSamples()
+	local str = "" ("sFlowv5, agent IP %s, sub agent id %d, seq %d, uptime %d, samples %d \n"):format(
+		self:getAgentIpString(), self:getSubAgentId(), self:getSeq(), self:getUptime(), self:getNumSamples()
 	)
+	for i, record in self:iterateSamples() do
+		str = str .. "   " .. record:getString() .. "\n"
+		for i, entry in record:iterateEntries() do
+			str = str .. "      " .. entry:getString() .. "\n"
+		end
+	end
+	return str:sub(0, #str - 1)
+end
+
+function sflowUnknownEntry:getString()
+	return ("unsupported record type %d, len %d"):format(self:getType(), self:getLen())
+end
+
+function sflowFlowSample:getString()
+	return ("Flow sample, type %d, len %d, seq %d, source id %d, sampling_rate %d, sample_pool %d, drops %d, input port %d, output port %d, records %d"):format(
+		self:getType(), self:getLen(), self:getSeq(), self:getSourceId(), self:getSamplingRate(),
+		self:getSamplePool(), self:getDrops(), self:getInputPort(), self:getOutputPort(), self:getNumEntries()
+	)
+end
+
+function sflowExtSwitchData:getString()
+	return ("Extended switch data, type %d, len %d, source vlan %d, src priority %d, dest vlan %d, dest priority %d"):format(
+		self:getType(), self:getLen(), self:getSrcVlan(), self:getSrcPrio(), self:getDstVlan(), self:getDstPrio()
+	)
+end
+
+function sflowRawPacket:getString()
+	local str = ("Raw packet data, type %d, len %d, protocol %d, packet len %d, stripped bytes %d, header size %d"):format(
+		self:getType(), self:getLen(), self:getProto(), self:getPacketLen(), self:getStrippedBytes(), self:getHeaderSize()
+	)
+	return str
 end
 
 --- Resolve which header comes after this one (in a packet), nil in this case
@@ -195,12 +289,83 @@ function sflowHeader:setDefaultNamedArgs(pre, namedArgs, nextHeader, accumulated
 	return namedArgs
 end
 
+local cast = ffi.cast
+local sflowUnknownEntryType = ffi.typeof("struct sflow_unknown_entry*")
+local sflowFlowSampleType = ffi.typeof("struct sflow_flow_sample*")
+local sflowExtSwitchDataType = ffi.typeof("struct sflow_ext_switch_data*")
+local sflowRawPacketType = ffi.typeof("struct sflow_raw_packet*")
+local uint32 = ffi.typeof("uint32_t*")
+
+function sflowHeader:iterateSamples()
+	local numSamples = self:getNumSamples()
+	local pos = 0
+	return function(self, i)
+		local payload = self.payload
+		if i == numSamples then
+			return
+		end
+		-- nope, there is no alignment or whatsoever
+		local recordType = cast(uint32, payload.uint8 + pos)[0]
+		local recordLen = ntoh(cast(uint32, payload.uint8 + pos)[1])
+		local record
+		if recordType == sflow.RECORD_TYPE_FLOW_SAMPLE_BE then
+			record = cast(sflowFlowSampleType, payload.uint8 + pos)
+		else
+			record = cast(sflowUnknownEntryType, payload.uint8 + pos)
+		end
+		pos = pos + recordLen + 8
+		if pos > 1600 then
+			-- we unfortunately do not have the real packet len here
+			-- however, packet buffers are at least 2048 - 64*3 bytes long
+			-- so we at least we don't do anything completely stupid here
+			-- (no we cannot support jumboframes with this at the moment)
+			return
+		end
+		return i + 1, record
+	end, self, 0
+end
+
+function sflowFlowSample:iterateEntries()
+	local numSamples = self:getNumEntries()
+	local payload = self.payload
+	local pos = 0
+	return function(self, i)
+		if i == numSamples then
+			return
+		end
+		local recordType = cast(uint32, payload.uint8 + pos)[0]
+		local recordLen = ntoh(cast(uint32, payload.uint8 + pos)[1])
+		local record
+		if recordType == sflow.RECORD_TYPE_EXT_SWITCH_DATA_BE then
+			record = cast(sflowExtSwitchDataType, payload.uint8 + pos)
+		elseif recordType == sflow.RECORD_TYPE_RAW_PACKET_BE then
+			record = cast(sflowRawPacketType, payload.uint8 + pos)
+		else
+			record = cast(sflowUnknownEntryType, payload.uint8 + pos)
+		end
+		pos = pos + recordLen + 8
+		-- at least prevent the worst, but we can't do any better with the current architecture
+		if pos > 1600 then
+			return
+		end
+		return i + 1, record
+	end, self, 0
+end
+
+local function it() return end
+function sflowUnknownEntry:iterateEntries()
+	return it
+end
 
 --- Cast the packet to a IPv4 sflow packet
-pkt.getSFlowPacket = packetCreate('eth', 'ip4', 'sflowv5_ipv4')
+pkt.getSFlowPacket = packetCreate("eth", "ip4", "udp", "sflow", "noPayload")
 
 
-ffi.metatype("struct sflowv5_ipv4_header", sflowHeader)
+ffi.metatype("struct sflow_header", sflowHeader)
+ffi.metatype("struct sflow_unknown_entry", sflowUnknownEntry)
+ffi.metatype("struct sflow_flow_sample", sflowFlowSample)
+ffi.metatype("struct sflow_ext_switch_data", sflowExtSwitchData)
+ffi.metatype("struct sflow_raw_packet", sflowRawPacket)
 
 
 return sflow
