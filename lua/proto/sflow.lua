@@ -72,6 +72,11 @@ struct __attribute__((__packed__)) sflow_raw_packet {
 };
 ]]
 
+local sflowUnknownEntryType = ffi.typeof("struct sflow_unknown_entry*")
+local sflowFlowSampleType = ffi.typeof("struct sflow_flow_sample*")
+local sflowExtSwitchDataType = ffi.typeof("struct sflow_ext_switch_data*")
+local sflowRawPacketType = ffi.typeof("struct sflow_raw_packet*")
+
 --- sflow protocol constants
 local sflow = {}
 
@@ -101,9 +106,18 @@ local function genIntSetter(field)
 end
 local function genIntGetter(field)
 	return function(self, int)
-		return ntoh(self[field])
+		local num = ntoh(self[field])
+		if num < 0 then
+			num = 0x100000000 + num
+		end
+		return num
 	end
 end
+
+sflow.headerType = sflowHeader
+sflow.unknownEntryType = sflowUnknownEntryType
+sflow.flowSampleType = sflowFlowSampleType
+sflow.rawPacketType = sflowRawPacketType
 
 sflowHeader.setVersion = genIntSetter("version")
 sflowHeader.setSubAgentId = genIntSetter("sub_agent_id")
@@ -290,10 +304,6 @@ function sflowHeader:setDefaultNamedArgs(pre, namedArgs, nextHeader, accumulated
 end
 
 local cast = ffi.cast
-local sflowUnknownEntryType = ffi.typeof("struct sflow_unknown_entry*")
-local sflowFlowSampleType = ffi.typeof("struct sflow_flow_sample*")
-local sflowExtSwitchDataType = ffi.typeof("struct sflow_ext_switch_data*")
-local sflowRawPacketType = ffi.typeof("struct sflow_raw_packet*")
 local uint32 = ffi.typeof("uint32_t*")
 
 function sflowHeader:iterateSamples()
