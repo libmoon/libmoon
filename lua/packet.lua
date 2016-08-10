@@ -301,9 +301,12 @@ function packetCreate(...)
 	
 	local packet = {}
 	packet.__index = packet
-
+	local noPayload = args[#args] == "noPayload"
+	if noPayload then
+		args[#args] = nil
+	end
 	-- create struct
-	local packetName, ctype = packetMakeStruct(args)
+	local packetName, ctype = packetMakeStruct(args, noPayload)
 	if not packetName then
 		log:warn("Failed to create new packet type.")
 		return
@@ -641,14 +644,15 @@ end
 --- <everything until "_" (single underscore)>, followed by the member name <everything after "_" 
 --- until next header starts (indicated by next __)>"
 --- @param args list of keywords/tables of keyword-member pairs
+--- @param noPayload do not append payload VLA
 --- @return name name of the struct
 --- @return ctype ctype of the struct
-function packetMakeStruct(...)
+function packetMakeStruct(args, noPayload)
 	local name = ""
 	local str = ""
 	
 	-- add the specified headers and build the name
-	for _, v in ipairs(...) do
+	for _, v in ipairs(args) do
 		local header, member = getHeaderMember(v)
 
 		-- add header
@@ -672,10 +676,10 @@ function packetMakeStruct(...)
 	.. [[ {
 		]]
 	.. str 
-	.. [[
+	.. (not noPayload and [[
 		union payload_t payload;
-	};	
-	]]
+	]] or "")
+	..	"};"
 
 	name = "struct " .. name
 
@@ -688,7 +692,7 @@ function packetMakeStruct(...)
 		ffi.cdef(str)
 		
 		-- add to list of existing structs
-		pkt.packetStructs[name] = {...}
+		pkt.packetStructs[name] = {args}
 
 		log:debug("Created struct %s", name)
 
