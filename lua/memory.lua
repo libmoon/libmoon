@@ -14,6 +14,7 @@ ffi.cdef [[
 	void* malloc(size_t size);
 	void free(void* buf);
 	void* alloc_huge(size_t size);
+	int free_huge(void* ptr, size_t size);
 ]]
 
 local C = ffi.C
@@ -31,11 +32,23 @@ function mod.free(buf)
 	C.free(buf)
 end
 
+
 --- Off-heap allocation on huge pages, not garbage-collected.
 --- See memory.alloc.
---- TODO: add a free function for this
 function mod.allocHuge(ctype, size)
-	return cast(ctype, C.alloc_huge(size))
+	local mem = C.alloc_huge(size)
+	local addr = ffi.cast("uint64_t", mem)
+	if addr == 0xFFFFFFFFFFFFFFFFULL then
+		log:fatal("failed to allocate memory")
+	end
+	return cast(ctype, mem)
+end
+
+function mod.freeHuge(ptr, size)
+	local err = C.free_huge(ptr, size)
+	if err ~= 0 then
+		log:fatal("munmap failed: %s", strError(err))
+	end
 end
 
 local mempools = {}

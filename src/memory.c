@@ -92,9 +92,14 @@ uint16_t rte_mbuf_refcnt_update_export(struct rte_mbuf* m, int16_t value) {
 	return rte_mbuf_refcnt_update(m, value);
 }
 
+
 void* alloc_huge(size_t size) {
-	void* mem = mmap(NULL, size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+	void* mem = mmap(NULL, size, PROT_READ | PROT_WRITE, MAP_NORESERVE | MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
 	madvise(mem, size, MADV_HUGEPAGE);
 	return mem;
+}
+
+int free_huge(void* ptr, size_t size) {
+	return munmap(ptr, size);
 }
 
