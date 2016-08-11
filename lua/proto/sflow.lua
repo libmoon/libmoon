@@ -8,6 +8,8 @@ local ntoh16, hton16 = ntoh16, hton16
 local bor, band, bnot, rshift, lshift= bit.bor, bit.band, bit.bnot, bit.rshift, bit.lshift
 local istype = ffi.istype
 local format = string.format
+local cast = ffi.cast
+local uint32 = ffi.typeof("uint32_t*")
 
 -- http://www.sflow.org/SFLOW-DATAGRAM5.txt
 ffi.cdef[[
@@ -68,7 +70,7 @@ struct __attribute__((__packed__)) sflow_raw_packet {
 	uint32_t packet_len;
 	uint32_t stripped_bytes;
 	uint32_t header_size;
-	union payload_t data;
+	union payload_t payload;
 };
 ]]
 
@@ -191,6 +193,10 @@ sflowRawPacket.getPacketLen = genIntGetter("packet_len")
 sflowRawPacket.getStrippedBytes = genIntGetter("stripped_bytes")
 sflowRawPacket.getHeaderSize = genIntGetter("header_size")
 
+local voidPtrType = voidPtrType
+function sflowRawPacket:getData()
+	return cast(voidPtrType, self.payload)
+end
 
 function sflowFlowSample:getNumEntries()
 	return ntoh(self.num_entries)
@@ -303,8 +309,6 @@ function sflowHeader:setDefaultNamedArgs(pre, namedArgs, nextHeader, accumulated
 	return namedArgs
 end
 
-local cast = ffi.cast
-local uint32 = ffi.typeof("uint32_t*")
 
 function sflowHeader:iterateSamples()
 	local numSamples = self:getNumSamples()
