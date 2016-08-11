@@ -226,6 +226,16 @@ function parseMacAddress(mac, number)
 	end
 end
 
+--- Translates an IP4 in number format into a string
+function ip4ToString(ip)
+	return ("%d.%d.%d.%d"):format(
+		bit.rshift(ip, 24),
+		bit.band(bit.rshift(ip, 16), 0xFF),
+		bit.band(bit.rshift(ip, 8), 0xFF),
+		bit.band(ip, 0xFF)
+	)
+end
+
 --- Parse a string to an IP address
 --- @return address ip address in ip4_address or ip6_address format or nil if invalid address
 --- @return boolean true if IPv4 address, false otherwise
@@ -457,4 +467,8 @@ function strError(err)
 	local str = ffi.C.rte_strerror(err);
 	return ffi.string(str)
 end
+
+
+-- useful typedefs
+voidPtrType = ffi.typeof("void*")
 
