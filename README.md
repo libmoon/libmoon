@@ -33,18 +33,23 @@ Hence, [MoonGen's examples](https://github.com/emmericp/MoonGen/blob/master/exam
 
 # Installation
 
-Just run `build.sh` and `setup-hugetlbfs.sh`
+Just run `build.sh`, `bind-interfaces.sh`, and `setup-hugetlbfs.sh`
 
 ```
+# install dependencies and compile phobos
 sudo apt-get install git build-essential cmake linux-headers-`uname -r` lshw
 git clone https://github.com/Phobos-Framework/phobos
 cd phobos
 ./build.sh
+# bind all NICs that are not actively used (no IP configured) to DPDK
+sudo ./bind-interfaces.sh
+# configure hugetlbfs
 sudo ./setup-hugetlbfs.sh
+# run the hello-world example
 sudo ./build/phobos examples/hello-world.lua
 ```
 
-Note: `build.sh` calls `bind-interfaces.sh` which binds all currently unused NICs (no routing table entry in the system) to DPDK. Use `deps/dpdk/tools/dpdk-devbind.py` to manage NICs manually to get them back into the OS.
+Note: Use `deps/dpdk/tools/dpdk-devbind.py` to manage NIC drivers manually to get them back into the OS.
 
 ### Dependencies
 * gcc >= 4.8
