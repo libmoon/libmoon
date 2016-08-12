@@ -388,6 +388,17 @@ function dev:getDriverName()
 	return ffi.string(dpdkc.dpdk_get_driver_name(self.id))
 end
 
+
+-- some operations are unsupported unless we have device-specific magic
+
+function dev:unsupported(operation)
+	log:warn("%s is not supported by the hardware or driver", tostring(operation))
+end
+
+function dev:setRate()
+	self:unsupported("global rate limiting")
+end
+
 function mod.getDevices()
 	local result = {}
 	for i = 0, dpdkc.rte_eth_dev_count() - 1 do
