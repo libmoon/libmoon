@@ -18,6 +18,7 @@ local stp        = require "StackTracePlus"
 local ffi        = require "ffi"
 local memory     = require "memory"
 local serpent    = require "Serpent"
+local argparse   = require "argparse"
 
 -- all available headers, packets, ... and their utility functions
 require "proto.proto"
@@ -64,12 +65,22 @@ local function master(_, file, ...)
 	phobos.config.userscript = file
 	-- run the userscript
 	run(file)
+	local parsedArgs = {}
+	if _G.configure then
+		local parser = argparse()
+		parser:args(unpack(args))
+		parsedArgs = {xpcall(_G.configure, getStackTrace, parser, unpack(args))}
+		if not parsedArgs[1] then
+			return
+		end
+		table.remove(parsedArgs, 1)
+	end
 	if not phobos.config.skipInit then
 		if not dpdk.init() then
 			log:fatal("Could not initialize DPDK")
 		end
 	end
-	xpcall(_G["master"], getStackTrace, unpack(args))
+	xpcall(_G.master, getStackTrace, unpack(concatArrays(parsedArgs, args)))
 	-- exit program once the master task finishes
 	-- it is up to the user program to wait for slaves to finish, e.g. by calling dpdk.waitForSlaves()
 end
