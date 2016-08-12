@@ -5,7 +5,6 @@ local stats    = require "stats"
 local log      = require "log"
 local memory   = require "memory"
 local arp      = require "proto.arp"
-local argparse = require "argparse"
 
 -- set addresses here
 local DST_MAC       = nil -- resolved via ARP on GW_IP or DST_IP, can be overriden with a string here
@@ -21,17 +20,20 @@ local ARP_IP	= SRC_IP
 -- used to resolve DST_MAC
 local GW_IP		= DST_IP
 
-function master(...)
-	log:info("Check out MoonGen (built on Phobos) if you are looking for a fully featured packet generator")
-	log:info("https://github.com/emmericp/MoonGen")
 
-	-- parse cli arguments
-	local parser = argparse():description("Edit the source to modify constants like IPs and ports.")
+-- the configure function is called on startup with a pre-initialized command line parser
+function configure(parser)
+	parser:description("Edit the source to modify constants like IPs and ports.")
 	parser:argument("dev", "Devices to use."):args("+"):convert(tonumber)
 	parser:option("-t --threads", "Number of threads per device."):args(1):convert(tonumber):default(1)
 	parser:option("-r --rate", "Transmit rate in Mbit/s per device."):args(1)
 	parser:flag("-a --arp", "Use ARP.")
-	local args = parser:parse(...)
+	return parser:parse()
+end
+
+function master(args,...)
+	log:info("Check out MoonGen (built on Phobos) if you are looking for a fully featured packet generator")
+	log:info("https://github.com/emmericp/MoonGen")
 
 	-- configure devices and queues
 	local arpQueues = {}
