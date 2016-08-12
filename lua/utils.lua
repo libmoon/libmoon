@@ -372,6 +372,18 @@ function mergeTables(...)
 	return table
 end
 
+--- Concatenate two arrays
+function concatArrays(tbl1, tbl2)
+	local res = {}
+	for k, v in ipairs(tbl1) do
+		res[#res + 1] = v
+	end
+	for k, v in ipairs(tbl2) do
+		res[#res + 1] = v
+	end
+	return res
+end
+
 --- Return all integerss in the range [start, max].
 --- @param max upper bound
 --- @param start lower bound, default = 1
