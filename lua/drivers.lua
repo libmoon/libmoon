@@ -22,7 +22,7 @@ end
 -- required for driver-specific configuration variables
 function mod.getDriverInfo(id)
 	local driverName = ffi.string(dpdkc.dpdk_get_driver_name(id))
-	return mod[driverName].driverInfo or {}
+	return (mod[driverName] or {}).driverInfo or {}
 end
 
 return mod
