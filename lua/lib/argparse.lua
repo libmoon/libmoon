@@ -1145,28 +1145,36 @@ end
 local default_cmdline = rawget(_G, "arg") or {}
 
 function Parser:_parse(args, error_handler)
-   return ParseState(self, error_handler):parse(args or default_cmdline)
+   return ParseState(self, error_handler):parse(args or self.default_args or default_cmdline)
 end
 
-function Parser:parse(...)
+local function normalizeArgs(...)
    local args = ...
-   if type(args) ~= "table" then
+   if args and type(args) ~= "table" then
       args = {...}
       -- undo phobos pre-parsing of numbers
       for i, v in ipairs(args) do
          args[i] = tostring(v)
       end
    end
-   return self:_parse(args, self.error)
+   return args
+end
+
+function Parser:args(...)
+   self.default_args = normalizeArgs(...)
+end
+
+function Parser:parse(...)
+   return self:_parse(normalizeArgs(...), self.error)
 end
 
 local function xpcall_error_handler(err)
    return tostring(err) .. "\noriginal " .. debug.traceback("", 2):sub(2)
 end
 
-function Parser:pparse(args)
+function Parser:pparse(...)
    local parse_error
-
+   local args = normalizeArgs(...)
    local ok, result = xpcall(function()
       return self:_parse(args, function(_, err)
          parse_error = err
