@@ -163,20 +163,6 @@ function fastPipe:tryRecv(wait)
 		if wait < 0 then
 			break
 		end
-		phobos.sleepMicros(10)
-	end
-end
-
-function fastPipe:tryRecvIdle(wait)
-	while wait >= 0 do
-		local buf = C.try_dequeue(self.pipe)
-		if buf ~= nil then
-			return buf
-		end
-		wait = wait - 10
-		if wait < 0 then
-			break
-		end
 		phobos.sleepMicrosIdle(10)
 	end
 end
