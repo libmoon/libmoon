@@ -23,10 +23,14 @@ local SYSTIMEL   = 0x00008C0C
 local SYSTIMEH   = 0x00008C10
 local TIMEADJL   = 0x00008C18
 local TIMEADJH   = 0x00008C1C
+local ETQS_3     = 0x0000EC00 + 4 * 3
 
 local TSYNCRXCTL_RXTT      = 1
 local TSYNCRXCTL_TYPE_OFFS = 1
 local TSYNCRXCTL_TYPE_MASK = bit.lshift(7, TSYNCRXCTL_TYPE_OFFS)
+local ETQS_RX_QUEUE_OFFS   = 16
+local ETQS_QUEUE_ENABLE    = bit.lshift(1, 31)
+
 
 dev.timeRegisters = {SYSTIMEL, SYSTIMEH, TIMEADJL, TIMEADJH}
 
@@ -99,6 +103,11 @@ function dev:hasRxTimestamp()
 	-- this register is undocumented on X550 but it seems to work just fine
 	local res = bswap16(bit.rshift(dpdkc.read_reg32(self.id, RXSATRH), 16))
 	return res
+end
+
+function dev:filterL2Timestamps(queue)
+	-- DPDK's init function configures ETQF3 to enable PTP L2 timestamping, so use this one
+	dpdkc.write_reg32(self.id, ETQS_3, bit.bor(ETQS_QUEUE_ENABLE, bit.lshift(queue.qid, ETQS_RX_QUEUE_OFFS)))
 end
 
 function dev:enableRxTimestampsAllPackets(queue)

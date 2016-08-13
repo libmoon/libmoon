@@ -301,24 +301,18 @@ function dev:l2Filter(etype, queue)
 end
 
 
---- Filter PTP time stamp packets by inspecting the PTP version and type field.
+--- Filter PTP UDP timestamp packets by inspecting the PTP version and type field.
 --- Packets with PTP version 2 are matched with this filter.
---- @param queue
---- @param offset the offset of the PTP version field
---- @param ntype the PTP type to look for, default = 0
+--- You can also use the UDP port to filter timestamped packets if you do not send other
+--- packets to this port.
+--- @param queue the queue to send packets to
+--- @param type the PTP type to look for, default = 0
 --- @param ver the PTP version to look for, default = 2
-function dev:filterTimestamps(queue, offset, ntype, ver)
-	-- TODO: dpdk only allows to change this at init time
-	-- however, I think changing the flex-byte offset field in the FDIRCTRL register can be changed at run time here
-	-- (as the fdir table needs to be cleared anyways which is the only precondition for changing this)
+function dev:filterUdpTimestamps(queue, ptpType, ver)
 	if type(queue) == "table" then
 		queue = queue.qid
 	end
-	offset = offset or 21
-	if offset ~= 21 then
-		log:fatal("Other offsets are not yet supported")
-	end
-	mtype = mtype or 0
+	ptpType = ptpType or 0
 	ver = ver or 2
 	local filter = ffi.new("struct rte_eth_fdir_filter", {
 		soft_id = 1,
@@ -340,7 +334,7 @@ function dev:filterTimestamps(queue, offset, ntype, ver)
 			},
 			flow_ext = {
 				vlan_tci = 0,
-				flexbytes = { mtype, ver },
+				flexbytes = { ptpType, ver },
 				is_vf = 0,
 				dst_id = 0,
 			},
@@ -351,7 +345,7 @@ function dev:filterTimestamps(queue, offset, ntype, ver)
 	})
 	local ok = C.rte_eth_dev_filter_ctrl(self.id, C.RTE_ETH_FILTER_FDIR, C.RTE_ETH_FILTER_ADD, filter)
 	if ok ~= 0 then
-		log:warn("fdir filter error: " .. ok)
+		log:warn("fdir filter error: " .. strError(ok))
 	end
 end
 

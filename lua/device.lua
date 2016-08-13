@@ -432,6 +432,10 @@ function dev:hasRxTimestamp()
 	self:unsupported("rx timestamping")
 end
 
+function dev:filterL2Timestamps(queue)
+	self:unsupported("Rx timestamp filtering by EtherType")
+end
+
 --- Resets DPDKs internal tracking of device cycle counters.
 function dev:resetTimeCounters()
 	self:unsupported("Time counter tracking")
@@ -469,6 +473,19 @@ end
 --- @param timesync timesync ID for NICs using IDs (i40e).
 function rxQueue:getTimestamp(wait, timesync)
 	return self.dev:getRxTimestamp(self, wait, timesync)
+end
+
+--- Configure a flex byte filter to send UDP timestamp packets to this port.
+--- This filter matches on the PTP identifier and version bytes in the payload.
+--- Only works if the flex byte settings for fdir are correct (default settings).
+--- You can also use a regular 5 tuple filter on the UDP port if this is sufficient for your usecase.
+function rxQueue:filterUdpTimestamps()
+	return self.dev:filterUdpTimestamps(self)
+end
+
+--- Configure an EthType filter to match PTP packets.
+function rxQueue:filterL2Timestamps()
+	return self.dev:filterL2Timestamps(self)
 end
 
 function mod.getDevices()

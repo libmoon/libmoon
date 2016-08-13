@@ -25,7 +25,9 @@ function master(args)
 	local rxQueue0 = args.dev[2]:getRxQueue(0)
 	local rxQueue1 = args.dev[2]:getRxQueue(1)
 	--phobos.startTask("timestamper", txQueue, rxQueue0)
-	phobos.startTask("timestamper", txQueue, rxQueue0, 3191)
+	--phobos.startTask("timestamper", txQueue, rxQueue0, 3191)
+	--phobos.startTask("timestamper", txQueue, rxQueue1)
+	phobos.startTask("timestamper", txQueue, rxQueue1, 319)
 	phobos.waitForTasks()
 end
 
@@ -43,6 +45,13 @@ function timestamper(txQueue, rxQueue, udp)
 		timestamper = ts:newUdpTimestamper(txQueue, rxQueue)
 	else
 		timestamper = ts:newTimestamper(txQueue, rxQueue)
+	end
+	if filter then
+		if udp then
+			rxQueue:filterUdpTimestamps()
+		else
+			rxQueue:filterL2Timestamps()
+		end
 	end
 	while phobos.running() and runtime:running() do
 		local lat = timestamper:measureLatency(function(buf)
