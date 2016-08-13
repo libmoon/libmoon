@@ -4,15 +4,14 @@ local device   = require "device"
 local stats    = require "stats"
 local log      = require "log"
 local memory   = require "memory"
-local argparse = require "argparse"
 
-function master(...)
-	-- parse cli arguments
-	local parser = argparse()
+function configure(parser)
 	parser:argument("dev", "Devices to use, specify the same device twice to echo packets."):args(2):convert(tonumber)
 	parser:option("-t --threads", "Number of threads per forwarding direction using RSS."):args(1):convert(tonumber):default(1)
-	local args = parser:parse(...)
+	return parser:parse()
+end
 
+function master(args)
 	-- configure devices
 	for i, dev in ipairs(args.dev) do
 		args.dev[i] = device.config{

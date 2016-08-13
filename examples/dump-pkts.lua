@@ -5,13 +5,14 @@ local device = require "device"
 local memory = require "memory"
 local arp    = require "proto.arp"
 local eth    = require "proto.ethernet"
-local argparse = require "argparse"
 
-function master(...)
-	local parser = argparse()
+function configure(parser)
 	parser:argument("dev", "Device to use"):args(1):convert(tonumber)
 	parser:option("-a --arp", "Respond to ARP queries on the given IP."):argname("ip")
-	local args = parser:parse(...)
+	return parser:parse()
+end
+
+function master(args)
 	local dev = device.config{port = args.dev, txQueues = args.arp and 2 or 1}
 	device.waitForLinks()
 	if args.arp then

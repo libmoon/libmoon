@@ -6,13 +6,14 @@ local stats  = require "stats"
 local argparse = require "argparse"
 local lacp   = require "proto.lacp"
 
-function master(...)
-	local parser = argparse()
+function configure(parser)
 	parser:argument("dev", "Devices to use."):args("+"):convert(tonumber)
 	parser:option("-t --threads", "Number of threads per device."):args(1):convert(tonumber):default(1)
 	parser:flag("-l --lacp", "Try to setup an LACP channel.")
-	local args = parser:parse(...)
+	return parser:parse()
+end
 
+function master(args)
 	local lacpQueues = {}
 	for i, dev in ipairs(args.dev) do
 		local dev = device.config{
