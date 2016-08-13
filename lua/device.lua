@@ -391,12 +391,79 @@ end
 
 -- some operations are unsupported unless we have device-specific magic
 
-function dev:unsupported(operation)
-	log:warn("%s is not supported by the hardware or driver", tostring(operation))
+function dev:unsupported(operation, level)
+	log[level or "warn"](log, "%s is not supported by the hardware or driver", tostring(operation))
 end
 
+--- Set a device-wide hardware rate limiter.
 function dev:setRate()
 	self:unsupported("global rate limiting")
+end
+
+--- Enable timestamping of received PTP packets.
+--- @param queue rx queue to use (device-wide for most NICs)
+--- @param udpPort udp port to use for PTP, default = 319. Some NICs do not support other ports.
+function dev:enableRxTimestamps(queue, udpPort)
+	self:unsupported("rx timestamping", "fatal")
+end
+
+--- Enable timestamping all received ports, timestamp is stored in a device-specific way in the rx buffer.
+--- @param queue rx queue to use .
+function dev:enableRxTimestampsAllPackets(queue)
+	self:unsupported("timestamping all rx packets", "fatal")
+end
+
+--- Enable timestamps of transmitted packets, often limited to PTP.
+--- @param queue tx queue to use
+function dev:enableTxTimestamps(queue)
+	self:unsupported("tx timestamping", "fatal")
+end
+
+function dev:getTxTimestamp(queue, wait, timesync)
+	self:unsupported("tx timestamping")
+end
+
+function dev:getRxTimestamp(queue, wait, timesync)
+	self:unsupported("rx timestamping")
+end
+
+--- Checks whether a RX timestamp is available on the device.
+function dev:hasRxTimestamp()
+	self:unsupported("rx timestamping")
+end
+
+--- Enable tx timestamps.
+--- @see dev.enableTxTimestamps()
+function txQueue:enableTimestamps()
+	self.dev:enableTxTimestamps(self)
+end
+
+--- Enable rx timestamps.
+--- @see dev.enableRxTimestamps()
+function rxQueue:enableTimestamps(udpPort)
+	self.dev:enableRxTimestamps(self, udpPort)
+end
+
+--- Enable all rx timestamps.
+--- @see dev.enableRxTimestampsAllPackets()
+function rxQueue:enableTimestampsAllPackets()
+	self.dev:enableRxTimestampsAllPackets(self)
+end
+
+--- Read a TX timestamp from the device.
+--- Timestamps are usually device-wide.
+--- @param wait timeout in microseconds
+--- @param timesync timesync ID for NICs using IDs (i40e).
+function txQueue:getTimestamp(wait, timesync)
+	return self.dev:getTxTimestamp(self, wait, timesync)
+end
+
+--- Read a RX timestamp from the device.
+--- Timestamps are usually device-wide.
+--- @param wait timeout in microseconds
+--- @param timesync timesync ID for NICs using IDs (i40e).
+function rxQueue:getTimestamp(wait, timesync)
+	return self.dev:getRxTimestamp(self, wait, timesync)
 end
 
 function mod.getDevices()

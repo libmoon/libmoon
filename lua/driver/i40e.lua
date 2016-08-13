@@ -99,4 +99,6 @@ function dev:init()
 	self:store()
 end
 
+dev.useTimsyncIds = true
+
 return dev

@@ -259,6 +259,11 @@ ffi.cdef[[
 
 	// timestamping
 	uint16_t dpdk_receive_with_timestamps_software(uint8_t port_id, uint16_t queue_id, struct rte_mbuf** rx_pkts, uint16_t nb_pkts);
+	int rte_eth_timesync_enable(uint8_t port_id);
+	int rte_eth_timesync_read_tx_timestamp(uint8_t port_id, struct timespec* timestamp);
+	int rte_eth_timesync_read_rx_timestamp(uint8_t port_id, struct timespec* timestamp, uint32_t timesync);
+	void phobos_sync_clocks(uint8_t port1, uint8_t port2, uint32_t timl, uint32_t timh, uint32_t adjl, uint32_t adjh);
+
 
 	// statistics
 	void rte_eth_stats_get(uint8_t port, struct rte_eth_stats* stats);

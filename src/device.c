@@ -43,7 +43,7 @@ void write_reg64(uint8_t port, uint32_t reg, uint64_t val) {
 	*(volatile uint64_t*)(registers[port] + reg) = val;
 }
 
-static inline volatile uint32_t* get_reg_addr(uint8_t port, uint32_t reg) {
+volatile uint32_t* get_reg_addr(uint8_t port, uint32_t reg) {
 	return (volatile uint32_t*)(registers[port] + reg);
 }
 

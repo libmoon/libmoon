@@ -2,6 +2,8 @@
 local dev = {}
 
 local dpdkc = require "dpdkc"
+local ffi   = require "ffi"
+local log   = require "log"
 
 -- rx stats
 local GPRC	= 0x00004074
@@ -12,6 +14,21 @@ local GORCH	= 0x0000408C
 local GPTC      = 0x00004080
 local GOTCL     = 0x00004090
 local GOTCH     = 0x00004094
+
+-- timestamping
+local RXMTRL     = 0x00005120
+local TSYNCRXCTL = 0x00005188
+local RXSATRH    = 0x000051A8
+local SYSTIMEL   = 0x00008C0C
+local SYSTIMEH   = 0x00008C10
+local TIMEADJL   = 0x00008C18
+local TIMEADJH   = 0x00008C1C
+
+local TSYNCRXCTL_RXTT      = 1
+local TSYNCRXCTL_TYPE_OFFS = 1
+local TSYNCRXCTL_TYPE_MASK = bit.lshift(7, TSYNCRXCTL_TYPE_OFFS)
+
+dev.timeRegisters = {SYSTIMEL, SYSTIMEH, TIMEADJL, TIMEADJH}
 
 -- ixgbe does not count bytes dropped due to buffer space and the packet drop counters seem to be empty
 -- however, we want to count all packets *at the NIC level* regardless whether they were fetched by the driver or not
@@ -30,6 +47,55 @@ function dev:getTxStats()
 	return tonumber(self.txPkts), tonumber(self.txBytes)
 end
 
+-- just rte_eth_timesync_enable doesn't do the trick :(
+function dev:enableRxTimestamps(queue, udpPort)
+	udpPort = udpPort or 319
+	dpdkc.rte_eth_timesync_enable(self.id)
+	-- enable timestamping UDP packets as well
+	local val = dpdkc.read_reg32(self.id, TSYNCRXCTL)
+	val = bit.band(val, bit.bnot(TSYNCRXCTL_TYPE_MASK))
+	val = bit.bor(val, bit.lshift(2, TSYNCRXCTL_TYPE_OFFS))
+	dpdkc.write_reg32(self.id, TSYNCRXCTL, val)
+	-- configure UDP port
+	-- fun fact: the register is initialized to 0x319 instead of 319
+	dpdkc.write_reg32(self.id, RXMTRL, bit.lshift(udpPort, 16))
+end
+
+-- could skip a few registers here, but doesn't matter
+dev.enableTxTimestamps = dev.enableRxTimestamps
+
+function dev:getTxTimestamp(queue, wait)
+	local ts = ffi.new("struct timespec")
+	return waitForFunc(wait, function()
+		local res = dpdkc.rte_eth_timesync_read_tx_timestamp(self.id, ts)
+		if res == 0 then
+			return tonumber(ts.tv_sec) * 10^9 + tonumber(ts.tv_nsec)
+		end
+	end)
+end
+
+function dev:getRxTimestamp(queue, wait)
+	local ts = ffi.new("struct timespec")
+	return waitForFunc(wait, function()
+		local res = dpdkc.rte_eth_timesync_read_rx_timestamp(self.id, ts, 0)
+		if res == 0 then
+			return tonumber(ts.tv_sec) * 10^9 + tonumber(ts.tv_nsec)
+		end
+	end)
+end
+
+function dev:hasRxTimestamp()
+	if bit.band(dpdkc.read_reg32(self.id, TSYNCRXCTL), TSYNCRXCTL_RXTT) == 0 then
+		return nil
+	end
+	-- this register is undocumented on X550 but it seems to work just fine
+	local res = bswap16(bit.rshift(dpdkc.read_reg32(self.id, RXSATRH), 16))
+	return res
+end
+
+function dev:enableRxTimestampsAllPackets(queue)
+	log:warn("timestmaping all packets is supported on X550 but NYI")
+end
 
 return dev
 

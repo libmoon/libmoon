@@ -480,6 +480,23 @@ function strError(err)
 	return ffi.string(str)
 end
 
+function waitForFunc(wait, f, ...)
+	local phobos = require "phobos"
+	wait = wait or 0
+	repeat
+		local res = f(...)
+		if res then
+			return res
+		end
+		phobos.sleepMicrosIdle(math.min(10, wait))
+		wait = wait - 10
+		if not phobos.running() then
+			break
+		end
+	until wait < 0
+	return nil
+end
+
 
 -- useful typedefs
 voidPtrType = ffi.typeof("void*")

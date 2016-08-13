@@ -22,6 +22,7 @@ SET(FILES
 	src/namespaces
 	src/ring
 	src/kni
+	src/timestamping
 )
 
 SET(DPDK_LIBS
