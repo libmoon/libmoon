@@ -1,6 +1,11 @@
 #include <stdint.h>
 #include <stdlib.h>
 
+#include <rte_config.h>
+#include <rte_ethdev.h>
+//#include <rte_time.h> // included by ixgbe_ethdev.h (and no, this header file doesn't have #ifdef guards)
+#include <ixgbe_ethdev.h>
+
 #include "device.h"
 
 void phobos_sync_clocks(uint8_t port1, uint8_t port2, uint32_t timl, uint32_t timh, uint32_t adjl, uint32_t adjh) {
@@ -48,5 +53,21 @@ void phobos_sync_clocks(uint8_t port1, uint8_t port2, uint32_t timl, uint32_t ti
 		uint32_t y2 = *port1time;
 		printf("%d %d\n", x2 - x1, y2 - y1);*/
 	}
+}
+
+static void reset_timecounter(struct rte_timecounter* tc) {
+	tc->nsec = 0;
+	tc->nsec_frac = 0;
+	tc->cycle_last = 0;
+}
+
+int phobos_ixgbe_reset_timecounters(uint32_t port_id) {
+	RTE_ETH_VALID_PORTID_OR_ERR_RET(port_id, -ENODEV);
+	struct rte_eth_dev* dev = &rte_eth_devices[port_id];
+	struct ixgbe_adapter* adapter = (struct ixgbe_adapter*)dev->data->dev_private;
+	reset_timecounter(&adapter->systime_tc);
+	reset_timecounter(&adapter->rx_tstamp_tc);
+	reset_timecounter(&adapter->tx_tstamp_tc);
+	return 0;
 }
 

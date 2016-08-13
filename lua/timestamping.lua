@@ -121,9 +121,9 @@ print("hasRxTimestamp", timestampedPkt)
 					local seq = (self.udp and buf:getUdpPtpPacket() or buf:getPtpPacket()).ptp:getSequenceID()
 print(buf:hasTimestamp(), seq, expectedSeq)
 					if buf:hasTimestamp() and seq == expectedSeq and (seq == timestampedPkt or timestampedPkt == -1) then
-print("okay, got the packet")
 						-- yay!
 						local rxTs = self.rxQueue:getTimestamp(nil, timesync) 
+print("okay, got the packet, timestamp is", rxTs)
 						if not rxTs then
 							-- can happen if you hotplug cables
 							return nil
@@ -171,6 +171,10 @@ function mod.syncClocks(dev1, dev2)
 		log:fatal("NICs incompatible, cannot sync clocks")
 	end
 	dpdkc.phobos_sync_clocks(dev1.id, dev2.id, unpack(regs1))
+	-- just to tell the driver that we are resetting the clock
+	-- otherwise the cycle tracker becomes confused on long latencies
+	dev1:resetTimeCounters()
+	dev2:resetTimeCounters()
 end
 
 do return mod end

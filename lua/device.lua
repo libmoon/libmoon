@@ -432,6 +432,11 @@ function dev:hasRxTimestamp()
 	self:unsupported("rx timestamping")
 end
 
+--- Resets DPDKs internal tracking of device cycle counters.
+function dev:resetTimeCounters()
+	self:unsupported("Time counter tracking")
+end
+
 --- Enable tx timestamps.
 --- @see dev.enableTxTimestamps()
 function txQueue:enableTimestamps()

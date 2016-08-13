@@ -47,6 +47,14 @@ function dev:getTxStats()
 	return tonumber(self.txPkts), tonumber(self.txBytes)
 end
 
+ffi.cdef[[
+int phobos_ixgbe_reset_timecounters(uint32_t port_id);
+]]
+
+function dev:resetTimeCounters()
+	ffi.C.phobos_ixgbe_reset_timecounters(self.id)
+end
+
 -- just rte_eth_timesync_enable doesn't do the trick :(
 function dev:enableRxTimestamps(queue, udpPort)
 	udpPort = udpPort or 319
