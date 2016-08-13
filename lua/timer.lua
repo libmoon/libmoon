@@ -2,7 +2,7 @@
 
 local mod = {}
 
-local dpdk = require "dpdk"
+local phobos = require "phobos"
 
 local timer = {}
 timer.__index = timer
@@ -10,24 +10,24 @@ timer.__index = timer
 function mod:new(time)
 	return setmetatable({
 		time = time or 0,
-		stop = dpdk.getTime() + (time or 0)
+		stop = phobos.getTime() + (time or 0)
 	}, timer)
 end
 
 function timer:running()
-	return self.stop > dpdk.getTime()
+	return self.stop > phobos.getTime()
 end
 
 function timer:expired()
-	return self.stop <= dpdk.getTime()
+	return self.stop <= phobos.getTime()
 end
 
 function timer:timeLeft()
-	return self.stop - dpdk.getTime()
+	return self.stop - phobos.getTime()
 end
 
 function timer:reset(time)
-	self.stop = dpdk.getTime() + (time or self.time)
+	self.stop = phobos.getTime() + (time or self.time)
 end
 
 --- Perform a busy wait on the timer.
