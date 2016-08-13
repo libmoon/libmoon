@@ -408,6 +408,9 @@ pkt.getArpPacket = packetCreate("eth", "arp")
 ---- ARP Handler Task
 ---------------------------------------------------------------------------------
 
+--- ARP table timeout in seconds
+local ARP_AGING_TIME = 30
+
 --- Arp handler task, responds to ARP queries for given IPs and performs arp lookups
 --- @todo TODO implement garbage collection/refreshing entries \n
 --- the current implementation does not handle large tables efficiently \n
@@ -448,7 +451,12 @@ local function handleArpPacket(rxBufs, txBufs, nic, ipToMac)
 			-- learn from all arp replies we see (yes, that makes arp cache poisoning easy)
 			local mac = rxPkt.arp:getHardwareSrcString()
 			local ip = rxPkt.arp:getProtoSrcString()
-			arpTable[tostring(parseIPAddress(ip))] = { mac = mac, timestamp = phobos.getTime() }
+			arpTable[tostring(parseIPAddress(ip))] = {
+				state = "current",
+				mac = mac,
+				timestamp = time(),
+				updateTime = time()
+			}
 		end
 	end
 	rxBufs:freeAll()
@@ -509,14 +517,41 @@ local function arpTask(qs)
 			end
 		end
 
-		-- send outstanding requests 
+		local timedOutEntries = {}
+		-- send requests 
 		arpTable:forEach(function(ip, value)
-			-- TODO: refresh or GC old entries
-			if value ~= "pending" then
+			local ts = time()
+			if type(value) ~= "table" then
 				return
 			end
-			arpTable[ip] = "requested"
-			-- TODO: the format should be compatible with parseIPAddress
+			-- current and updated less than ARP_AGING_TIME ago
+			if value.state == "current" and value.timestamp + ARP_AGING_TIME > ts  then
+				return
+			end
+			-- requested less than a second ago
+			if (value.state == "requested" or value.state == "refreshing") and value.timestamp + 1 > ts then
+				return
+			end
+			-- didn't get a response while refreshing
+			if value.state == "refreshing" and value.lookupTime + ARP_AGING_TIME < ts  then
+				table.insert(timedOutEntries, ip)
+				return
+			end
+			-- didn't get a reponse, ever
+			if value.state == "requested" and value.lookupTime + ARP_AGING_TIME < ts  then
+				table.insert(timedOutEntries, ip)
+				return
+			end
+			if value.state == "current" then
+				value.state = "refreshing"
+				value.lookupTime = ts
+			end
+			if value.state  == "pending" then
+				value.state = "requested"
+				value.lookupTime = ts
+			end
+			value.timestamp = ts
+			arpTable[ip] = value
 			ip = tonumber(ip)
 			txBufs:alloc(60)
 			local pkt = txBufs[1]:getArpPacket()
@@ -533,6 +568,9 @@ local function arpTask(qs)
 				nic.txQueue:send(txBufs)
 			end
 		end)
+		for _, ip in ipairs(timedOutEntries) do
+			arpTable[ip] = nil
+		end
 		phobos.sleepMillisIdle(1)
 	end
 end
@@ -551,7 +589,7 @@ function arp.handlePacket(buf, nic)
 	pipe:send(buf)
 end
 
---- Perform a lookup in the ARP table.
+--- Perform a non-blocking lookup in the ARP table.
 --- Lookup the MAC address for a given IP.
 --- Blocks for up to 1 second if the arp task is not yet running
 --- Caution: this function uses locks and namespaces, must not be used in the fast path
@@ -573,20 +611,19 @@ function arp.lookup(ip)
 	end
 	local mac = arpTable[tostring(ip)]
 	if type(mac) == "table" then
-		return mac.mac, mac.timestamp
+		return mac.mac, mac.updateTime
 	end
 	arpTable.lock(function()
 		if not arpTable[tostring(ip)] then
-			arpTable[tostring(ip)] = "pending"
+			arpTable[tostring(ip)] = {state = "pending", timestamp = time()}
 		end
 	end)
 	return nil
 end
 
---- Perform a non-blocking lookup in the ARP table.
+--- Perform a blocking lookup in the ARP table.
 --- @param ip The ip address in string or cdata format to look up.
---- @param timeout TODO
---- @todo FIXME: this only sends a single request
+--- @param timeout timeout in seconds
 function arp.blockingLookup(ip, timeout)
 	local timeout = phobos.getTime() + timeout
 	repeat
@@ -595,11 +632,11 @@ function arp.blockingLookup(ip, timeout)
 			return mac, ts
 		end
 		phobos.sleepMillisIdle(1000)
-	until phobos.getTime() >= timeout
+	until phobos.getTime() >= timeout or not phobos.running()
 end
 
 function arp.waitForStartup()
-	while not arpTable.taskRunning do
+	while not arpTable.taskRunning and phobos.running() do
 		phobos.sleepMillisIdle(1)
 	end
 end
