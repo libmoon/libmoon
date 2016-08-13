@@ -8,6 +8,7 @@ ffi.cdef[[
 int i40e_aq_config_vsi_bw_limit(void *hw, uint16_t seid, uint16_t credit, uint8_t max_bw, struct i40e_asq_cmd_details *cmd_details);
 ]]
 
+-- statistics
 local GLPRT_UPRCL = {}
 local GLPRT_MPRCL = {}
 local GLPRT_BPRCL = {}
@@ -26,6 +27,26 @@ for i = 0, 3 do
 	GLPRT_BPTCL[i] = 0x00300A00 + 0x8 * i
 	GLPRT_GOTCL[i] = 0x00300680 + 0x8 * i
 end
+
+-- timestamping
+local PRTTSYN_CTL1      = 0x00085020
+local PRTTSYN_STAT_1    = 0x00085140
+local PRTTSYN_TIME_L    = 0x001E4100
+local PRTTSYN_TIME_H    = 0x001E4120
+local PRTTSYN_ADJ       = 0x001E4280
+local PRTTSYN_ADJ_DUMMY = 0x00083100 -- actually GL_FWRESETCNT (RO)
+local PRTTSYN_TXTIME_L  = 0x001E41C0
+local PRTTSYN_TXTIME_H  = 0x001E41E0
+
+local PRTTSYN_CTL1_TSYNENA       = bit.lshift(1, 31)
+local PRTTSYN_CTL1_TSYNTYPE_OFFS = 24
+local PRTTSYN_CTL1_TSYNTYPE_MASK = bit.lshift(3, PRTTSYN_CTL1_TSYNTYPE_OFFS)
+local PRTTSYN_CTL1_UDP_ENA_OFFS  = 26
+local PRTTSYN_CTL1_UDP_ENA_MASK  = bit.lshift(3, PRTTSYN_CTL1_UDP_ENA_OFFS)
+local PRTTSYN_STAT_1_RXT_ALL     = 0xf
+
+dev.useTimsyncIds = true
+dev.timeRegisters = {PRTTSYN_TIME_L, PRTTSYN_TIME_H, PRTTSYN_ADJ, PRTTSYN_ADJ_DUMMY}
 
 --- Set the maximum rate by all queues in Mbit/s.
 --- Only supported on XL710 NICs.
@@ -99,6 +120,53 @@ function dev:init()
 	self:store()
 end
 
-dev.useTimsyncIds = true
+
+ffi.cdef[[
+int phobos_i40e_reset_timecounters(uint32_t port_id);
+]]
+
+function dev:resetTimeCounters()
+	ffi.C.phobos_i40e_reset_timecounters(self.id)
+end
+
+function dev:enableRxTimestamps(queue, udpPort)
+	udpPort = udpPort or 319
+	if udpPort ~= 319 then
+		self:unsupported("Timestamping on UDP ports other than 319")
+	end
+	-- enable rx timestamping
+	if not self.timesyncEnabled then
+		-- this function takes 100ms for some reason, do not run this unnecessarily
+		-- (the enable function is also called to change the UDP port)
+		dpdkc.rte_eth_timesync_enable(self.id)
+		self.timesyncEnabled = true
+	end
+	-- enable UDP as well
+	local val1 = dpdkc.read_reg32(self.id, PRTTSYN_CTL1)
+	val1 = bit.bor(val1, PRTTSYN_CTL1_TSYNENA)
+	val1 = bit.band(val1, bit.bnot(PRTTSYN_CTL1_TSYNTYPE_MASK))
+	val1 = bit.bor(val1, bit.lshift(2, PRTTSYN_CTL1_TSYNTYPE_OFFS))
+	val1 = bit.band(val1, bit.bnot(PRTTSYN_CTL1_UDP_ENA_MASK))
+	val1 = bit.bor(val1, bit.lshift(3, PRTTSYN_CTL1_UDP_ENA_OFFS))
+	dpdkc.write_reg32(self.id, PRTTSYN_CTL1, val1)
+end
+
+function dev:clearTimestamps()
+	local stats = dpdkc.read_reg32(self.id, PRTTSYN_STAT_1)
+	if bit.band(stats, PRTTSYN_STAT_1_RXT_ALL) ~= 0 then
+		for i = 0, 3 do
+			self:getRxTimestamp(nil, 10, i)
+		end
+	end
+end
+
+-- could skip a few registers here, but doesn't matter
+dev.enableTxTimestamps = dev.enableRxTimestamps
+
+function dev:hasRxTimestamp()
+	local stats = dpdkc.read_reg32(self.id, PRTTSYN_STAT_1)
+	return bit.band(stats, PRTTSYN_STAT_1_RXT_ALL) ~= 0 and -1 or nil
+end
+
 
 return dev

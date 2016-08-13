@@ -99,7 +99,7 @@ function timestamper:measureLatency(pktSize, packetModifier, maxWait)
 	end
 	mod.syncClocks(self.txDev, self.rxDev)
 	-- clear any "leftover" timestamps
-	cleanTimestamp(self.rxDev, self.rxQueue)
+	self.rxDev:clearTimestamps()
 	self.txQueue:send(self.txBufs)
 	local tx = self.txQueue:getTimestamp(500)
 print("tx timestamp: ", tx)

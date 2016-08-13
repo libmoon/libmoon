@@ -12,6 +12,7 @@ local log        = require "log"
 local namespaces = require "namespaces"
 local pciIds     = require "pci-ids"
 local drivers    = require "drivers"
+local eth        = require "proto.ethernet"
 require "headers"
 
 function mod.init()
@@ -419,12 +420,29 @@ function dev:enableTxTimestamps(queue)
 	self:unsupported("tx timestamping", "fatal")
 end
 
-function dev:getTxTimestamp(queue, wait, timesync)
-	self:unsupported("tx timestamping")
+function dev:clearTimestamps()
+	self:unsupported("Tx timestamping")
+end
+
+function dev:getTxTimestamp(queue, wait)
+	local ts = ffi.new("struct timespec")
+	return waitForFunc(wait, function()
+		local res = dpdkc.rte_eth_timesync_read_tx_timestamp(self.id, ts)
+		if res == 0 then
+			return tonumber(ts.tv_sec) * 10^9 + tonumber(ts.tv_nsec)
+		end
+	end)
 end
 
 function dev:getRxTimestamp(queue, wait, timesync)
-	self:unsupported("rx timestamping")
+	wait = wait or 500
+	local ts = ffi.new("struct timespec")
+	return waitForFunc(wait, function()
+		local res = dpdkc.rte_eth_timesync_read_rx_timestamp(self.id, ts, timesync or 0)
+		if res == 0 then
+			return tonumber(ts.tv_sec) * 10^9 + tonumber(ts.tv_nsec)
+		end
+	end)
 end
 
 --- Checks whether a RX timestamp is available on the device.
@@ -433,7 +451,7 @@ function dev:hasRxTimestamp()
 end
 
 function dev:filterL2Timestamps(queue)
-	self:unsupported("Rx timestamp filtering by EtherType")
+	self:l2Filter(eth.TYPE_PTP, queue)
 end
 
 --- Resets DPDKs internal tracking of device cycle counters.
@@ -462,9 +480,8 @@ end
 --- Read a TX timestamp from the device.
 --- Timestamps are usually device-wide.
 --- @param wait timeout in microseconds
---- @param timesync timesync ID for NICs using IDs (i40e).
-function txQueue:getTimestamp(wait, timesync)
-	return self.dev:getTxTimestamp(self, wait, timesync)
+function txQueue:getTimestamp(wait)
+	return self.dev:getTxTimestamp(self, wait)
 end
 
 --- Read a RX timestamp from the device.

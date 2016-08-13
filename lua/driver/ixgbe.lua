@@ -76,24 +76,10 @@ end
 -- could skip a few registers here, but doesn't matter
 dev.enableTxTimestamps = dev.enableRxTimestamps
 
-function dev:getTxTimestamp(queue, wait)
-	local ts = ffi.new("struct timespec")
-	return waitForFunc(wait, function()
-		local res = dpdkc.rte_eth_timesync_read_tx_timestamp(self.id, ts)
-		if res == 0 then
-			return tonumber(ts.tv_sec) * 10^9 + tonumber(ts.tv_nsec)
-		end
-	end)
-end
-
-function dev:getRxTimestamp(queue, wait)
-	local ts = ffi.new("struct timespec")
-	return waitForFunc(wait, function()
-		local res = dpdkc.rte_eth_timesync_read_rx_timestamp(self.id, ts, 0)
-		if res == 0 then
-			return tonumber(ts.tv_sec) * 10^9 + tonumber(ts.tv_nsec)
-		end
-	end)
+function dev:clearTimestamps()
+	if self:hasRxTimestamp() then
+		self:getRxTimestamp(nil, 10)
+	end
 end
 
 function dev:hasRxTimestamp()

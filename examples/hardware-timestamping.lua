@@ -25,9 +25,10 @@ function master(args)
 	local rxQueue0 = args.dev[2]:getRxQueue(0)
 	local rxQueue1 = args.dev[2]:getRxQueue(1)
 	--phobos.startTask("timestamper", txQueue, rxQueue0)
-	--phobos.startTask("timestamper", txQueue, rxQueue0, 3191)
-	--phobos.startTask("timestamper", txQueue, rxQueue1)
-	phobos.startTask("timestamper", txQueue, rxQueue1, 319)
+	--phobos.startTask("timestamper", txQueue, rxQueue0, 319)
+	--phobos.startTask("timestamper", txQueue, rxQueue0, 1234)
+	phobos.startTask("timestamper", txQueue, rxQueue1)
+	--phobos.startTask("timestamper", txQueue, rxQueue1, 319)
 	phobos.waitForTasks()
 end
 

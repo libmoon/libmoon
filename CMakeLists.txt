@@ -23,6 +23,7 @@ SET(FILES
 	src/ring
 	src/kni
 	src/timestamping
+	src/timestamping_i40e
 )
 
 SET(DPDK_LIBS
