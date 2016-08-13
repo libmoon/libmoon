@@ -497,7 +497,9 @@ do
 		-- for example, i40e reports some random value that corresponds to about 25% of the number of packets received...
 		-- the bytes are mostly fine, though
 		-- there are custom implementations for i40e and ixgbe
-		return tonumber(stats.ipackets + stats.imissed + stats.rx_nombuf), tonumber(stats.ibytes)
+		local pkts = tonumber(stats.ipackets + stats.imissed + stats.rx_nombuf)
+		local bytes = tonumber(stats.ibytes)
+		return pkts, bytes + (self.rxStatsIgnoreCrc and pkts * 4 or 0)
 	end
 end
 
