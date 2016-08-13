@@ -5,6 +5,7 @@ local ffi = require "ffi"
 
 mod.rte_i40e_pmd = require "driver.i40e"
 mod.rte_ixgbe_pmd = require "driver.ixgbe"
+mod.rte_igb_pmd = require "driver.igb"
 mod.rte_virtio_pmd = require "driver.virtio"
 
 function mod.initDriver(dev)
