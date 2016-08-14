@@ -25,6 +25,7 @@ SET(FILES
 	src/timestamping
 	src/timestamping_i40e
 	src/timestamping_ixgbe
+	src/timestamping_igb
 )
 
 SET(DPDK_LIBS
@@ -50,6 +51,8 @@ INCLUDE_DIRECTORIES(
 	${CMAKE_CURRENT_SOURCE_DIR}/deps/dpdk/drivers/net/ixgbe
 	${CMAKE_CURRENT_SOURCE_DIR}/deps/dpdk/drivers/net/i40e/base
 	${CMAKE_CURRENT_SOURCE_DIR}/deps/dpdk/drivers/net/i40e
+	${CMAKE_CURRENT_SOURCE_DIR}/deps/dpdk/drivers/net/e1000
+	${CMAKE_CURRENT_SOURCE_DIR}/deps/dpdk/drivers/net/e1000/base
 	${CMAKE_CURRENT_SOURCE_DIR}/deps/luajit/src
 	${CMAKE_CURRENT_SOURCE_DIR}/lib
 )

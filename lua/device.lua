@@ -441,7 +441,9 @@ function dev:enableTxTimestamps(queue)
 end
 
 function dev:clearTimestamps()
-	self:unsupported("Tx timestamping")
+	if self:hasRxTimestamp() then
+		self:getRxTimestamp(nil, 10)
+	end
 end
 
 function dev:getTxTimestamp(queue, wait)

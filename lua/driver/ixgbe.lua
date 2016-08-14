@@ -76,12 +76,6 @@ end
 -- could skip a few registers here, but doesn't matter
 dev.enableTxTimestamps = dev.enableRxTimestamps
 
-function dev:clearTimestamps()
-	if self:hasRxTimestamp() then
-		self:getRxTimestamp(nil, 10)
-	end
-end
-
 function dev:hasRxTimestamp()
 	if bit.band(dpdkc.read_reg32(self.id, TSYNCRXCTL), TSYNCRXCTL_RXTT) == 0 then
 		return nil

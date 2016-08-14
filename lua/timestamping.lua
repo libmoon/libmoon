@@ -15,23 +15,6 @@ local phobos = require "phobos"
 local timestamper = {}
 timestamper.__index = timestamper
 
-local function cleanTimestamp(dev, rxQueue)
-	local id = device.get(dev.id):getPciId()
-	if id == device.PCI_ID_X710 or id == device.PCI_ID_XL710 then
-		local stats = dpdkc.read_reg32(dev.id, PRTTSYN_STAT_1)
-		if bit.band(stats, PRTTSYN_STAT_1_RXT_ALL) ~= 0 then
-			for i = 0, 3 do
-				rxQueue:getTimestamp(nil, i)
-			end
-		end
-	elseif devTimeStamp then
-		-- clear any "leftover" timestamps
-		if dev:hasRxTimestamp() then
-			self.rxQueue:getTimestamp()
-		end
-	end
-end
-
 --- Create a new timestamper.
 --- A NIC can only be used by one thread at a time due to clock synchronization.
 --- Best current pratice is to use only one timestamping thread to avoid problems.
@@ -129,7 +112,12 @@ print("okay, got the packet, timestamp is", rxTs)
 							return nil
 						end
 						self.rxBufs:freeAll()
-						return rxTs - tx
+						local lat = rxTs - tx
+						if lat > 0 then
+							-- negative latencies may happen if the link state changes
+							-- (timers depend on a clock that scales with link speed on some NICs)
+							return lat
+						end
 					elseif buf:hasTimestamp() and (seq == timestampedPkt or timestampedPkt == -1) then
 						-- we got a timestamp but the wrong sequence number. meh.
 						self.rxQueue:getTimestamp(nil, timesync) -- clears the register
