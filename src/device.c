@@ -105,7 +105,7 @@ int dpdk_configure_device(struct phobos_device_config* cfg) {
 					// other drivers don't really seem to care...
 					// WTF?
 					// any other value is apparently an error for this undocumented field
-					.flow_type = is_i40e_device ? RTE_ETH_FLOW_L2_PAYLOAD : RTE_ETH_FLOW_UNKNOWN,
+					.flow_type = is_i40e_device ? RTE_ETH_FLOW_NONFRAG_IPV4_UDP : RTE_ETH_FLOW_UNKNOWN,
 					.mask = { [0] = 0xFF, [1] = 0xFF }
 				}
 			},

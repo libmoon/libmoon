@@ -33,6 +33,11 @@ function mod:newTimestamper(txQueue, rxQueue, mem, udp)
 	end)
 	txQueue:enableTimestamps()
 	rxQueue:enableTimestamps()
+	if udp and rxQueue.dev.supportsFdir then
+		rxQueue:filterUdpTimestamps()
+	elseif not udp then
+		rxQueue:filterL2Timestamps()
+	end
 	return setmetatable({
 		mem = mem,
 		txBufs = mem:bufArray(1),
@@ -72,13 +77,21 @@ function timestamper:measureLatency(pktSize, packetModifier, maxWait)
 	else
 		buf:getPtpPacket().ptp:setSequenceID(expectedSeq)
 	end
+	local skipReconfigure
 	if packetModifier then
-		packetModifier(buf)
+		skipReconfigure = packetModifier(buf)
 	end
 	if self.udp then
 		-- change timestamped UDP port as each packet may be on a different port
 		self.rxQueue:enableTimestamps(buf:getUdpPacket().udp:getDstPort())
 		self.txBufs:offloadUdpChecksums()
+		if self.rxQueue.dev.reconfigureUdpTimestampFilter and not skipReconfigure then
+			-- i40e driver fdir filters are broken
+			-- it is not possible to match on flex bytes in udp packets without matching IPs and ports as well
+			-- so we have to look at that packet and reconfigure the filters
+			self.rxQueue.dev:reconfigureUdpTimestampFilter(self.rxQueue, buf:getUdpPacket())
+		end
+	else
 	end
 	mod.syncClocks(self.txDev, self.rxDev)
 	-- clear any "leftover" timestamps

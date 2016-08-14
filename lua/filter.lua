@@ -427,6 +427,7 @@ end
 --- Packets with PTP version 2 are matched with this filter.
 --- You can also use the UDP port to filter timestamped packets if you do not send other
 --- packets to this port.
+--- Caution: broken on i40e, see i40e-driver docs and timestamper for a work-around
 --- @param queue the queue to send packets to
 --- @param type the PTP type to look for, default = 0
 --- @param ver the PTP version to look for, default = 2
@@ -445,8 +446,6 @@ function dev:filterUdpTimestamps(queue, ptpType, ver)
 			-- (and reconfiguring the filter for ports all the time is annoying)
 			flow_type = dpdkc.RTE_ETH_FLOW_IPV4,
 			flow = {
-				ip4_flow = {
-				}
 			},
 			flow_ext = {
 				vlan_tci = 0,

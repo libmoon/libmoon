@@ -32,6 +32,7 @@ local ETQS_RX_QUEUE_OFFS   = 16
 local ETQS_QUEUE_ENABLE    = bit.lshift(1, 31)
 
 
+dev.supportsFdir  = true
 dev.timeRegisters = {SYSTIMEL, SYSTIMEH, TIMEADJL, TIMEADJH}
 
 -- ixgbe does not count bytes dropped due to buffer space and the packet drop counters seem to be empty

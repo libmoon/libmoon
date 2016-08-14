@@ -518,6 +518,7 @@ end
 --- This filter matches on the PTP identifier and version bytes in the payload.
 --- Only works if the flex byte settings for fdir are correct (default settings).
 --- You can also use a regular 5 tuple filter on the UDP port if this is sufficient for your usecase.
+--- Caution: broken on i40e, see i40e-driver docs and timestamper for a work-around.
 function rxQueue:filterUdpTimestamps()
 	return self.dev:filterUdpTimestamps(self)
 end
