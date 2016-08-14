@@ -22,6 +22,7 @@ SET(FILES
 	src/namespaces
 	src/ring
 	src/kni
+	src/filter
 	src/timestamping
 	src/timestamping_i40e
 	src/timestamping_ixgbe

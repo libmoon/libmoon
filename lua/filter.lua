@@ -6,12 +6,12 @@
 
 local mod = {}
 
-local dpdkc = require "dpdkc"
-local device = require "device"
-local ffi = require "ffi"
-local dpdk = require "dpdk"
+local dpdkc    = require "dpdkc"
+local device   = require "device"
+local ffi      = require "ffi"
+local dpdk     = require "dpdk"
 local mbitmask = require "bitmask"
-local log = require "log"
+local log      = require "log"
 
 mod.DROP = -1
 
@@ -42,6 +42,15 @@ enum rte_flow_type {
 	RTE_ETH_FLOW_IPV6_TCP_EX,
 	RTE_ETH_FLOW_IPV6_UDP_EX,
 	RTE_ETH_FLOW_MAX
+};
+
+enum rte_eth_payload_type {
+	RTE_ETH_PAYLOAD_UNKNOWN = 0,
+	RTE_ETH_RAW_PAYLOAD,
+	RTE_ETH_L2_PAYLOAD,
+	RTE_ETH_L3_PAYLOAD,
+	RTE_ETH_L4_PAYLOAD,
+	RTE_ETH_PAYLOAD_MAX = 8,
 };
 
 enum rte_filter_type {
@@ -273,8 +282,121 @@ struct rte_eth_fdir_filter {
 	struct rte_eth_fdir_action action;  /**< Action taken when match */
 };
 
+/**
+ * A structure used to define the statistics of flow director.
+ * It supports RTE_ETH_FILTER_FDIR with RTE_ETH_FILTER_STATS operation.
+ */
+struct rte_eth_fdir_stats {
+	uint32_t collision;    /**< Number of filters with collision. */
+	uint32_t free;         /**< Number of free filters. */
+	uint32_t maxhash;
+	/**< The lookup hash value of the added filter that updated the value
+	   of the MAXLEN field */
+	uint32_t maxlen;       /**< Longest linked list of filters. */
+	uint64_t add;          /**< Number of added filters. */
+	uint64_t remove;       /**< Number of removed filters. */
+	uint64_t f_add;        /**< Number of failed added filters. */
+	uint64_t f_remove;     /**< Number of failed removed filters. */
+	uint32_t guarant_cnt;  /**< Number of filters in guaranteed spaces. */
+	uint32_t best_cnt;     /**< Number of filters in best effort spaces. */
+};
+
+enum rte_fdir_mode {
+	RTE_FDIR_MODE_NONE      = 0, /**< Disable FDIR support. */
+	RTE_FDIR_MODE_SIGNATURE,     /**< Enable FDIR signature filter mode. */
+	RTE_FDIR_MODE_PERFECT,       /**< Enable FDIR perfect filter mode. */
+	RTE_FDIR_MODE_PERFECT_MAC_VLAN, /**< Enable FDIR filter mode - MAC VLAN. */
+	RTE_FDIR_MODE_PERFECT_TUNNEL,   /**< Enable FDIR filter mode - tunnel. */
+};
+
+/**
+ *  A structure used to configure FDIR masks that are used by the device
+ *  to match the various fields of RX packet headers.
+ */
+struct rte_eth_fdir_masks {
+	uint16_t vlan_tci_mask;   /**< Bit mask for vlan_tci in big endian */
+	/** Bit mask for ipv4 flow in big endian. */
+	struct rte_eth_ipv4_flow   ipv4_mask;
+	/** Bit maks for ipv6 flow in big endian. */
+	struct rte_eth_ipv6_flow   ipv6_mask;
+	/** Bit mask for L4 source port in big endian. */
+	uint16_t src_port_mask;
+	/** Bit mask for L4 destination port in big endian. */
+	uint16_t dst_port_mask;
+	/** 6 bit mask for proper 6 bytes of Mac address, bit 0 matches the
+	    first byte on the wire */
+	uint8_t mac_addr_byte_mask;
+	/** Bit mask for tunnel ID in big endian. */
+	uint32_t tunnel_id_mask;
+	uint8_t tunnel_type_mask; /**< 1 - Match tunnel type,
+				       0 - Ignore tunnel type. */
+};
+
+/**
+ * A structure used to select bytes extracted from the protocol layers to
+ * flexible payload for filter
+ */
+struct rte_eth_flex_payload_cfg {
+	enum rte_eth_payload_type type;  /**< Payload type */
+	uint16_t src_offset[16];
+	/**< Offset in bytes from the beginning of packet's payload
+	     src_offset[i] indicates the flexbyte i's offset in original
+	     packet payload. This value should be less than
+	     flex_payload_limit in struct rte_eth_fdir_info.*/
+};
+
+struct rte_eth_fdir_flex_mask {
+	uint16_t flow_type;
+	uint8_t mask[16];
+	/**< Mask for the whole flexible payload */
+};
+
+struct rte_eth_fdir_flex_conf {
+	uint16_t nb_payloads;  /**< The number of following payload cfg */
+	uint16_t nb_flexmasks; /**< The number of following mask */
+	struct rte_eth_flex_payload_cfg flex_set[RTE_ETH_PAYLOAD_MAX];
+	/**< Flex payload configuration for each payload type */
+	struct rte_eth_fdir_flex_mask flex_mask[RTE_ETH_FLOW_MAX];
+	/**< Flex mask configuration for each flow type */
+};
+
+/**
+ * A structure used to get the information of flow director filter.
+ * It supports RTE_ETH_FILTER_FDIR with RTE_ETH_FILTER_INFO operation.
+ * It includes the mode, flexible payload configuration information,
+ * capabilities and supported flow types, flexible payload characters.
+ * It can be gotten to help taking specific configurations per device.
+ */
+struct rte_eth_fdir_info {
+	enum rte_fdir_mode mode; /**< Flow director mode */
+	struct rte_eth_fdir_masks mask;
+	/** Flex payload configuration information */
+	struct rte_eth_fdir_flex_conf flex_conf;
+	uint32_t guarant_spc; /**< Guaranteed spaces.*/
+	uint32_t best_spc; /**< Best effort spaces.*/
+	/** Bit mask for every supported flow type. */
+	uint32_t flow_types_mask[1];
+	uint32_t max_flexpayload; /**< Total flex payload in bytes. */
+	/** Flexible payload unit in bytes. Size and alignments of all flex
+	    payload segments should be multiplies of this value. */
+	uint32_t flex_payload_unit;
+	/** Max number of flexible payload continuous segments.
+	    Each segment should be a multiple of flex_payload_unit.*/
+	uint32_t max_flex_payload_segment_num;
+	/** Maximum src_offset in bytes allowed. It indicates that
+	    src_offset[i] in struct rte_eth_flex_payload_cfg should be less
+	    than this value. */
+	uint16_t flex_payload_limit;
+	/** Flex bitmask unit in bytes. Size of flex bitmasks should be a
+	    multiply of this value. */
+	uint32_t flex_bitmask_unit;
+	/** Max supported size of flex bitmasks in flex_bitmask_unit */
+	uint32_t max_flex_bitmask_num;
+};
+
 
 int rte_eth_dev_filter_ctrl(uint8_t port_id, enum rte_filter_type filter_type, enum rte_filter_op filter_op, void * arg);
+void fdir_get_infos(uint32_t port_id);
 ]]
 
 local RTE_ETHTYPE_FLAGS_MAC		= 1
@@ -296,7 +418,7 @@ function dev:l2Filter(etype, queue)
 	local filter = ffi.new("struct rte_eth_ethertype_filter", { ether_type = etype, flags = 0, queue = queue })
 	local ok = C.rte_eth_dev_filter_ctrl(self.id, C.RTE_ETH_FILTER_ETHERTYPE, C.RTE_ETH_FILTER_ADD, filter)
 	if ok ~= 0 and ok ~= -38 then -- -38 means duplicate filter for some reason
-		log:warn("l2 filter error: " .. ok)
+		log:warn("l2 filter error: " .. strError(ok))
 	end
 end
 
@@ -321,20 +443,14 @@ function dev:filterUdpTimestamps(queue, ptpType, ver)
 			-- however, this is no longer possible with the dpdk 2.x filter api :(
 			-- it can no longer match only the protocol type while ignoring port numbers...
 			-- (and reconfiguring the filter for ports all the time is annoying)
-			flow_type = dpdkc.RTE_ETH_FLOW_L2_PAYLOAD,--dpdkc.RTE_ETH_FLOW_IPV4,
+			flow_type = dpdkc.RTE_ETH_FLOW_IPV4,
 			flow = {
-				udp4_flow = {
-					ip = {
-						src_ip = 0,
-						dst_ip = 0,
-					},
-					src_port = 0,
-					dst_port = 0,
+				ip4_flow = {
 				}
 			},
 			flow_ext = {
 				vlan_tci = 0,
-				flexbytes = { ptpType, ver },
+				flexbytes = {ptpType, ver},
 				is_vf = 0,
 				dst_id = 0,
 			},
@@ -343,10 +459,13 @@ function dev:filterUdpTimestamps(queue, ptpType, ver)
 			rx_queue = queue
 		},
 	})
-	local ok = C.rte_eth_dev_filter_ctrl(self.id, C.RTE_ETH_FILTER_FDIR, C.RTE_ETH_FILTER_ADD, filter)
-	if ok ~= 0 then
-		log:warn("fdir filter error: " .. strError(ok))
-	end
+	local err = C.rte_eth_dev_filter_ctrl(self.id, C.RTE_ETH_FILTER_FDIR, C.RTE_ETH_FILTER_ADD, filter)
+	checkDpdkError(err, "setting fdir filter")
+end
+
+--- Prints all fdir filter informations for debugging purposes.
+function dev:dumpFilters()
+	C.fdir_get_infos(self.id)
 end
 
 

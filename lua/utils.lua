@@ -480,6 +480,14 @@ function strError(err)
 	return ffi.string(str)
 end
 
+function checkDpdkError(err, msg, lvl)
+	local log = require "log"
+	if err ~= 0 then
+		log[lvl or "warn"](log, "Error %s: %s", msg, strError(err))
+	end
+	return true
+end
+
 function waitForFunc(wait, f, ...)
 	local phobos = require "phobos"
 	wait = wait or 0
