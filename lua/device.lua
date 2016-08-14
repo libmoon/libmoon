@@ -9,6 +9,7 @@ local dpdk       = require "dpdk"
 local memory     = require "memory"
 local serpent    = require "Serpent"
 local log        = require "log"
+local timer      = require "timer"
 local namespaces = require "namespaces"
 local pciIds     = require "pci-ids"
 local drivers    = require "drivers"
@@ -290,6 +291,7 @@ end
 
 --- Waits until all given devices are initialized by calling wait() on them.
 function mod.waitForLinks(...)
+	log:info("Waiting for devices to come up...")
 	local ports
 	if select("#", ...) == 0 then
 		ports = {}
@@ -301,16 +303,34 @@ function mod.waitForLinks(...)
 	else
 		ports = { ... }
 	end
-	log:info("Waiting for devices to come up...")
-	local portsUp = 0
-	local portsSeen = {} -- do not wait twice if a port occurs more than once (e.g. if rx == tx)
+	local portsUniq = {}
 	for i, port in ipairs(ports) do
-		if not portsSeen[port] then
-			portsSeen[port] = true
-			portsUp = portsUp + (port:wait() and 1 or 0)
-		end
+		portsUniq[port.id] = port
 	end
-	log:info(green("%d devices are up.", portsUp))
+	ports = {}
+	local maxWait = 9
+	for i, v in pairs(portsUniq) do
+		ports[#ports + 1] = v
+		maxWait = math.max(maxWait, v.linkWaitTime or 0)
+	end
+	local waitTimer = timer:new(maxWait)
+	local portsUp = 0
+	while #ports > 0 and waitTimer:running() do
+		for i = #ports, 1, -1 do
+			local port = ports[i]
+			if port:getLinkStatus().status then
+				portsUp = portsUp + 1
+				table.remove(ports, i)
+				port:wait(0) -- prints message immediately
+			end
+		end
+		phobos.sleepMillisIdle(100)
+	end
+	for i, port in ipairs(ports) do -- ports that did not come up
+		port:wait(0)
+	end
+	log:info(green(portsUp == 1 and "%d device is up." or "%d devices are up.", portsUp))
+	return portsUp
 end
 
 
@@ -323,8 +343,8 @@ function dev:wait(maxWait)
 	repeat
 		link = self:getLinkStatus()
 		if maxWait > 0 then
-			phobos.sleepMillisIdle(1000)
-			maxWait = maxWait - 1
+			phobos.sleepMillisIdle(100)
+			maxWait = maxWait - 0.1
 		else
 			break
 		end
