@@ -187,7 +187,7 @@ enum rte_eth_fdir_tunnel_type {
 };
 
 /**
- * A structure used to define the input for tunnel flow, now it's VxLAN or
+ * A structure used to define the input for tunnel flow, now it is VxLAN or
  * NVGRE
  */
 struct rte_eth_tunnel_flow {
