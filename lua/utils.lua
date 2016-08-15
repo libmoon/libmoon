@@ -6,6 +6,7 @@ local write = io.write
 local format = string.format
 local random, log, floor = math.random, math.log, math.floor
 local ffi = require "ffi"
+local S = require "syscall"
 
 --- Print a formatted string.
 function printf(str, ...)
@@ -117,14 +118,6 @@ ntoh = hton
 
 ffi.cdef [[
 	typedef int clockid_t;
-	struct timeval {
-		long tv_sec;
-	        long tv_usec;
-	};
-	struct timespec {
-		long tv_sec;
-		long tv_nsec;
-	};
 
 	int gettimeofday(struct timeval* tv, void* tz);
 	int clock_gettime(clockid_t clk_id, struct timespec *tp);

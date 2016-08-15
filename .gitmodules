@@ -13,3 +13,7 @@
 	url = https://github.com/emmericp/pciids
 	ignore = untracked
 	branch = master
+[submodule "lua/lib/syscall"]
+	path = lua/lib/syscall
+	url = https://github.com/emmericp/ljsyscall
+	branch = master
