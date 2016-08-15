@@ -41,38 +41,41 @@ function histogram:calc()
 	self.stdDev = (stdDevSum / (self.numSamples - 1)) ^ 0.5
 
 	table.sort(self.sortedHisto, function(e1, e2) return e1.k < e2.k end)
-	
-	local maxCell = self.sortedHisto[#self.sortedHisto]
-	self.maximum = maxCell.k
-	local minCell = self.sortedHisto[1]
-	self.minimum = minCell.k
+	if #self.sortedHisto > 0 then
+		local maxCell = self.sortedHisto[#self.sortedHisto]
+		self.maximum = maxCell.k
+		local minCell = self.sortedHisto[1]
+		self.minimum = minCell.k
 
-	-- TODO: this is obviously not entirely correct for numbers not divisible by 4
-	-- however, it doesn't really matter for the number of samples we usually use
-	local quartSamples = self.numSamples / 4
+		-- TODO: this is obviously not entirely correct for numbers not divisible by 4
+		-- however, it doesn't really matter for the number of samples we usually use
+		local quartSamples = self.numSamples / 4
 
-	self.quarts = {}
+		self.quarts = {}
 
-	local idx = 0
-	for _, p in ipairs(self.sortedHisto) do
-		-- TODO: inefficient
-		for _ = 1, p.v do
-			if not self.quarts[1] and idx >= quartSamples then
-				self.quarts[1] = p.k
-			elseif not self.quarts[2] and idx >= quartSamples * 2 then
-				self.quarts[2] = p.k
-			elseif not self.quarts[3] and idx >= quartSamples * 3 then
-				self.quarts[3] = p.k
-				break
+		local idx = 0
+		for _, p in ipairs(self.sortedHisto) do
+			-- TODO: inefficient
+			for _ = 1, p.v do
+				if not self.quarts[1] and idx >= quartSamples then
+					self.quarts[1] = p.k
+				elseif not self.quarts[2] and idx >= quartSamples * 2 then
+					self.quarts[2] = p.k
+				elseif not self.quarts[3] and idx >= quartSamples * 3 then
+					self.quarts[3] = p.k
+					break
+				end
+				idx = idx + 1
 			end
-			idx = idx + 1
 		end
-	end
 
-	for i = 1, 3 do
-		if not self.quarts[i] then
-			self.quarts[i] = 0/0
+		for i = 1, 3 do
+			if not self.quarts[i] then
+				self.quarts[i] = 0/0
+			end
 		end
+	else
+		self.quarts = {0/0, 0/0, 0/0} -- NaN
 	end
 
 	self.dirty = false
