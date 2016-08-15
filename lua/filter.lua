@@ -435,6 +435,9 @@ function dev:filterUdpTimestamps(queue, ptpType, ver)
 	if type(queue) == "table" then
 		queue = queue.qid
 	end
+	if queue == 0 then
+		return
+	end
 	ptpType = ptpType or 0
 	ver = ver or 2
 	local filter = ffi.new("struct rte_eth_fdir_filter", {

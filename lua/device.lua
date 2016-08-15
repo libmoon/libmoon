@@ -477,6 +477,10 @@ function dev:hasRxTimestamp()
 end
 
 function dev:filterL2Timestamps(queue)
+	local qid = type(queue) == "number" and queue or queue.qid
+	if qid == 0 then
+		return
+	end
 	self:l2Filter(eth.TYPE_PTP, queue)
 end
 
