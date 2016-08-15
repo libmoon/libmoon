@@ -59,6 +59,7 @@ local function parseCommandLineArgs(...)
 end
 
 local function master(_, file, ...)
+	memory.testAllocationSpace()
 	PHOBOS_TASK_NAME = "master"
 	local args, cfgFile = parseCommandLineArgs(...)
 	phobos.config.dpdkConfig = cfgFile

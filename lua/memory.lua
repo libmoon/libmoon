@@ -10,6 +10,20 @@ local serpent = require "Serpent"
 local log     = require "log"
 local phobos  = require "phobos"
 
+local function loadAllocator()
+	local ok, jemalloc = pcall(ffi.load, "libjemalloc.so")
+	if ok then
+		return jemalloc, "jemalloc"
+	end
+	local ok, jemalloc = pcall(ffi.load, "libjemalloc.so.1")
+	if ok then
+		return jemalloc, "jemalloc"
+	end
+	return ffi.C, "system malloc"
+end
+
+local allocator, allocatorName = loadAllocator()
+
 ffi.cdef [[
 	void* malloc(size_t size);
 	void free(void* buf);
@@ -20,16 +34,43 @@ ffi.cdef [[
 local C = ffi.C
 local cast = ffi.cast
 
+local warningShown = false
+local function testMalloc(size)
+	local mem = allocator.malloc(size)
+	local ptr = ffi.cast("uintptr_t", mem)
+	if ptr < 2^32 and not warningShown then
+		if size < 2^20 then
+			log:info("malloc() allocates small objects < 1 MiB from LuaJIT memory space, install libjemalloc if you encounter out of memory errors.")
+		else
+			log:warn("malloc() allocates objects >= 1 MiB from LuaJIT memory space.")
+			log:warn("Install libjemalloc if you encounter out of memory errors.")
+		end
+		warningShown = true
+		if allocatorName == "jemalloc" then
+			log:warn("Already using jemalloc, please file a bug with your system details on github")
+		end
+	end
+	allocator.free(mem)
+end
+
+--- Tests if the underlying malloc implementation plays nice with LuaJIT.
+function mod.testAllocationSpace()
+	log:debug("Current allocator is %s", allocatorName)
+	for n = 26, 6, -2 do
+		testMalloc(2^n)
+	end
+end
+
 --- Off-heap allocation, not garbage-collected.
 --- @param ctype a ffi type, must be a pointer or array type
 --- @param size the amount of memory to allocate
 function mod.alloc(ctype, size)
-	return cast(ctype, C.malloc(size))
+	return cast(ctype, allocator.malloc(size))
 end
 
 --- Free off-heap allocated object.
 function mod.free(buf)
-	C.free(buf)
+	allocator.free(buf)
 end
 
 
