@@ -14,6 +14,8 @@ function mod.initDriver(dev)
 	if driver then
 		if not getmetatable(driver) then
 			driver.__index = driver
+			driver.__eq = device.__devicePrototype.__eq
+			driver.__tostring = device.__devicePrototype.__tostring
 			setmetatable(driver, device.__devicePrototype)
 		end
 		setmetatable(dev, driver)
