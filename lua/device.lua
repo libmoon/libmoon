@@ -413,7 +413,11 @@ end
 -- some operations are unsupported unless we have device-specific magic
 
 function dev:unsupported(operation, level)
-	log[level or "warn"](log, "%s is not supported by the hardware or driver", tostring(operation))
+	if not self.unsupportedWarningsShown or not self.unsupportedWarningsShown[operation] then
+		self.unsupportedWarningsShown = self.unsupportedWarningsShown or {}
+		self.unsupportedWarningsShown[operation] = true
+		log[level or "warn"](log, "%s is not supported by the hardware or driver", tostring(operation))
+	end
 end
 
 --- Set a device-wide hardware rate limiter.
