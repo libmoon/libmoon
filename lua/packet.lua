@@ -35,6 +35,10 @@ function pkt:getData()
 	return ffi.cast("void*", ffi.cast("uint8_t*", self.buf_addr) + self.data_off)
 end
 
+function pkt:getBytes()
+	return ffi.cast("uint8_t*", self.buf_addr) + self.data_off
+end
+
 function pkt:getTimesync()
 	return self.timesync
 end
