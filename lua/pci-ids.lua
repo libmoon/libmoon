@@ -1,18 +1,17 @@
 local mod = {}
 
-local log = require "log"
+local log    = require "log"
+local phobos = require "phobos"
 
 local fileLocations = {
-	"./deps/pciids/pci.ids",
-	"../deps/pciids/pci.ids",
-	"../../deps/pciids/pci.ids",
+	"deps/pciids/pci.ids",
 }
 
 
 local function getFile()
 	local file
 	for i, v in ipairs(fileLocations) do
-		file = io.open(v)
+		file = io.open(phobos.config.basePath .. v)
 		if file then
 			break
 		end

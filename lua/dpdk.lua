@@ -111,7 +111,7 @@ function mod.init()
 	else
 		cfgFileLocations = {
 			"./dpdk-conf.lua",
-			"../dpdk-conf.lua",
+			phobos.config.basePath .. "/dpdk-conf.lua",
 			"/etc/phobos/dpdk-conf.lua"
 		}
 	end

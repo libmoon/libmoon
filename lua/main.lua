@@ -64,6 +64,7 @@ local function master(_, file, ...)
 	local args, cfgFile = parseCommandLineArgs(...)
 	phobos.config.dpdkConfig = cfgFile
 	phobos.config.userscript = file
+	phobos.setupPaths()
 	-- run the userscript
 	local ok = run(file)
 	if not ok then

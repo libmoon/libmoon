@@ -15,6 +15,12 @@ local function checkCore()
 	end
 end
 
+function mod.setupPaths()
+	-- looks like this: ;$BASE/lua/lib/?/init.lua, see task.cpp
+	if not mod.config.basePath then
+		mod.config.basePath = package.path:match(";([^;]+)/lua/lib/%?/init.lua$") .. "/"
+	end
+end
 
 ffi.cdef[[
 	void launch_lua_core(int core, const char* arg);
