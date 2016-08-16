@@ -6,10 +6,14 @@ local device = require "device"
 local stats  = require "stats"
 local ffi    = require "ffi"
 
--- TODO: handle paths better
-local clib = ffi.load("./examples/c-integration/libswap-macs.so")
+-- search for libswap-macs.so in the usual system paths and in Lua's package.path
+-- this includes the directory in which the executed phobos script is located
+-- you can also specify subdirectories to search, e.g., ffi.load("build/foo") will look
+-- for build/libfoo.so in all relevant directories
+local clib = ffi.load("swap-macs")
 
 -- declare function prototypes here to make them callable
+-- for C++: declare the function as extern "C" in the C++ file and call like a C function
 ffi.cdef[[
 	void swap_macs(struct rte_mbuf* mbufs[], uint32_t num_bufs);
 ]]

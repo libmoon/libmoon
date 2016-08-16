@@ -20,6 +20,35 @@ function mod.setupPaths()
 	if not mod.config.basePath then
 		mod.config.basePath = package.path:match(";([^;]+)/lua/lib/%?/init.lua$") .. "/"
 	end
+	local base = mod.config.basePath
+	package.path = mod.config.userscript:match("(.-)/([^/]+)$") .. "/?;" .. package.path
+	local ffiPath = ""
+	for path in package.path:gmatch("([^;]+)") do
+		if not path:match("init.lua$") then
+			ffiPath = ffiPath .. ";" .. path:gsub("%?%.lua", "?")
+		end
+	end
+	package.ffipath = ffiPath
+	local load = ffi.load
+	ffi.load = function(name)
+		local ok, resLoad = pcall(load, name)
+		if ok then
+			return resLoad
+		end
+		-- handle paths, package.searchpath can't do that for us because of the pesky lib prefix
+		if name:match("/") then
+			local first, second = name:match("(.+)/([^/]+)$")
+			name = first .. "/lib" .. second
+		else
+			name = "lib" .. name
+		end
+		local path, err =  package.searchpath(name .. ".so", package.ffipath, "/")
+		if path then
+			return load(path)
+		else
+			error(("%s\nTried system locations and the following paths %s"):format(resLoad, err), 2)
+		end
+	end
 end
 
 ffi.cdef[[

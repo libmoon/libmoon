@@ -64,7 +64,7 @@ local function master(_, file, ...)
 	local args, cfgFile = parseCommandLineArgs(...)
 	phobos.config.dpdkConfig = cfgFile
 	phobos.config.userscript = file
-	phobos.setupPaths()
+	phobos.setupPaths() -- need the userscript first because we want to use the path
 	-- run the userscript
 	local ok = run(file)
 	if not ok then
@@ -97,6 +97,7 @@ local function master(_, file, ...)
 end
 
 local function slave(args)
+	phobos.setupPaths()
 	-- must be done before parsing the args as they might rely on deserializers loaded by the script
 	local ok = run(phobos.config.userscript)
 	if not ok then
