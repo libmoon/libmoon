@@ -36,7 +36,7 @@ local function run(file, ...)
 	if not script then
 		error(err)
 	end
-	xpcall(script, getStackTrace, ...)
+	return xpcall(script, getStackTrace, ...)
 end
 
 local function parseCommandLineArgs(...)
@@ -65,7 +65,10 @@ local function master(_, file, ...)
 	phobos.config.dpdkConfig = cfgFile
 	phobos.config.userscript = file
 	-- run the userscript
-	run(file)
+	local ok = run(file)
+	if not ok then
+		return
+	end
 	local parsedArgs = {}
 	if _G.configure then
 		local parser = argparse()
@@ -75,6 +78,12 @@ local function master(_, file, ...)
 			return
 		end
 		table.remove(parsedArgs, 1)
+		-- nothing returned but the parser was used
+		-- just try to call the parser ourselves here
+		if #parsedArgs == 0
+		and (#parser._arguments ~= 0 or #parser._options ~= 0 or #parser._commands ~= 0) then
+			parsedArgs = {parser:parse()}
+		end
 	end
 	if not phobos.config.skipInit then
 		if not dpdk.init() then
@@ -88,7 +97,10 @@ end
 
 local function slave(args)
 	-- must be done before parsing the args as they might rely on deserializers loaded by the script
-	run(phobos.config.userscript)
+	local ok = run(phobos.config.userscript)
+	if not ok then
+		return
+	end
 	-- core > max core means this is a shared task
 	if phobos.getCore() > phobos.config.cores[#phobos.config.cores] then
 		-- disabling this warning must be done before deserializing the arguments
