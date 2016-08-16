@@ -17,6 +17,6 @@
 	path = lua/lib/syscall
 	url = https://github.com/emmericp/ljsyscall
 	branch = master
-[submodule "lua/lib/pflua"]
+[submodule "lua/lib/pf"]
 	path = lua/lib/pf
 	url = https://github.com/emmericp/pflua
