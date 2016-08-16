@@ -283,6 +283,7 @@ local Argument = class({
    typechecked("defmode", "string"),
    typechecked("show_default", "boolean"),
    typechecked("argname", "string", "table"),
+   {"combine", function(self, val) typecheck("combine", {"boolean", "nil"}, val) self._combine = val == nil or val return true end},
    option_action,
    option_init
 })
@@ -332,7 +333,7 @@ function Argument:_get_argument_list()
       end
    end
 
-   if i < self._maxargs then
+   if i < self._maxargs and not self._combine then
       table.insert(buf, "...")
    end
 
@@ -887,6 +888,9 @@ function ElementState:close()
 
       if self.element._maxargs == 1 and self.element._minargs == 0 and self.element._mincount ~= self.element._maxcount then
          args = self.args
+      end
+      if self.element._combine then
+         args = table.concat(args, " ")
       end
 
       self.action(self.result, self.target, args, self.overwrite)
