@@ -59,11 +59,16 @@ namespace phobos {
 		if (is_base_dir(path)) {
 			return path;
 		}
-		// check cwd last
+		// check cwd
 		if (!getcwd(buf, PATH_MAX)) {
 			find_base_dir_fail();
 		}
 		path = buf;
+		if (is_base_dir(path)) {
+			return path;
+		}
+		// finally check a hardcoded path for installations where the binary is somewhere else than the lua code
+		path = "/usr/local/lib/phobos";
 		if (is_base_dir(path)) {
 			return path;
 		}
