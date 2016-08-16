@@ -18,7 +18,8 @@ function master(args)
 		local dev = device.config{
 			port = dev,
 			rxQueues = args.threads + (args.lacp and 1 or 0),
-			txQueues = args.threads + (args.lacp and 1 or 0)
+			txQueues = args.threads + (args.lacp and 1 or 0),
+			rssQueues = args.threads
 		}
 		-- last queue for lacp
 		if args.lacp then
