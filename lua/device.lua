@@ -14,6 +14,7 @@ local namespaces = require "namespaces"
 local pciIds     = require "pci-ids"
 local drivers    = require "drivers"
 local eth        = require "proto.ethernet"
+local E          = require "syscall".c.E
 require "headers"
 
 function mod.init()
@@ -645,7 +646,7 @@ end
 --- This sets the payload rate, not to the actual wire rate, i.e. preamble, SFD, and IFG are ignored.
 function txQueue:setRate(rate)
 	local rc = dpdkc.rte_eth_set_queue_rate_limit(self.id, self.qid, rate)
-	if rc == -ERR_NOTSUP then
+	if rc == -E.NOTSUP then
 		-- fails if doing this from multiple threads
 		-- but that's okay since this is just a crude work-around and the app should be updated for the NIC
 		local dev = self.dev

@@ -418,29 +418,13 @@ function unpackAll(tbl)
 	return unpackers[table.maxn(tbl)](tbl)
 end
 
-function run(cmd)
-	local file = io.popen(cmd, "r")
-	if not file then
-		return false
-	end
-	local s = assert(file:read('*a'))
-	file:close()
-	return s
-end
 
 --- Get the operation system type and version
 -- @return osName, major, minor, patch
 function getOS()
-	local os = run("uname")
-	if not os then
-		return nil
-	end
-	local ver = run("uname -r")
-	if not ver then
-		return os, 0, 0, 0
-	end
-	local major, minor, patch = tonumberall(ver:match("(%d+)%.(%d+)%.(%d+)"))
-	return trim(os), major, minor, patch
+	local uname = S.uname()
+	local major, minor, patch = tonumberall(uname.release:match("^(%d+)%.(%d+)%.(%d+)"))
+	return uname.sysname, major, minor, patch
 end
 
 function fileExists(f)
@@ -449,18 +433,6 @@ function fileExists(f)
 		file:close()
 	end
 	return not not file
-end
-
--- only the error codes actually in use by DPDK
-ERR_ENODEV = 19
-ERR_EINVAL = 22
-if getOS():lower():match("linux") then
-	ERR_NOTSUP = 95
-elseif getOS():lower():match("bsd") then
-	ERR_NOTSUP = 45
-else
-	print("ERR: could not detect OS, please open an issue on github with the output of uname -a")
-	ERR_NOTSUP = 48
 end
 
 ffi.cdef[[
