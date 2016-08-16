@@ -21,7 +21,7 @@ function mod.setupPaths()
 		mod.config.basePath = package.path:match(";([^;]+)/lua/lib/%?/init.lua$") .. "/"
 	end
 	local base = mod.config.basePath
-	package.path = mod.config.userscript:match("(.-)/([^/]+)$") .. "/?;" .. package.path
+	package.path = package.path .. ";" .. mod.config.userscript:match("(.-)/([^/]+)$") .. "/?"
 	local ffiPath = ""
 	for path in package.path:gmatch("([^;]+)") do
 		if not path:match("init.lua$") then
