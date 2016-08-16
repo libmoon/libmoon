@@ -3,7 +3,6 @@ local phobos = require "phobos"
 local memory = require "memory"
 local device = require "device"
 local stats  = require "stats"
-local argparse = require "argparse"
 local lacp   = require "proto.lacp"
 
 function configure(parser)
