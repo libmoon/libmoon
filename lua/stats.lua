@@ -328,7 +328,6 @@ end
 
 function pktRxCounter:getThroughput()
 	local pkts, bytes = self.current, self.currentBytes
-	self.current, self.currentBytes = 0, 0
 	return pkts, bytes
 end
 
@@ -347,7 +346,6 @@ end
 
 function manualRxCounter:getThroughput()
 	local pkts, bytes = self.current, self.currentBytes
-	self.current, self.currentBytes = 0, 0
 	return pkts, bytes
 end
 
@@ -452,7 +450,6 @@ end
 
 function pktTxCounter:getThroughput()
 	local pkts, bytes = self.current, self.currentBytes
-	self.current, self.currentBytes = 0, 0
 	return pkts, bytes
 end
 
@@ -481,7 +478,6 @@ end
 
 function manualTxCounter:getThroughput()
 	local pkts, bytes = self.current, self.currentBytes
-	self.current, self.currentBytes = 0, 0
 	return pkts, bytes
 end
 
