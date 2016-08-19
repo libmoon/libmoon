@@ -17,13 +17,6 @@
 #define DEFAULT_RX_DESCS 512
 #define DEFAULT_TX_DESCS 256
 
-// values taken from the DPDK-L2FWD example, I guess they are okay
-#define RX_PTHRESH 8
-#define RX_HTHRESH 8
-#define RX_WTHRESH 4
-#define TX_PTHRESH 36
-#define TX_HTHRESH 0
-#define TX_WTHRESH 0
 
 static volatile uint8_t* registers[RTE_MAX_ETHPORTS];
 
@@ -141,12 +134,13 @@ int dpdk_configure_device(struct phobos_device_config* cfg) {
 	};
 	int rc = rte_eth_dev_configure(cfg->port, cfg->rx_queues, cfg->tx_queues, &port_conf);
 	if (rc) return rc;
+	struct rte_eth_dev_info dev_info;
+	rte_eth_dev_info_get(cfg->port, &dev_info);
 	struct rte_eth_txconf tx_conf = {
-		// TODO: this should use different values for GbE NICs
 		.tx_thresh = {
-			.pthresh = TX_PTHRESH,
-			.hthresh = TX_HTHRESH,
-			.wthresh = TX_WTHRESH,
+			.pthresh = dev_info.default_txconf.tx_thresh.pthresh,
+			.hthresh = dev_info.default_txconf.tx_thresh.hthresh,
+			.wthresh = dev_info.default_txconf.tx_thresh.wthresh,
 		},
 		.txq_flags = ETH_TXQ_FLAGS_NOMULTSEGS | (cfg->disable_offloads ? ETH_TXQ_FLAGS_NOOFFLOADS : 0),
 	};
@@ -160,9 +154,9 @@ int dpdk_configure_device(struct phobos_device_config* cfg) {
 	struct rte_eth_rxconf rx_conf = {
 		.rx_drop_en = cfg->drop_enable,
 		.rx_thresh = {
-			.pthresh = RX_PTHRESH,
-			.hthresh = RX_HTHRESH,
-			.wthresh = RX_WTHRESH,
+			.pthresh = dev_info.default_rxconf.tx_thresh.pthresh,
+			.hthresh = dev_info.default_rxconf.tx_thresh.hthresh,
+			.wthresh = dev_info.default_rxconf.tx_thresh.wthresh,
 		},
 	};
 	for (int i = 0; i < cfg->rx_queues; i++) {
@@ -174,8 +168,6 @@ int dpdk_configure_device(struct phobos_device_config* cfg) {
 	}
 	rc = rte_eth_dev_start(cfg->port);
 	// save memory address of the register file
-	struct rte_eth_dev_info dev_info;
-	rte_eth_dev_info_get(cfg->port, &dev_info);
 	registers[cfg->port] = (uint8_t*) dev_info.pci_dev->mem_resource[0].addr;
 	return rc;
 }
