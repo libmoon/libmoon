@@ -154,9 +154,9 @@ int dpdk_configure_device(struct phobos_device_config* cfg) {
 	struct rte_eth_rxconf rx_conf = {
 		.rx_drop_en = cfg->drop_enable,
 		.rx_thresh = {
-			.pthresh = dev_info.default_rxconf.tx_thresh.pthresh,
-			.hthresh = dev_info.default_rxconf.tx_thresh.hthresh,
-			.wthresh = dev_info.default_rxconf.tx_thresh.wthresh,
+			.pthresh = dev_info.default_rxconf.rx_thresh.pthresh,
+			.hthresh = dev_info.default_rxconf.rx_thresh.hthresh,
+			.wthresh = dev_info.default_rxconf.rx_thresh.wthresh,
 		},
 	};
 	for (int i = 0; i < cfg->rx_queues; i++) {
