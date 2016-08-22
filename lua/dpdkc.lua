@@ -162,7 +162,57 @@ ffi.cdef[[
 		uint16_t dst_port_mask;
 	};
 
-
+	struct rte_eth_desc_lim {
+		uint16_t nb_max;   
+		uint16_t nb_min;   
+		uint16_t nb_align; 
+	};
+	struct rte_eth_thresh {
+		uint8_t pthresh; 
+		uint8_t hthresh; 
+		uint8_t wthresh; 
+	};
+	struct rte_eth_rxconf {
+		struct rte_eth_thresh rx_thresh; 
+		uint16_t rx_free_thresh; 
+		uint8_t rx_drop_en; 
+		uint8_t rx_deferred_start; 
+	};
+	struct rte_eth_txconf {
+		struct rte_eth_thresh tx_thresh; 
+		uint16_t tx_rs_thresh; 
+		uint16_t tx_free_thresh; 
+		uint32_t txq_flags; 
+		uint8_t tx_deferred_start; 
+	};
+	struct rte_eth_dev_info {
+		void* pci_dev; 
+		const char* driver_name; 
+		unsigned int if_index; 
+		uint32_t min_rx_bufsize; 
+		uint32_t max_rx_pktlen; 
+		uint16_t max_rx_queues; 
+		uint16_t max_tx_queues; 
+		uint32_t max_mac_addrs; 
+		uint32_t max_hash_mac_addrs;
+		uint16_t max_vfs; 
+		uint16_t max_vmdq_pools; 
+		uint32_t rx_offload_capa; 
+		uint32_t tx_offload_capa; 
+		uint16_t reta_size;
+		uint8_t hash_key_size; 
+		uint64_t flow_type_rss_offloads;
+		struct rte_eth_rxconf default_rxconf; 
+		struct rte_eth_txconf default_txconf; 
+		uint16_t vmdq_queue_base; 
+		uint16_t vmdq_queue_num;  
+		uint16_t vmdq_pool_base;  
+		struct rte_eth_desc_lim rx_desc_lim;  
+		struct rte_eth_desc_lim tx_desc_lim;  
+		uint32_t speed_capa;  
+		uint16_t nb_rx_queues; 
+		uint16_t nb_tx_queues; 
+	};
 
 	struct phobos_device_config {
 		uint32_t port;
@@ -228,6 +278,7 @@ ffi.cdef[[
 	int rte_eth_dev_mac_addr_remove(uint8_t port, void* mac);
 	void rte_eth_macaddr_get(uint8_t port_id, struct ether_addr* mac_addr);
 	int rte_eth_set_queue_rate_limit(uint8_t port_id, uint16_t queue_idx, uint16_t tx_rate);
+	void rte_eth_dev_info_get(uint8_t port_id, struct rte_eth_dev_info* info);
 
 	// rx & tx
 	uint16_t rte_eth_rx_burst_export(uint8_t port_id, uint16_t queue_id, struct rte_mbuf** rx_pkts, uint16_t nb_pkts);

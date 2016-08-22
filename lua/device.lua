@@ -394,6 +394,12 @@ function dev:removeMac(mac)
 	end
 end
 
+function dev:getInfo()
+	local info = ffi.new("struct rte_eth_dev_info")
+	dpdkc.rte_eth_dev_info_get(self.id, info)
+	return info
+end
+
 function dev:getPciId()
 	return dpdkc.dpdk_get_pci_id(self.id)
 end
