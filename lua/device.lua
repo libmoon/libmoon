@@ -107,10 +107,29 @@ function mod.config(args)
 		log:warn("Device %d already configured, skipping initilization", args.port)
 		return mod.get(args.port)
 	end
+	local info = dev.getInfo{id = args.port}
 	args.rxQueues = args.rxQueues or 1
 	args.txQueues = args.txQueues or 1
 	args.rxDescs = args.rxDescs or 512
 	args.txDescs = args.txDescs or 1024
+	if args.rxQueues > info.max_rx_queues then
+		log:fatal("device supports only %d rx queues, requested %d", info.max_rx_queues, args.rxQueues)
+	end
+	if args.txQueues > info.max_tx_queues then
+		log:fatal("device supports only %d tx queues, requested %d", info.max_tx_queues, args.txQueues)
+	end
+	if args.rxDescs > info.rx_desc_lim.nb_max
+	or args.rxDescs < info.rx_desc_lim.nb_min
+	or args.rxDescs % info.rx_desc_lim.nb_align ~= 0 then
+		log:fatal("device supports between %d and %d rx descriptors in steps of %d, requested %d",
+			info.rx_desc_lim.nb_min, info.rx_desc_lim.nb_max, info.rx_desc_lim.nb_align, args.rxDescs)
+	end
+	if args.txDescs > info.tx_desc_lim.nb_max
+	or args.txDescs < info.tx_desc_lim.nb_min
+	or args.txDescs % info.tx_desc_lim.nb_align ~= 0 then
+		log:fatal("device supports between %d and %d tx descriptors in steps of %d, requested %d",
+			info.tx_desc_lim.nb_min, info.tx_desc_lim.nb_max, info.tx_desc_lim.nb_align, args.txDescs)
+	end
 	args.rssQueues = args.rssQueues or 0
 	if args.disableOffloads == nil then
 		args.disableOffloads = drivers.getDriverInfo(args.port).disableOffloads
