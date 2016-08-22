@@ -22,10 +22,9 @@ function mod.initDriver(dev)
 	end
 end
 
--- retrieve driver-specific information about a port
+-- retrieve driver-specific information
 -- required for driver-specific configuration variables
-function mod.getDriverInfo(id)
-	local driverName = ffi.string(dpdkc.dpdk_get_driver_name(id))
+function mod.getDriverInfo(driverName)
 	return (mod[driverName] or {}).driverInfo or {}
 end
 

@@ -273,7 +273,6 @@ ffi.cdef[[
 	int dpdk_get_i40e_vsi_seid(int port);
 	uint8_t dpdk_get_pci_function(uint8_t port);
 	int dpdk_get_max_ports();
-	const char* dpdk_get_driver_name(int port);
 	int rte_eth_dev_mac_addr_add(uint8_t port, void* mac, uint32_t pool);
 	int rte_eth_dev_mac_addr_remove(uint8_t port, void* mac);
 	void rte_eth_macaddr_get(uint8_t port_id, struct ether_addr* mac_addr);

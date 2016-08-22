@@ -213,12 +213,6 @@ uint8_t dpdk_get_socket(uint8_t port) {
 	return (uint8_t) node;
 }
 
-uint16_t dpdk_get_reta_size(int port) {
-	struct rte_eth_dev_info dev_info;
-	rte_eth_dev_info_get(port, &dev_info);
-	return dev_info.reta_size;
-}
-
 uint32_t dpdk_get_rte_queue_stat_cntrs_num() {
 	return RTE_ETHDEV_QUEUE_STAT_CNTRS;
 }

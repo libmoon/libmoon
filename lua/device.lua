@@ -132,7 +132,7 @@ function mod.config(args)
 	end
 	args.rssQueues = args.rssQueues or 0
 	if args.disableOffloads == nil then
-		args.disableOffloads = drivers.getDriverInfo(args.port).disableOffloads
+		args.disableOffloads = drivers.getDriverInfo(ffi.string(info.driver_name)).disableOffloads
 	end
 	args.rssFunctions = args.rssFunctions or {
 		dpdk.ETH_RSS_IPV4,
@@ -216,7 +216,6 @@ struct rte_eth_rss_reta_entry64 {
 };
 
 int rte_eth_dev_rss_reta_update(uint8_t port, struct rte_eth_rss_reta_entry64* reta_conf, uint16_t reta_size);
-uint16_t dpdk_get_reta_size(int port);
 ]]
 
 --- Setup RSS RETA table.
@@ -226,7 +225,7 @@ function dev:setRssQueues(n, baseQueue)
 	if bit.band(n, n - 1) ~= 0 then
 		log:warn("RSS distribution to queues will not be balanced as the number of queues (%d) is not a power of two.", n)
 	end
-	local retaSize = ffi.C.dpdk_get_reta_size(self.id)
+	local retaSize = self:getInfo().reta_size
 	if retaSize % 64 ~= 0 then
 		log:fatal("NYI: number of RETA entries is not a multiple of 64", retaSize)
 	end
@@ -432,7 +431,7 @@ function dev:getName()
 end
 
 function dev:getDriverName()
-	return ffi.string(dpdkc.dpdk_get_driver_name(self.id))
+	return ffi.string(self:getInfo().driver_name)
 end
 
 
