@@ -45,7 +45,9 @@ function master(args,...)
 			rxQueues = args.arp and 2 or 1
 		}
 		args.dev[i] = dev
-		table.insert(arpQueues, { rxQueue = dev:getRxQueue(1), txQueue = dev:getTxQueue(args.threads), ips = ARP_IP })
+		if args.arp then
+			table.insert(arpQueues, { rxQueue = dev:getRxQueue(1), txQueue = dev:getTxQueue(args.threads), ips = ARP_IP })
+		end
 	end
 	device.waitForLinks()
 
