@@ -273,6 +273,10 @@ function dev:getTxQueue(id)
 	if tbl[id] then
 		return tbl[id]
 	end
+	local info = self:getInfo()
+	if id >= info.nb_tx_queues then
+		log:fatal("device is configured with tx queues 0 to %d, tried to get queue number %d", info.nb_tx_queues - 1, id)
+	end
 	tbl[id] = setmetatable({id = self.id, qid = id, dev = self}, txQueue)
 	return tbl[id]
 end
@@ -281,6 +285,10 @@ function dev:getRxQueue(id)
 	local tbl = self.rxQueues
 	if tbl[id] then
 		return tbl[id]
+	end
+	local info = self:getInfo()
+	if id >= info.nb_rx_queues then
+		log:fatal("device is configured with rx queues 0 to %d, tried to get rx queue number %d", info.nb_rx_queues - 1, id)
 	end
 	tbl[id] = setmetatable({id = self.id, qid = id, dev = self}, rxQueue)
 	return tbl[id]
