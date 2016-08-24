@@ -166,7 +166,7 @@ function mod.config(args)
 	if not args.mempools then
 		args.mempools = {}
 		for i = 1, args.rxQueues do
-			table.insert(args.mempools, memory.createMemPool{n = 2047, socket = dpdkc.dpdk_get_socket(args.port)})
+			table.insert(args.mempools, memory.createMemPool{n = math.max(2047, args.rxDescs * 2 - 1), socket = dpdkc.dpdk_get_socket(args.port)})
 		end
 	elseif #args.mempools ~= args.rxQueues then
 		log:fatal("number of mempools must equal number of rx queues")
