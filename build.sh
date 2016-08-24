@@ -12,7 +12,7 @@ then
 	echo "Please run git submodule update --init"
 	exit 1
 fi
-make -j 8 'CFLAGS=-DLUAJIT_NUMMODE=2 -DLUAJIT_ENABLE_LUA52COMPAT'
+make -j 8 BUILDMODE=static 'CFLAGS=-DLUAJIT_NUMMODE=2 -DLUAJIT_ENABLE_LUA52COMPAT'
 make install DESTDIR=$(pwd)
 
 cd ../dpdk
