@@ -1,10 +1,9 @@
 CMAKE_MINIMUM_REQUIRED(VERSION 2.8)
+PROJECT(phobos C CXX)
 
-SET(CMAKE_CXX_FLAGS "-fno-stack-protector -Wall -Wextra -Wno-unused-parameter -g -O3 -std=gnu++11 -march=native -msse4.2 -I${CMAKE_CURRENT_SOURCE_DIR}/src")
+SET(CMAKE_CXX_FLAGS "-fno-stack-protector -Wall -Wextra -Wno-unused-parameter -g -O3 -std=gnu++11 -march=native -msse4.2")
 SET(CMAKE_C_FLAGS "-fno-stack-protector -Wall -Wextra -Wno-unused-parameter -g -O3 -std=gnu11 -march=native -msse4.2")
 SET(CMAKE_EXE_LINKER_FLAGS "-rdynamic") # to access functions from luajit
-
-SET(PRJ phobos)
 
 SET(FILES
 	src/main
@@ -37,7 +36,7 @@ SET(DPDK_LIBS
 )
 
 SET(LUAJIT_LIBS
-	luajit
+	luajit-5.1
 )
 
 SET(ALL_LIBS
@@ -56,14 +55,20 @@ INCLUDE_DIRECTORIES(
 	${CMAKE_CURRENT_SOURCE_DIR}/deps/dpdk/drivers/net/e1000/base
 	${CMAKE_CURRENT_SOURCE_DIR}/deps/luajit/src
 	${CMAKE_CURRENT_SOURCE_DIR}/lib
+	${CMAKE_CURRENT_SOURCE_DIR}/src
 )
 
 LINK_DIRECTORIES(
 	${CMAKE_CURRENT_SOURCE_DIR}/deps/dpdk/x86_64-native-linuxapp-gcc/lib
-	${CMAKE_CURRENT_SOURCE_DIR}/deps/luajit/usr/local/lib/
-	${CMAKE_CURRENT_SOURCE_DIR}/deps/luajit/src
+	${CMAKE_CURRENT_SOURCE_DIR}/deps/luajit/usr/local/lib
 )
 
-ADD_EXECUTABLE(${PRJ} ${FILES})
-TARGET_LINK_LIBRARIES(${PRJ} ${ALL_LIBS})
+IF(PHOBOS_BUILD_LIBRARY)
+	ADD_DEFINITIONS(-DPHOBOS_BUILD_LIB)
+	ADD_LIBRARY(phobos STATIC ${FILES})
+ELSE()
+	ADD_EXECUTABLE(phobos ${FILES})
+ENDIF()
+
+TARGET_LINK_LIBRARIES(phobos ${ALL_LIBS})
 
