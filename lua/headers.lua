@@ -50,12 +50,19 @@ ffi.cdef[[
 	// ---- Header structs
 	// -----------------------------------------------------
 
-	// TODO: there should also be a variant with a VLAN tag
-	// note that this isn't necessary for most cases as offloading should be preferred
 	struct __attribute__((__packed__)) ethernet_header {
 		union mac_address	dst;
 		union mac_address	src;
 		uint16_t		type;
+	};
+
+	// note that this isn't necessary for most cases as offloading should be preferred
+	struct __attribute__((__packed__)) ethernet_8021q_header {
+		union mac_address dst;
+		union mac_address src;
+		uint16_t          vlan_id;
+		uint16_t          vlan_tag;
+		uint16_t          type;
 	};
 
 	struct __attribute__((__packed__)) arp_header {

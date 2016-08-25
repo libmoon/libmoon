@@ -366,6 +366,8 @@ function getHeaderMember(v)
 		-- special alias for ethernet
 		if v[1] == "eth" then 
 			return "ethernet", v[2]
+		elseif v[1] == "eth_8021q" then 
+			return "ethernet_8021q", v[2]
 		end
 		return v[1], v[2]
 	else
@@ -373,6 +375,8 @@ function getHeaderMember(v)
 		-- special alias for ethernet
 		if v == "ethernet" or v == "eth" then
 			return "ethernet", "eth"
+		elseif v == "ethernet_8021q" or v == "eth_8021q" then
+			return "ethernet_8021q", "eth"
 		end
 		-- otherwise header name = member name
 		return v, v

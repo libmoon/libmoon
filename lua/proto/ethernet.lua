@@ -39,6 +39,8 @@ eth.TYPE_IP6 = 0x86dd
 --- EtherType for Ptp
 eth.TYPE_PTP = 0x88f7
 
+eth.TYPE_8021Q = 0x8100
+
 --- EtherType for LACP (Actually, 'Slow Protocols')
 eth.TYPE_LACP = 0x8809
 
@@ -107,7 +109,9 @@ end
 
 --- Module for ethernet_header struct (see \ref headers.lua).
 local etherHeader = {}
+local etherVlanHeader = {}
 etherHeader.__index = etherHeader
+etherVlanHeader.__index = etherVlanHeader
 
 --- Set the destination MAC address.
 --- @param addr Address as number
@@ -115,11 +119,15 @@ function etherHeader:setDst(addr)
 	self.dst:set(addr)
 end
 
+etherVlanHeader.setDst = etherHeader.setDst
+
 --- Retrieve the destination MAC address.
 --- @return Address as number
 function etherHeader:getDst(addr)
 	return self.dst:get()
 end
+
+etherVlanHeader.getDst = etherHeader.getDst
 
 --- Set the source MAC address.
 --- @param addr Address as number
@@ -127,11 +135,15 @@ function etherHeader:setSrc(addr)
 	self.src:set(addr)
 end
 
+etherVlanHeader.setSrc = etherHeader.setSrc
+
 --- Retrieve the source MAC address.
 --- @return Address as number
 function etherHeader:getSrc(addr)
 	return self.src:get()
 end
+
+etherVlanHeader.getSrc = etherHeader.getSrc
 
 --- Set the destination MAC address.
 --- @param str Address in string format.
@@ -139,11 +151,15 @@ function etherHeader:setDstString(str)
 	self.dst:setString(str)
 end
 
+etherVlanHeader.setDstString = etherHeader.setDstString
+
 --- Retrieve the destination MAC address.
 --- @return Address in string format.
 function etherHeader:getDstString()
 	return self.dst:getString()
 end
+
+etherVlanHeader.getDstString = etherHeader.getDstString
 
 --- Set the source MAC address.
 --- @param str Address in string format.
@@ -151,11 +167,15 @@ function etherHeader:setSrcString(str)
 	self.src:setString(str)
 end
 
+etherVlanHeader.setSrcString = etherHeader.setSrcString
+
 --- Retrieve the source MAC address.
 --- @return Address in string format.
 function etherHeader:getSrcString()
 	return self.src:getString()
 end
+
+etherVlanHeader.getSrcString = etherHeader.getSrcString
 
 --- Set the EtherType.
 --- @param int EtherType as 16 bit integer.
@@ -164,10 +184,23 @@ function etherHeader:setType(int)
 	self.type = hton16(int)
 end
 
+etherVlanHeader.setType = etherHeader.setType
+
 --- Retrieve the EtherType.
 --- @return EtherType as 16 bit integer.
 function etherHeader:getType()
 	return hton16(self.type)
+end
+
+etherVlanHeader.getType = etherHeader.getType
+
+function etherVlanHeader:getVlanTag()
+	return bit.band(hton16(self.vlan_tag), 0xFFF)
+end
+
+--- Set the full vlan tag, including the PCP and DEI bits (upper 4 bits)
+function etherVlanHeader:setVlanTag(int)
+	self.vlan_tag = hton16(int)
 end
 
 --- Retrieve the ether type.
@@ -192,6 +225,8 @@ function etherHeader:getTypeString()
 
 	return format("0x%04x %s", type, cleartext)
 end
+
+etherVlanHeader.getTypeString = etherHeader.getTypeString
 
 --- Set all members of the ethernet header.
 --- Per default, all members are set to default values specified in the respective set function.
@@ -230,6 +265,13 @@ function etherHeader:fill(args, pre)
 	self:setType(args[pre .. "Type"])
 end
 
+function etherVlanHeader:fill(args, pre)
+	self.vlan_id = 0x0081
+	local vlanTag = args[pre .. "Vlan"] or 1
+	self:setVlanTag(vlanTag)
+	etherHeader.fill(self, args, pre)
+end
+
 --- Retrieve the values of all members.
 --- @param pre Prefix for namedArgs. Default 'eth'.
 --- @return Table of named arguments. For a list of arguments see "See Also".
@@ -245,10 +287,21 @@ function etherHeader:get(pre)
 	return args
 end
 
+function etherVlanHeader:get(pre)
+	pre = pre or "eth"
+	local args = etherHeader.get(self, pre)
+	args[pre .. "Vlan"] = self:getVlanTag()
+	return args
+end
+
 --- Retrieve the values of all members.
 --- @return Values in string format.
 function etherHeader:getString()
 	return "ETH " .. self:getSrcString() .. " > " .. self:getDstString() .. " type " .. self:getTypeString()
+end
+
+function etherVlanHeader:getString()
+	return "ETH " .. self:getSrcString() .. " > " .. self:getDstString() .. " vlan " .. self:getVlanTag() .. " type " .. self:getTypeString()
 end
 
 -- Maps headers to respective types.
@@ -276,6 +329,8 @@ function etherHeader:resolveNextHeader()
 	return nil
 end
 
+etherVlanHeader.resolveNextHeader = etherHeader.resolveNextHeader
+
 --- Change the default values for namedArguments (for fill/get).
 --- This can be used to for instance calculate a length value based on the total packet length.
 --- See proto/ip4.setDefaultNamedArgs as an example.
@@ -302,6 +357,8 @@ function etherHeader:setDefaultNamedArgs(pre, namedArgs, nextHeader, accumulated
 	return namedArgs
 end
 
+etherVlanHeader.setDefaultNamedArgs = etherHeader.setDefaultNamedArgs
+
 
 ----------------------------------------------------------------------------------
 ---- Packets
@@ -309,8 +366,10 @@ end
 
 --- Cast the packet to an ethernet packet
 pkt.getEthernetPacket = packetCreate("eth")
---- Cast the packet to an ethernet packet (alias for pkt.getEthernetPacket)
+pkt.getEthernetVlanPacket = packetCreate("eth_8021q")
+--- alias for pkt.getEthernet*Packet
 pkt.getEthPacket = pkt.getEthernetPacket
+pkt.getEthVlanPacket = pkt.getEthernetVlanPacket
 
 
 ----------------------------------------------------------------------------------
@@ -319,6 +378,7 @@ pkt.getEthPacket = pkt.getEthernetPacket
 
 ffi.metatype("union mac_address", macAddr)
 ffi.metatype("struct ethernet_header", etherHeader)
+ffi.metatype("struct ethernet_8021q_header", etherVlanHeader)
 
 
 return eth
