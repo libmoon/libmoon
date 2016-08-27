@@ -39,6 +39,7 @@ local ETQF_QUEUE_ENABLE    = bit.lshift(1, 31)
 dev.linkWaitTime = 18
 
 dev.timeRegisters = {SYSTIMEL, SYSTIMEH, TIMEADJL, TIMEADJH}
+dev.crcPatch      = true
 
 ffi.cdef[[
 int phobos_igb_reset_timecounters(uint32_t port_id);

@@ -34,6 +34,11 @@ local ETQS_QUEUE_ENABLE    = bit.lshift(1, 31)
 
 dev.supportsFdir  = true
 dev.timeRegisters = {SYSTIMEL, SYSTIMEH, TIMEADJL, TIMEADJH}
+dev.crcPatch      = true
+
+-- magic values for the CRC based rate control in moongen
+dev.minPacketSize = 14   -- yes, this NIC can send out packets that are that small without padding :)
+dev.maxPacketRate = 16.4 -- maximum rate with illegally small packets
 
 -- ixgbe does not count bytes dropped due to buffer space and the packet drop counters seem to be empty
 -- however, we want to count all packets *at the NIC level* regardless whether they were fetched by the driver or not
