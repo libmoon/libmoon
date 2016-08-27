@@ -157,6 +157,10 @@ formatters["nil"] = {
 
 --- base constructor for rx and tx counters
 local function newCounter(ctrType, name, dev, format, file)
+	name = tostring(name)
+	if name:sub(1, 1) == "[" and name:sub(#name, #name) == "]" then
+		name = name:sub(2, #name - 1)
+	end
 	format = format or "plain"
 	file = file or io.stdout
 	local closeFile = false
