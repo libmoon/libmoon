@@ -705,6 +705,10 @@ function txQueue:setRate(rate)
 	end
 end
 
+function txQueue:setRateMpps(rate, pktSize)
+	pktSize = pktSize or 60
+	self:setRate(rate * (pktSize + 4) * 8)
+end
 
 
 function txQueue:send(bufs)
