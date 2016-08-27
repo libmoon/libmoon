@@ -21,6 +21,8 @@ namespace phobos {
 		std::string base = base_dir;
 		std::stringstream ss;
 		ss << "'";
+		if (extra_lua_path)
+			ss << extra_lua_path;
 		ss << base << "/lua/?.lua;";
 		ss << base << "/lua/?/init.lua;";
 		ss << base << "/lua/lib/?.lua;";
