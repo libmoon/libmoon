@@ -91,13 +91,6 @@ function pkt:getVlan()
 	return bit.band(tci, 0xFFF), bit.rshift(tci, 13), bit.band(bit.rshift(tci, 12), 1)
 end
 
-local uint64Ptr = ffi.typeof("uint64_t*")
-
-function pkt:getSoftwareTxTimestamp(offs)
-	local offs = offs and offs / 8 or 6 -- default from sendWithTimestamp
-	return uint64Ptr(self:getData())[offs]
-end
-
 function pkt:getSoftwareRxTimestamp(offs)
 	log:fatal("requires DPDK 2.x, use old API for now")
 end
