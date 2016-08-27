@@ -446,8 +446,8 @@ function strError(err)
 end
 
 function checkDpdkError(err, msg, lvl)
-	local log = require "log"
 	if err ~= 0 then
+		local log = require "log"
 		log[lvl or "warn"](log, "Error %s: %s", msg, strError(err))
 	end
 	return true
