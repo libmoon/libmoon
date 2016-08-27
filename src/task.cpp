@@ -12,6 +12,7 @@ extern "C" {
 
 #include <rte_launch.h>
 
+#include "config.h"
 #include "task.hpp"
 #include "main.hpp"
 
@@ -35,7 +36,7 @@ namespace phobos {
 		lua_State* L = luaL_newstate();
 		luaL_openlibs(L);
 		luaL_dostring(L, (std::string("package.path = package.path .. ';' .. ") + build_lua_path()).c_str());
-		if (luaL_dostring(L, "require 'main'")) {
+		if (luaL_dostring(L, "require '" PHOBOS_LUA_MAIN_MODULE "'")) {
 			std::cerr << "Could not run main script: " << lua_tostring(L, -1) << std::endl;
 			std::abort();
 		}
