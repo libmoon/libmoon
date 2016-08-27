@@ -105,6 +105,7 @@ local cacheEnabled = false
 --- properly in all cases.
 --- For example, mempools passed to other tasks will probably break stuff.
 function mod.enableCache()
+	log:warn("mempool cache is currently broken, this will probably crash")
 	cacheEnabled = true
 end
 
