@@ -91,20 +91,6 @@ function pkt:getVlan()
 	return bit.band(tci, 0xFFF), bit.rshift(tci, 13), bit.band(bit.rshift(tci, 12), 1)
 end
 
-function pkt:getSoftwareRxTimestamp(offs)
-	log:fatal("requires DPDK 2.x, use old API for now")
-end
-
---- Set the time to wait before the packet is sent for software rate-controlled send methods.
---- @param delay The time to wait before this packet \(in bytes, i.e. 1 == 0.8 nanoseconds on 10 GbE\)
-function pkt:setDelay(delay)
-	self.hash.rss = delay
-end
-
---- @todo TODO docu
-function pkt:setRate(rate)
-	self.hash.rss = 10^10 / 8 / (rate * 10^6) - self.pkt_len - 24
-end
 
 --- @todo TODO does
 function pkt:setSize(size)
