@@ -509,6 +509,14 @@ function dev:hasRxTimestamp()
 	self:unsupported("rx timestamping")
 end
 
+--- Reads the clock of the device
+function dev:readTime()
+	local ts = ffi.new("struct timespec")
+	local res = dpdkc.rte_eth_timesync_read_time(self.id, ts)
+	checkDpdkError(res, "reading device time")
+	return tonumber(ts.tv_sec) * 10^9 + tonumber(ts.tv_nsec)
+end
+
 function dev:filterL2Timestamps(queue)
 	local qid = type(queue) == "number" and queue or queue.qid
 	if qid == 0 then

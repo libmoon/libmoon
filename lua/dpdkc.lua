@@ -312,6 +312,7 @@ ffi.cdef[[
 	int rte_eth_timesync_enable(uint8_t port_id);
 	int rte_eth_timesync_read_tx_timestamp(uint8_t port_id, struct timespec* timestamp);
 	int rte_eth_timesync_read_rx_timestamp(uint8_t port_id, struct timespec* timestamp, uint32_t timesync);
+	int rte_eth_timesync_read_time(uint8_t port_id, struct timespec* time);
 	void phobos_sync_clocks(uint8_t port1, uint8_t port2, uint32_t timl, uint32_t timh, uint32_t adjl, uint32_t adjh);
 
 
