@@ -517,6 +517,12 @@ function dev:filterL2Timestamps(queue)
 	self:l2Filter(eth.TYPE_PTP, queue)
 end
 
+--- @deprecated
+function dev:filterTimestamps(queue)
+	log:warn("device:filterTimestamps(q) is deprecated and will be removed. Use queue:filterUdpTimestamps() instead. Or use the timestamper class which handles this for you.")
+	queue:filterUdpTimestamps()
+end
+
 --- Resets DPDKs internal tracking of device cycle counters.
 function dev:resetTimeCounters()
 	self:unsupported("Time counter tracking")
