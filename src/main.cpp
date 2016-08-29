@@ -8,6 +8,7 @@
 #include <iostream>
 #include <vector>
 #include <sstream>
+#include <stdexcept>
 
 extern "C" {
 #include <lauxlib.h>
