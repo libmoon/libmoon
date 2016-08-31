@@ -7,6 +7,7 @@ mod.rte_i40e_pmd = require "driver.i40e"
 mod.rte_ixgbe_pmd = require "driver.ixgbe"
 mod.rte_igb_pmd = require "driver.igb"
 mod.rte_virtio_pmd = require "driver.virtio"
+mod.rte_vmxnet3_pmd = require "driver.vmxnet3"
 
 function mod.initDriver(dev)
 	local device = require "device"
