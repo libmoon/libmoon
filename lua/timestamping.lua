@@ -122,9 +122,13 @@ function timestamper:measureLatency(pktSize, packetModifier, maxWait)
 						end
 						self.rxBufs:freeAll()
 						local lat = rxTs - tx
-						if lat > 0 then
+						if lat > 0 and lat < 2 * maxWait * 10^6 then
 							-- negative latencies may happen if the link state changes
 							-- (timers depend on a clock that scales with link speed on some NICs)
+							-- really large latencies (we only wait for up to maxWait ms)
+							-- also sometimes happen since changing to DPDK for reading the timing registers
+							-- probably something wrong with the DPDK wraparound tracking
+							-- (but that's really rare and the resulting latency > a few days, so we don't really care)
 							return lat
 						end
 					elseif buf:hasTimestamp() and (seq == timestampedPkt or timestampedPkt == -1) then
