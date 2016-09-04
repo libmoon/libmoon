@@ -273,7 +273,7 @@ void dpdk_send_all_packets(uint8_t port_id, uint16_t queue_id, struct rte_mbuf**
 // this prevents potential gc/jit pauses right between the rdtsc and rx calls
 uint16_t dpdk_receive_with_timestamps_software(uint8_t port_id, uint16_t queue_id, struct rte_mbuf* rx_pkts[], uint16_t nb_pkts) {
 	uint32_t cycles_per_byte = rte_get_tsc_hz() / 10000000.0 / 0.8;
-	while (is_running()) {
+	while (is_running(0)) {
 		uint64_t tsc = read_rdtsc();
 		uint16_t rx = rte_eth_rx_burst(port_id, queue_id, rx_pkts, nb_pkts);
 		uint16_t prev_pkt_size = 0;
