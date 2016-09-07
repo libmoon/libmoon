@@ -396,7 +396,7 @@ end
 --- Set the window field.
 --- @param int Window as 16 bit integer.
 function tcpHeader:setWindow(int)
-	int = int or 0
+	int = int or 29200
 	self.window = hton16(int)
 end
 
