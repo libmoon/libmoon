@@ -51,29 +51,6 @@ function tonumberall(...)
 	return mapVarArg(tonumber, ...)
 end
 
---- Number to binary string
---- @param num The number (lua number type)
---- @param bits Number of bits for binary representation. Default: 32
---- @return Number as string in binary representation
-function toBinary(num, bits)
-	bits = bits or 32
-	local t = {}
-	local invert = false
-	if num < 0 then
-		num = math.abs(num) - 1
-		invert = true
-	end
-	local t={} -- will contain the bits        
-    for b=bits, 1, -1 do
-        t[b]=math.fmod(num,2)
-		if invert then
-			t[b] = t[b] + 1 % 2
-		end
-        num=(num-t[b])/2
-    end
-    return table.concat(t)
-end
-
 function toCsv(...)
 	local vals = { tostringall(...) }
 	for i, v in ipairs(vals) do
