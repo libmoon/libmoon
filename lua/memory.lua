@@ -404,6 +404,15 @@ function bufArray:free(n)
 	end
 end
 
+--- Free the all buffers after index n.
+function bufArray:freeAfter(n)
+	for i = n, self.size - 1 do
+		if self.array[i] ~= nil then
+			dpdkc.rte_pktmbuf_free_export(self.array[i])
+		end
+	end
+end
+
 function bufArray.__index(self, k)
 	-- TODO: is this as fast as I hope it to be?
 	return type(k) == "number" and self.array[k - 1] or bufArray[k]
