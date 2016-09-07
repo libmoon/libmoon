@@ -377,7 +377,12 @@ function dev:wait(maxWait)
 		end
 	until link.status
 	self.speed = link.speed
-	log:info("Device %d (%s) is %s: %s%s Mbit/s", self.id, self:getMacString(), link.status and "up" or "DOWN", link.duplexAutoneg and "" or link.duplex and "full-duplex " or "half-duplex ", link.speed)
+	local out = string.format("Device %d (%s) is %s: %s%s MBit/s", self.id, self:getMacString(), link.status and "up" or "DOWN", link.duplexAutoneg and "" or link.duplex and "full-duplex " or "half-duplex ", link.speed)
+	if link.status then
+		log:info(out)
+	else
+		log:error(out)
+	end
 	return link.status
 end
 
