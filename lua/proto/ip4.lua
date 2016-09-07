@@ -40,6 +40,9 @@ ip.PROTO_UDP	= 0x11
 ip.PROTO_ESP	= 0x32
 ip.PROTO_AH	= 0x33
 
+--- Special addresses
+--- Null address
+ip.NULL	= "0.0.0.0"
 
 ----------------------------------------------------------------------------------
 ---- IPv4 addresses
