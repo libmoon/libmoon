@@ -269,6 +269,17 @@ void dpdk_send_all_packets(uint8_t port_id, uint16_t queue_id, struct rte_mbuf**
 	return;
 }
 
+void dpdk_send_single_packet(uint8_t port_id, uint16_t queue_id, struct rte_mbuf* pkt) {
+	uint32_t sent = 0;
+	while (1) {
+		sent = rte_eth_tx_burst(port_id, queue_id, &pkt, 1);
+		if (sent > 0) {
+			return;
+		}
+	}
+	return;
+}
+
 // receive packets and save the tsc at the time of the rx call
 // this prevents potential gc/jit pauses right between the rdtsc and rx calls
 uint16_t dpdk_receive_with_timestamps_software(uint8_t port_id, uint16_t queue_id, struct rte_mbuf* rx_pkts[], uint16_t nb_pkts) {
