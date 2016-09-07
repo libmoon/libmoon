@@ -248,18 +248,18 @@ function tcpHeader:unsetUrg()
 end
 
 --- Retrieve the Urg flag.
---- @return Flag as 1 bit integer.
+--- @return Flag as bool.
 function tcpHeader:getUrg()
-	return rshift(band(self.flags, 0x20), 5)
+	return rshift(band(self.flags, 0x20), 5) == 1
 end
 
 --- Retrieve the Urg flag.
 --- @return Flag in string format.
 function tcpHeader:getUrgString()
-	if self:getUrg() == 1 then
+	if self:getUrg() then
 		return "URG"
 	else
-		return "X"
+		return "-"
 	end
 end
 
@@ -274,18 +274,18 @@ function tcpHeader:unsetAck()
 end
 
 --- Retrieve the Ack flag.
---- @return Flag as 1 bit integer.
+--- @return Flag as bool.
 function tcpHeader:getAck()
-	return rshift(band(self.flags, 0x10), 4)
+	return rshift(band(self.flags, 0x10), 4) == 1
 end
 
 --- Retrieve the Ack flag.
 --- @return Flag in string format.
 function tcpHeader:getAckString()
-	if self:getAck() == 1 then
+	if self:getAck() then
 		return "ACK"
 	else
-		return "X"
+		return "-"
 	end
 end
 
@@ -300,18 +300,18 @@ function tcpHeader:unsetPsh()
 end
 
 --- Retrieve the Psh flag.
---- @return Flag as 1 bit integer.
+--- @return Flag as bool.
 function tcpHeader:getPsh()
-	return rshift(band(self.flags, 0x08), 3)
+	return rshift(band(self.flags, 0x08), 3) == 1
 end
 
 --- Retrieve the Psh flag.
 --- @return Flag in string format.
 function tcpHeader:getPshString()
-	if self:getPsh() == 1 then
+	if self:getPsh() then
 		return "PSH"
 	else
-		return "X"
+		return "-"
 	end
 end
 
@@ -326,18 +326,18 @@ function tcpHeader:unsetRst()
 end
 
 --- Retrieve the Rst flag.
---- @return Flag as 1 bit integer.
+--- @return Flag as bool.
 function tcpHeader:getRst()
-	return rshift(band(self.flags, 0x04), 2)
+	return rshift(band(self.flags, 0x04), 2) == 1
 end
 
 --- Retrieve the Rst flag.
 --- @return Flag in string format.
 function tcpHeader:getRstString()
-	if self:getRst() == 1 then
+	if self:getRst() then
 		return "RST"
 	else
-		return "X"
+		return "-"
 	end
 end
 
@@ -352,18 +352,18 @@ function tcpHeader:unsetSyn()
 end
 
 --- Retrieve the Syn flag.
---- @return Flag as 1 bit integer.
+--- @return Flag as bool.
 function tcpHeader:getSyn()
-	return rshift(band(self.flags, 0x02), 1)
+	return rshift(band(self.flags, 0x02), 1) == 1
 end
 
 --- Retrieve the Syn flag.
 --- @return Flag in string format.
 function tcpHeader:getSynString()
-	if self:getSyn() == 1 then
+	if self:getSyn() then
 		return "SYN"
 	else
-		return "X"
+		return "-"
 	end
 end
 
@@ -378,18 +378,18 @@ function tcpHeader:unsetFin()
 end
 
 --- Retrieve the Fin flag.
---- @return Flag as 1 bit integer.
+--- @return Flag as bool.
 function tcpHeader:getFin()
-	return band(self.flags, 0x01)
+	return band(self.flags, 0x01) == 1
 end
 
 --- Retrieve the Fin flag.
 --- @return Flag in string format.
 function tcpHeader:getFinString()
-	if self:getFin() == 1 then
+	if self:getFin() then
 		return "FIN"
 	else
-		return "X"
+		return "-"
 	end
 end
 
