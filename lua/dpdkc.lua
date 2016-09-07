@@ -285,7 +285,7 @@ ffi.cdef[[
 	int rte_eth_dev_tx_queue_start(uint8_t port_id, uint16_t rx_queue_id);
 	int rte_eth_dev_tx_queue_stop(uint8_t port_id, uint16_t rx_queue_id);
 	void dpdk_send_all_packets(uint8_t port_id, uint16_t queue_id, struct rte_mbuf** pkts, uint16_t num_pkts);
-	void send_single_packet(uint8_t port_id, uint16_t queue_id, struct rte_mbuf* pkt);
+	void dpdk_send_single_packet(uint8_t port_id, uint16_t queue_id, struct rte_mbuf* pkt);
 
 	// stats
 	uint32_t dpdk_get_rte_queue_stat_cntrs_num();

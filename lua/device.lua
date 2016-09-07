@@ -724,7 +724,7 @@ end
 
 function txQueue:sendSingle(buf)
 	self.used = true
-	dpdkc.send_single_packet(self.id, self.qid, buf)
+	dpdkc.dpdk_send_single_packet(self.id, self.qid, buf)
 	return 1
 end
 

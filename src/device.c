@@ -269,7 +269,7 @@ void dpdk_send_all_packets(uint8_t port_id, uint16_t queue_id, struct rte_mbuf**
 	return;
 }
 
-void send_single_packet(uint8_t port_id, uint16_t queue_id, struct rte_mbuf* pkt) {
+void dpdk_send_single_packet(uint8_t port_id, uint16_t queue_id, struct rte_mbuf* pkt) {
 	uint32_t sent = 0;
 	while (1) {
 		sent = rte_eth_tx_burst(port_id, queue_id, &pkt, 1);
