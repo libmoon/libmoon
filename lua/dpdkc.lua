@@ -221,10 +221,10 @@ ffi.cdef[[
 		uint16_t tx_queues;
 		uint16_t rx_descs;
 		uint16_t tx_descs;
-		bool drop_enable;
-		bool enable_rss;
-		bool disable_offloads;
-		bool strip_vlan;
+		uint8_t drop_enable;
+		uint8_t enable_rss;
+		uint8_t disable_offloads;
+		uint8_t strip_vlan;
 		uint32_t rss_mask;
 	};
 ]]
