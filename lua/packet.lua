@@ -199,15 +199,14 @@ end
 --- @param l2Len Length of the layer 2 header in bytes (default 14 bytes for ethernet).
 --- @param l3Len Length of the layer 3 header in bytes (default 20 bytes for IPv4).
 function pkt:offloadIPChecksum(ipv4, l2Len, l3Len)
-	-- NOTE: this method cannot be moved to the udpPacket class because it doesn't (and can't) know the pktbuf it belongs to
 	ipv4 = ipv4 == nil or ipv4
 	l2Len = l2Len or 14
 	if ipv4 then
 		l3Len = l3Len or 20
-		self.ol_flags = bit.bor(self.ol_flags, dpdk.PKT_TX_IPV4, dpdk.PKT_TX_IP_CKSUM, dpdk.PKT_TX_TCP_CKSUM)
+		self.ol_flags = bit.bor(self.ol_flags, dpdk.PKT_TX_IPV4, dpdk.PKT_TX_IP_CKSUM)
 	else
 		l3Len = l3Len or 40
-		self.ol_flags = bit.bor(self.ol_flags, dpdk.PKT_TX_IPV4, dpdk.PKT_TX_IP_CKSUM, dpdk.PKT_TX_TCP_CKSUM)
+		self.ol_flags = bit.bor(self.ol_flags, dpdk.PKT_TX_IPV4, dpdk.PKT_TX_IP_CKSUM)
 	end
 	self.tx_offload = l2Len + l3Len * 128
 end
