@@ -37,7 +37,7 @@ local packetType = ffi.typeof("pcaprec_hdr_t")
 local packetPointer = ffi.typeof("pcaprec_hdr_t*")
 local voidPointer = ffi.typeof("void*")
 
-local INITIAL_FILE_SIZE = 16 * 1024 * 1024
+local INITIAL_FILE_SIZE = 512 * 1024 * 1024
 
 local writer = {}
 writer.__index = writer
@@ -70,7 +70,7 @@ function mod:newWriter(filename, startTime)
 	end
 	local ptr = S.mmap(nil, size, "write", "shared, noreserve", fd, 0)
 	if not ptr then
-		log:fatal("mmap failed")
+		log:fatal("mmap failed: %s", strError(S.errno()))
 	end
 	local offset = writeHeader(ptr)
 	ptr = cast("uint8_t*", ptr)
@@ -83,7 +83,7 @@ function writer:resize(size)
 	end
 	local ptr = S.mremap(self.ptr, self.size, size, "maymove")
 	if not ptr then
-		log:fatal("mremap failed")
+		log:fatal("mremap failed: %s", strError(S.errno()))
 	end
 	self.ptr = cast("uint8_t*", ptr)
 	self.size = size
@@ -91,9 +91,9 @@ end
 
 --- Close and truncate the file.
 function writer:close()
+	S.munmap(self.ptr, self.size)
 	S.ftruncate(self.fd, self.offset)
 	S.fsync(self.fd)
-	S.munmap(self.ptr, self.size)
 	S.close(self.fd)
 	self.fd = nil
 	self.ptr = nil
