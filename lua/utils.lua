@@ -13,16 +13,6 @@ function printf(str, ...)
 	return print(str:format(...))
 end
 
-ffi.cdef[[
-void print_ptr(void* ptr);
-]]
-
---- Print a C pointer
--- @param ptr The pointer to print
-function printPtr(ptr)
-	ffi.Cprint_ptr(ptr)
-end
-
 --- Equivalent to error(str:format(...))
 function errorf(str, ...)
 	error(str:format(...), 2)
