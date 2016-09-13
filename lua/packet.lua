@@ -43,6 +43,10 @@ function pkt:getTimesync()
 	return self.timesync
 end
 
+function pkt:dumpFlags()
+	log:debug(tostring(self.ol_flags) .. " " .. tostring(self.tx_offload))
+end
+
 --- Retrieve the time stamp information.
 --- @return The timestamp or nil if the packet was not time stamped.
 function pkt:getTimestamp()
@@ -91,27 +95,6 @@ function pkt:getVlan()
 	return bit.band(tci, 0xFFF), bit.rshift(tci, 13), bit.band(bit.rshift(tci, 12), 1)
 end
 
-local uint64Ptr = ffi.typeof("uint64_t*")
-
-function pkt:getSoftwareTxTimestamp(offs)
-	local offs = offs and offs / 8 or 6 -- default from sendWithTimestamp
-	return uint64Ptr(self:getData())[offs]
-end
-
-function pkt:getSoftwareRxTimestamp(offs)
-	log:fatal("requires DPDK 2.x, use old API for now")
-end
-
---- Set the time to wait before the packet is sent for software rate-controlled send methods.
---- @param delay The time to wait before this packet \(in bytes, i.e. 1 == 0.8 nanoseconds on 10 GbE\)
-function pkt:setDelay(delay)
-	self.hash.rss = delay
-end
-
---- @todo TODO docu
-function pkt:setRate(rate)
-	self.hash.rss = 10^10 / 8 / (rate * 10^6) - self.pkt_len - 24
-end
 
 --- @todo TODO does
 function pkt:setSize(size)
@@ -216,15 +199,14 @@ end
 --- @param l2Len Length of the layer 2 header in bytes (default 14 bytes for ethernet).
 --- @param l3Len Length of the layer 3 header in bytes (default 20 bytes for IPv4).
 function pkt:offloadIPChecksum(ipv4, l2Len, l3Len)
-	-- NOTE: this method cannot be moved to the udpPacket class because it doesn't (and can't) know the pktbuf it belongs to
 	ipv4 = ipv4 == nil or ipv4
 	l2Len = l2Len or 14
 	if ipv4 then
 		l3Len = l3Len or 20
-		self.ol_flags = bit.bor(self.ol_flags, dpdk.PKT_TX_IPV4, dpdk.PKT_TX_IP_CKSUM, dpdk.PKT_TX_TCP_CKSUM)
+		self.ol_flags = bit.bor(self.ol_flags, dpdk.PKT_TX_IPV4, dpdk.PKT_TX_IP_CKSUM)
 	else
 		l3Len = l3Len or 40
-		self.ol_flags = bit.bor(self.ol_flags, dpdk.PKT_TX_IPV4, dpdk.PKT_TX_IP_CKSUM, dpdk.PKT_TX_TCP_CKSUM)
+		self.ol_flags = bit.bor(self.ol_flags, dpdk.PKT_TX_IPV4, dpdk.PKT_TX_IP_CKSUM)
 	end
 	self.tx_offload = l2Len + l3Len * 128
 end

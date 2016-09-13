@@ -51,10 +51,10 @@ struct phobos_device_config {
 	uint16_t tx_queues;
 	uint16_t rx_descs;
 	uint16_t tx_descs;
-	bool drop_enable;
-	bool enable_rss;
-	bool disable_offloads;
-	bool strip_vlan;
+	uint8_t drop_enable;
+	uint8_t enable_rss;
+	uint8_t disable_offloads;
+	uint8_t strip_vlan;
 	uint32_t rss_mask;
 };
 
@@ -269,11 +269,22 @@ void dpdk_send_all_packets(uint8_t port_id, uint16_t queue_id, struct rte_mbuf**
 	return;
 }
 
+void dpdk_send_single_packet(uint8_t port_id, uint16_t queue_id, struct rte_mbuf* pkt) {
+	uint32_t sent = 0;
+	while (1) {
+		sent = rte_eth_tx_burst(port_id, queue_id, &pkt, 1);
+		if (sent > 0) {
+			return;
+		}
+	}
+	return;
+}
+
 // receive packets and save the tsc at the time of the rx call
 // this prevents potential gc/jit pauses right between the rdtsc and rx calls
 uint16_t dpdk_receive_with_timestamps_software(uint8_t port_id, uint16_t queue_id, struct rte_mbuf* rx_pkts[], uint16_t nb_pkts) {
 	uint32_t cycles_per_byte = rte_get_tsc_hz() / 10000000.0 / 0.8;
-	while (is_running()) {
+	while (is_running(0)) {
 		uint64_t tsc = read_rdtsc();
 		uint16_t rx = rte_eth_rx_burst(port_id, queue_id, rx_pkts, nb_pkts);
 		uint16_t prev_pkt_size = 0;

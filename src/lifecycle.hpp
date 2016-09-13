@@ -3,7 +3,7 @@
 
 namespace phobos {
 	void install_signal_handlers();
-	uint8_t is_running();
+	uint8_t is_running(uint32_t extra_time);
 }
 
 #endif

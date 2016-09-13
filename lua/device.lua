@@ -377,7 +377,12 @@ function dev:wait(maxWait)
 		end
 	until link.status
 	self.speed = link.speed
-	log:info("Device %d (%s) is %s: %s%s Mbit/s", self.id, self:getMacString(), link.status and "up" or "DOWN", link.duplexAutoneg and "" or link.duplex and "full-duplex " or "half-duplex ", link.speed)
+	local out = string.format("Device %d (%s) is %s: %s%s MBit/s", self.id, self:getMacString(), link.status and "up" or "DOWN", link.duplexAutoneg and "" or link.duplex and "full-duplex " or "half-duplex ", link.speed)
+	if link.status then
+		log:info(out)
+	else
+		log:error(out)
+	end
 	return link.status
 end
 
@@ -509,12 +514,26 @@ function dev:hasRxTimestamp()
 	self:unsupported("rx timestamping")
 end
 
+--- Reads the clock of the device
+function dev:readTime()
+	local ts = ffi.new("struct timespec")
+	local res = dpdkc.rte_eth_timesync_read_time(self.id, ts)
+	checkDpdkError(res, "reading device time")
+	return tonumber(ts.tv_sec) * 10^9 + tonumber(ts.tv_nsec)
+end
+
 function dev:filterL2Timestamps(queue)
 	local qid = type(queue) == "number" and queue or queue.qid
 	if qid == 0 then
 		return
 	end
 	self:l2Filter(eth.TYPE_PTP, queue)
+end
+
+--- @deprecated
+function dev:filterTimestamps(queue)
+	log:warn("device:filterTimestamps(q) is deprecated and will be removed. Use queue:filterUdpTimestamps() instead. Or use the timestamper class which handles this for you.")
+	queue:filterUdpTimestamps()
 end
 
 --- Resets DPDKs internal tracking of device cycle counters.
@@ -691,12 +710,22 @@ function txQueue:setRate(rate)
 	end
 end
 
+function txQueue:setRateMpps(rate, pktSize)
+	pktSize = pktSize or 60
+	self:setRate(rate * (pktSize + 4) * 8)
+end
 
 
 function txQueue:send(bufs)
 	self.used = true
 	dpdkc.dpdk_send_all_packets(self.id, self.qid, bufs.array, bufs.size)
 	return bufs.size
+end
+
+function txQueue:sendSingle(buf)
+	self.used = true
+	dpdkc.dpdk_send_single_packet(self.id, self.qid, buf)
+	return 1
 end
 
 function txQueue:sendN(bufs, n)

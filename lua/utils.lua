@@ -13,16 +13,6 @@ function printf(str, ...)
 	return print(str:format(...))
 end
 
-ffi.cdef[[
-void print_ptr(void* ptr);
-]]
-
---- Print a C pointer
--- @param ptr The pointer to print
-function printPtr(ptr)
-	ffi.Cprint_ptr(ptr)
-end
-
 --- Equivalent to error(str:format(...))
 function errorf(str, ...)
 	error(str:format(...), 2)
@@ -446,11 +436,40 @@ function strError(err)
 end
 
 function checkDpdkError(err, msg, lvl)
-	local log = require "log"
 	if err ~= 0 then
+		local log = require "log"
 		log[lvl or "warn"](log, "Error %s: %s", msg, strError(err))
 	end
 	return true
+end
+
+-- Deep copy's a table, and returns the copy.
+-- @param orig The original table to copy.
+function deepCopy(orig)
+	local origType = type(orig)
+	local copy
+	if origType == "table" then
+		copy = {}
+		for k,v in next, orig, nil do
+			copy[deepCopy(k)] = deepCopy(v)
+		end
+		setmetatable(copy, deepCopy(getmetatable(orig)))
+	else -- simple type
+		copy = orig
+	end
+	return copy
+end
+
+-- Generates a random packet size according to IMIX.
+function imixSize()
+	local rnum = math.random(12)
+	if rnum == 1 then         -- 1 in 12 : [1 - 10]   : 10 / 120
+		return 1518
+	elseif rnum <= 5 then     -- 4 in 12 : [11 - 50]  : 40 / 120
+		return 574
+	else                      -- 7 in 12 : [51 - 120] : 70 / 120
+		return 68
+	end
 end
 
 function waitForFunc(wait, f, ...)

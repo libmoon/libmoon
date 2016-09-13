@@ -1,5 +1,7 @@
 #pragma once
 #include <stdint.h>
+#include <rte_config.h>
+#include <rte_mbuf.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -16,6 +18,7 @@ uint8_t dpdk_get_socket(uint8_t port);
 uint32_t read_reg32(uint8_t port, uint32_t reg);
 void write_reg32(uint8_t port, uint32_t reg, uint32_t val);
 volatile uint32_t* get_reg_addr(uint8_t port, uint32_t reg);
+void dpdk_send_all_packets(uint8_t port_id, uint16_t queue_id, struct rte_mbuf** pkts, uint16_t num_pkts);
 
 #ifdef __cplusplus
 }

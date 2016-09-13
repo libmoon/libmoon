@@ -7,6 +7,8 @@
 
 #include <iostream>
 #include <vector>
+#include <sstream>
+#include <stdexcept>
 
 extern "C" {
 #include <lauxlib.h>
@@ -20,6 +22,7 @@ extern "C" {
 namespace phobos {
 
 	const char* base_dir;
+	const char* extra_lua_path;
 
 	void find_base_dir_fail() {
 		std::cerr << "Could not find base dir" << std::endl;
@@ -68,6 +71,17 @@ namespace phobos {
 		}
 		// make a copy, we need this in all new threads
 		base_dir = (new std::string(find_base_dir(check_dirs)))->c_str();
+	}
+
+	void setup_extra_lua_path(std::vector<std::string> paths) {
+		if (!base_dir) {
+			throw std::logic_error("base_dir must be set first");
+		}
+		std::stringstream ss;
+		for (auto path: paths) {
+			ss << base_dir << "/" << path << ";";
+		}
+		extra_lua_path = (new std::string(ss.str()))->c_str();
 	}
 
 	void print_usage(const std::string app_name) {

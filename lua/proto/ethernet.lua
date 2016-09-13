@@ -44,8 +44,11 @@ eth.TYPE_8021Q = 0x8100
 --- EtherType for LACP (Actually, 'Slow Protocols')
 eth.TYPE_LACP = 0x8809
 
+--- Special addresses
 --- Ethernet broadcast address
-eth.BROADCAST = "ff:ff:ff:ff:ff:ff"
+eth.BROADCAST	= "ff:ff:ff:ff:ff:ff"
+--- Invalid null address
+eth.NULL	= "00:00:00:00:00:00"
 
 
 ------------------------------------------------------------------------

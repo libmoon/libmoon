@@ -157,6 +157,10 @@ formatters["nil"] = {
 
 --- base constructor for rx and tx counters
 local function newCounter(ctrType, name, dev, format, file)
+	name = tostring(name)
+	if name:sub(1, 1) == "[" and name:sub(#name, #name) == "]" then
+		name = name:sub(2, #name - 1)
+	end
 	format = format or "plain"
 	file = file or io.stdout
 	local closeFile = false
@@ -488,10 +492,16 @@ end
 ---    txDevices: list of devices to track tx stats
 ---    format: output format, cf. stats tracking documentation, default: plain
 ---    file: file to write to, default: stdout
+--- Alternative mode: just the devices as an array if you only want rx and tx stats with default settings
 function mod.startStatsTask(args)
 	args.devices = args.devices or {}
 	args.rxDevices = args.rxDevices or {}
 	args.txDevices = args.txDevices or {}
+	if #args.devices == 0 and #args.rxDevices == 0 and #args.txDevices == 0 then
+		for i, v in ipairs(args) do
+			args.devices[i] = v
+		end
+	end
 	phobos.startSharedTask("__PHOBOS_STATS_TASK", args)
 end
 

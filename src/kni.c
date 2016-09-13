@@ -68,5 +68,14 @@ struct rte_kni * mg_create_kni(uint8_t port_id, uint8_t core_id, void* mempool_p
 }
 
 unsigned mg_kni_tx_single(struct rte_kni * kni, struct rte_mbuf * mbuf){
-  return rte_kni_tx_burst(kni, &mbuf, 1);
+	while (!rte_kni_tx_burst(kni, &mbuf, 1));
+	return 1;
+}
+
+unsigned mg_kni_tx_burst(struct rte_kni * kni, struct rte_mbuf ** mbufs, unsigned num){
+	unsigned ret = 0;
+	while (ret < num) {
+		ret = rte_kni_tx_burst(kni, mbufs, num);
+	}
+	return ret;
 }

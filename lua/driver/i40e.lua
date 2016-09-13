@@ -49,6 +49,7 @@ local PRTTSYN_STAT_1_RXT_ALL     = 0xf
 dev.supportsFdir  = true
 dev.useTimsyncIds = true
 dev.timeRegisters = {PRTTSYN_TIME_L, PRTTSYN_TIME_H, PRTTSYN_ADJ, PRTTSYN_ADJ_DUMMY}
+dev.crcPatch      = true
 
 --- Set the maximum rate by all queues in Mbit/s.
 --- Only supported on XL710 NICs.
