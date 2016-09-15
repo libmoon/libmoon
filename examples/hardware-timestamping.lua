@@ -26,8 +26,10 @@ function master(args)
 	local rxQueue1 = args.dev[2]:getRxQueue(1)
 	phobos.startTask("timestamper", txQueue0, rxQueue0):wait()
 	phobos.startTask("timestamper", txQueue0, rxQueue1):wait()
+	phobos.startTask("timestamper", txQueue0, rxQueue0, nil, nil, true):wait()
 	phobos.startTask("timestamper", txQueue0, rxQueue0, 319):wait()
 	phobos.startTask("timestamper", txQueue0, rxQueue0, 1234):wait()
+	phobos.startTask("timestamper", txQueue0, rxQueue0, 319, nil, true):wait()
 	phobos.startTask("timestamper", txQueue0, rxQueue1, 319):wait()
 	phobos.startTask("timestamper", txQueue0, rxQueue1, 319, true):wait()
 	phobos.startTask("timestamper", txQueue0, rxQueue1, 319)
@@ -36,7 +38,7 @@ function master(args)
 end
 
 
-function timestamper(txQueue, rxQueue, udp, randomSrc)
+function timestamper(txQueue, rxQueue, udp, randomSrc, vlan)
 	local filter = rxQueue.qid ~= 0
 	log:info("Testing timestamping %s %s rx filtering for %d seconds.",
 		udp and "UDP packets to port " .. udp or "L2 PTP packets",
@@ -45,6 +47,9 @@ function timestamper(txQueue, rxQueue, udp, randomSrc)
 	)
 	if randomSrc then
 		log:info("Using multiple flows, this can be slower on some NICs.")
+	end
+	if vlan then
+		log:info("Adding VLAN tag, this is not supported on some NICs.")
 	end
 	local runtime = timer:new(RUN_TIME)
 	local hist = hist:new()
@@ -61,6 +66,9 @@ function timestamper(txQueue, rxQueue, udp, randomSrc)
 					buf:getUdpPacket().udp:setSrcPort(math.random(1, 1000))
 				end
 				buf:getUdpPacket().udp:setDstPort(udp)
+			end
+			if vlan then
+				buf:setVlan(1234)
 			end
 		end)
 		hist:update(lat)

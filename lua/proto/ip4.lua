@@ -31,14 +31,12 @@ local format = string.format
 --- IP4 protocol constants
 local ip = {}
 
---- Protocol field value for Icmp
-ip.PROTO_ICMP	= 0x01
---- Protocol field value for Tcp
-ip.PROTO_TCP	= 0x06
---- Protocol field value for Udp
-ip.PROTO_UDP	= 0x11
-ip.PROTO_ESP	= 0x32
-ip.PROTO_AH	= 0x33
+ip.PROTO_ICMP = 0x01
+ip.PROTO_TCP  = 0x06
+ip.PROTO_UDP  = 0x11
+ip.PROTO_ESP  = 0x32
+ip.PROTO_AH   = 0x33
+ip.PROTO_SCTP = 0x84
 
 --- Special addresses
 --- Null address

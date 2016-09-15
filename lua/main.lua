@@ -42,11 +42,13 @@ end
 local function parseCommandLineArgs(...)
 	local args = { ... }
 	local dpdkCfg
-	for i, v in ipairs(args) do
+	for i = #args, 1, -1 do
+		local v = args[i]
 		-- find --dpdk-config=foo parameter
 		local cfg, count = string.gsub(v, "%-%-dpdk%-config%=", "")
 		if count == 1 then
 			dpdkCfg = cfg
+			table.remove(args, i)
 		else
 			-- is it just a simple number?
 			if tonumber(v) then

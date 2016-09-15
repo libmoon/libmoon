@@ -13,7 +13,6 @@ SET(FILES
 	src/i40e
 	src/util
 	src/lifecycle
-	src/debug
 	src/barrier
 	src/task-results
 	src/pipe
