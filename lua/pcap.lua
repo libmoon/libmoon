@@ -9,6 +9,7 @@ local phobos = require "phobos"
 
 local cast = ffi.cast
 local memcopy = ffi.copy
+local C = ffi.C
 local min = math.min
 
 -- http://wiki.wireshark.org/Development/LibpcapFileFormat/
@@ -102,6 +103,10 @@ function writer:close()
 	self.ptr = nil
 end
 
+ffi.cdef[[
+	void phobos_write_pcap(void* dst, const void* packet, uint32_t len, uint32_t orig_len, uint32_t ts_sec, uint32_t ts_usec);
+]]
+
 --- Write a packet to the pcap file
 --- @param timestamp relative to the timestamp specified when creating the file
 function writer:write(timestamp, data, len, origLen)
@@ -109,12 +114,9 @@ function writer:write(timestamp, data, len, origLen)
 		self:resize(self.size * 2)
 	end
 	local time = self.startTime + timestamp
-	pkt = packetPointer(voidPointer(self.ptr + self.offset))
-	pkt.ts_sec = math.floor(time)
-	pkt.ts_usec = (time - math.floor(time)) * 1000000
-	pkt.incl_len = len
-	pkt.orig_len = origLen or len
-	memcopy(pkt.data, data, len)
+	local timeSec = math.floor(time)
+	local timeMicros = (time - timeSec) * 1000000
+	C.phobos_write_pcap(self.ptr + self.offset, data, len, origLen or len, time, timeMicros)
 	self.offset = self.offset + len + 16
 end
 
