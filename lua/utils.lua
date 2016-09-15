@@ -138,6 +138,8 @@ do
 		return tonumber(sec) + tonumber(usec) / 10^6
 	end
 
+	wallTime = time
+
 	local ts = ffi.new("struct timespec")
 
 	--- Return the current monotonic clock time

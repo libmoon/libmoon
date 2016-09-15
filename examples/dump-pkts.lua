@@ -77,11 +77,12 @@ function dumper(queue, args, threadId)
 	local bufs = memory.bufArray()
 	while phobos.running() do
 		local rx = queue:tryRecv(bufs, 100)
+		local batchTime = phobos.getTime()
 		for i = 1, rx do
 			local buf = bufs[i]
 			if filter(buf:getBytes(), buf:getSize()) then
 				if writer then
-					writer:writeBuf(0, buf, snapLen)
+					writer:writeBuf(batchTime, buf, snapLen)
 					captureCtr:countPacket(buf)
 				else
 					buf:dump()

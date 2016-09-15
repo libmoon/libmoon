@@ -2,9 +2,10 @@
 
 local mod = {}
 
-local S   = require "syscall"
-local ffi = require "ffi"
-local log = require "log"
+local S      = require "syscall"
+local ffi    = require "ffi"
+local log    = require "log"
+local phobos = require "phobos"
 
 local cast = ffi.cast
 local memcopy = ffi.copy
@@ -57,8 +58,9 @@ end
 --- Create a new fast pcap writer with the given file name.
 --- Call :close() on the writer when you are done.
 --- @param startTime posix timestamp, all timestamps of inserted packets will be relative to this timestamp
+---        default: relative to phobos.getTime() == 0
 function mod:newWriter(filename, startTime)
-	startTime = startTime or 0
+	startTime = startTime or wallTime() - phobos.getTime()
 	local fd = S.open(filename, "creat, rdwr, trunc", "0666")
 	if not fd then
 		log:fatal("could not create pcap file: %s", strError(S.errno()))
@@ -81,6 +83,7 @@ function writer:resize(size)
 	if not S.fallocate(self.fd, 0, 0, size) then
 		log:fatal("fallocate failed: %s", strError(S.errno()))
 	end
+	-- we could prevent the move here by unmapping the old area and only mapping the new space
 	local ptr = S.mremap(self.ptr, self.size, size, "maymove")
 	if not ptr then
 		log:fatal("mremap failed: %s", strError(S.errno()))
@@ -105,9 +108,10 @@ function writer:write(timestamp, data, len, origLen)
 	if self.offset + len + 16 >= self.size then
 		self:resize(self.size * 2)
 	end
+	local time = self.startTime + timestamp
 	pkt = packetPointer(voidPointer(self.ptr + self.offset))
-	pkt.ts_sec = 0
-	pkt.ts_usec = 0
+	pkt.ts_sec = math.floor(time)
+	pkt.ts_usec = (time - math.floor(time)) * 1000000
 	pkt.incl_len = len
 	pkt.orig_len = origLen or len
 	memcopy(pkt.data, data, len)
