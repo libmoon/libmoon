@@ -1,11 +1,11 @@
 --- Captures packets, can dump to a pcap file or decode on standard out.
 --- This is essentially an extremely fast version of tcpdump, single-threaded stats are:
 ---  * > 20 Mpps filtering (depending on filter, tested with port range and IP matching)
----  * 10 Mpps pcap writing
+---  * > 11 Mpps pcap writing (60 byte packets)
 --- 
---- This scales very well to multiple core, we achieved the following with 6 2.2 GHz cores:
+--- This scales very well to multiple core, we achieved the following with 4 2.2 GHz cores:
 ---  * 20 Mpps pcap capturing (limited by small packet performance of i40e NIC)
----  * 40 Gbit/s pcap capturing to file system cache (mmap)
+---  * 40 Gbit/s pcap capturing of 128 byte packets to file system cache (mmap)
 ---  * 1900 MB/s (~15 Gbit/s) sustained write speed to a raid of two NVMe SSDs
 ---
 --- Note that the stats shown at the end will probably not add up when plugging this into live traffic:
