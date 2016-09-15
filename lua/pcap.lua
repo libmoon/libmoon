@@ -1,4 +1,5 @@
---- pcap IO
+--- Fast pcap IO, can write > 40 Gbit/s (to fs cache) and read > 30 Mpps (from fs cache).
+--- Read/write performance can saturate several NVMe SSDs from a single core.
 
 local mod = {}
 
@@ -129,4 +130,97 @@ function writer:writeBuf(timestamp, buf, snapLen)
 	self:write(timestamp, buf:getData(), min(size, snapLen), size)
 end
 
+local reader = {}
+reader.__index = reader
+
+local function readHeader(ptr)
+	local hdr = headerPointer(ptr)
+	if hdr.magic_number == 0xd4c3b2a1 then
+		log:fatal("big endian pcaps are not supported")
+	elseif hdr.magic_number ~= 0xa1b2c3d4 then
+		log:fatal("not a pcap file")
+	end
+	if hdr.version_major ~= 2 or hdr.version_minor ~= 4 then
+		log:fatal("unsupported pcap version")
+	end
+	if hdr.thiszone ~= 0 then
+		log:warn("timezone information in pcap header ignored")
+	end
+	if hdr.network ~= 1 then
+		log:fatal("unsupported link layer type")
+	end
+	return ffi.sizeof(headerType)
+end
+
+--- Create a new fast pcap reader for the given file name.
+--- Call :close() on the reader when you are done to avoid fd leakage.
+function mod:newReader(filename)
+	local fd = S.open(filename, "rdonly")
+	if not fd then
+		log:fatal("could not open pcap file: %s", strError(S.errno()))
+	end
+	local size = fd:stat().size
+	fd:nogc()
+	local ptr = S.mmap(nil, size, "read", "private", fd, 0)
+	if not ptr then
+		log:fatal("mmap failed: %s", strError(S.errno()))
+	end
+	local offset = readHeader(ptr)
+	ptr = cast("uint8_t*", ptr)
+	return setmetatable({fd = fd, ptr = ptr, size = size, offset = offset}, reader)
+end
+
+ffi.cdef[[
+	struct rte_mbuf* phobos_read_pcap(struct mempool* mp, const void* pcap, uint64_t remaining, uint32_t mempool_buf_size);
+	uint32_t phobos_read_pcap_batch(struct mempool* mp, struct rte_mbuf** bufs, uint32_t num_bufs, const void* pcap, uint64_t remaining, uint32_t mempool_buf_size);
+]]
+
+--- Read the next packet into a buf, the timestamp is stored in the udata64 field as microseconds.
+--- The buffer's packet size corresponds to the original packet size, cut off bytes are zero-filled.
+function reader:readSingle(mempool, mempoolBufSize)
+	mempoolBufSize = memPoolBufSize or 2048
+	local fileRemaining = self.size - self.offset
+	if fileRemaining < 32 then -- header size
+		return nil
+	end
+	local buf = C.phobos_read_pcap(mempool, self.ptr + self.offset, fileRemaining, mempoolBufSize)
+	if buf then
+		self.offset = self.offset + buf.pkt_len + 16
+		-- chained mbufs not supported for now
+		buf.pkt_len = buf.data_len
+	end
+	return buf
+end
+
+--- Read a batch of packets into a bufArray, the timestamp is stored in the udata64 field as microseconds.
+--- The buffer's packet size corresponds to the original packet size, cut off bytes are zero-filled.
+--- @return the number of packets read
+function reader:read(bufs, mempoolBufSize)
+	mempoolBufSize = memPoolBufSize or 2048
+	local fileRemaining = self.size - self.offset
+	if fileRemaining < 32 then -- header size
+		return 0
+	end
+	local numRead = C.phobos_read_pcap_batch(bufs.mem, bufs.array, bufs.size, self.ptr + self.offset, fileRemaining, mempoolBufSize)
+	for i = 0, numRead - 1 do
+		self.offset = self.offset + bufs.array[i].pkt_len + 16
+		-- chained mbufs not supported for now
+		bufs.array[i].pkt_len = bufs.array[i].data_len
+	end
+	return numRead
+end
+
+function reader:close()
+	S.munmap(self.ptr, self.size)
+	S.close(self.fd)
+	self.fd = nil
+	self.ptr = nil
+end
+
+function reader:reset()
+	self.offset = ffi.sizeof(headerType)
+end
+
+
 return mod
+
