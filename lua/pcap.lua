@@ -1,207 +1,226 @@
---! @file pcap.lua
---! @brief Utility functions for PCAP file inport and export
---! pcap functionality was inspired by Snabb Switch's pcap functionality
+--- Fast pcap IO, can write > 40 Gbit/s (to fs cache) and read > 30 Mpps (from fs cache).
+--- Read/write performance can saturate several NVMe SSDs from a single core.
 
-local ffi = require("ffi")
-local pkt = require("packet")
-local mg  = require("dpdk")
+local mod = {}
 
-require("utils")
-require("headers")
+local S      = require "syscall"
+local ffi    = require "ffi"
+local log    = require "log"
+local phobos = require "phobos"
+
+local cast = ffi.cast
+local memcopy = ffi.copy
+local C = ffi.C
+local min = math.min
 
 -- http://wiki.wireshark.org/Development/LibpcapFileFormat/
-local pcap_hdr_s = ffi.typeof[[
-struct {
-	unsigned int magic_number;    /* magic number */
-	unsigned short version_major; /* major version number */
-	unsigned short version_minor; /* minor version number */
-	int  thiszone;                /* GMT to local correction */
-	unsigned int sigfigs;         /* accuracy of timestamps */
-	unsigned int snaplen;         /* max length of captured packets, in octets */
-	unsigned int network;         /* data link type */
-}
+ffi.cdef[[
+typedef struct {
+	uint32_t magic_number;  /* magic number */
+	uint16_t version_major; /* major version number */
+	uint16_t version_minor; /* minor version number */
+	int32_t thiszone;       /* GMT to local correction */
+	uint32_t sigfigs;       /* accuracy of timestamps */
+	uint32_t snaplen;       /* max length of captured packets, in octets */
+	uint32_t network;       /* data link type */
+} pcap_hdr_t;
+
+typedef struct {
+	uint32_t ts_sec;   /* timestamp seconds */
+	uint32_t ts_usec;  /* timestamp microseconds */
+	uint32_t incl_len; /* number of octets of packet saved in file */
+	uint32_t orig_len; /* actual length of packet */
+	uint8_t data[];
+} pcaprec_hdr_t;
 ]]
 
-local pcaprec_hdr_s = ffi.typeof[[
-struct {
-	unsigned int ts_sec;         /* timestamp seconds */
-	unsigned int ts_usec;        /* timestamp microseconds */
-	unsigned int incl_len;       /* number of octets of packet saved in file */
-	unsigned int orig_len;       /* actual length of packet */
-}
+local headerType = ffi.typeof("pcap_hdr_t")
+local headerPointer = ffi.typeof("pcap_hdr_t*")
+local packetType = ffi.typeof("pcaprec_hdr_t")
+local packetPointer = ffi.typeof("pcaprec_hdr_t*")
+local voidPointer = ffi.typeof("void*")
+
+local INITIAL_FILE_SIZE = 512 * 1024 * 1024
+
+local writer = {}
+writer.__index = writer
+
+local function writeHeader(ptr)
+	local hdr = headerPointer(ptr)
+	hdr.magic_number = 0xa1b2c3d4
+	hdr.version_major = 2
+	hdr.version_minor = 4
+	hdr.thiszone = 0
+	hdr.sigfigs = 0
+	hdr.snaplen = 0x7FFFFFFF
+	hdr.network = 1
+	return ffi.sizeof(headerType)
+end
+
+--- Create a new fast pcap writer with the given file name.
+--- Call :close() on the writer when you are done.
+--- @param startTime posix timestamp, all timestamps of inserted packets will be relative to this timestamp
+---        default: relative to phobos.getTime() == 0
+function mod:newWriter(filename, startTime)
+	startTime = startTime or wallTime() - phobos.getTime()
+	local fd = S.open(filename, "creat, rdwr, trunc", "0666")
+	if not fd then
+		log:fatal("could not create pcap file: %s", strError(S.errno()))
+	end
+	fd:nogc()
+	local size = INITIAL_FILE_SIZE
+	if not S.fallocate(fd, 0, 0, size) then
+		log:fatal("fallocate failed: %s", strError(S.errno()))
+	end
+	local ptr = S.mmap(nil, size, "write", "shared, noreserve", fd, 0)
+	if not ptr then
+		log:fatal("mmap failed: %s", strError(S.errno()))
+	end
+	local offset = writeHeader(ptr)
+	ptr = cast("uint8_t*", ptr)
+	return setmetatable({fd = fd, ptr = ptr, size = size, offset = offset, startTime = startTime}, writer)
+end
+
+function writer:resize(size)
+	if not S.fallocate(self.fd, 0, 0, size) then
+		log:fatal("fallocate failed: %s", strError(S.errno()))
+	end
+	-- we could prevent the move here by unmapping the old area and only mapping the new space
+	local ptr = S.mremap(self.ptr, self.size, size, "maymove")
+	if not ptr then
+		log:fatal("mremap failed: %s", strError(S.errno()))
+	end
+	self.ptr = cast("uint8_t*", ptr)
+	self.size = size
+end
+
+--- Close and truncate the file.
+function writer:close()
+	S.munmap(self.ptr, self.size)
+	S.ftruncate(self.fd, self.offset)
+	S.fsync(self.fd)
+	S.close(self.fd)
+	self.fd = nil
+	self.ptr = nil
+end
+
+ffi.cdef[[
+	void phobos_write_pcap(void* dst, const void* packet, uint32_t len, uint32_t orig_len, uint32_t ts_sec, uint32_t ts_usec);
 ]]
 
---! Writes pcap file header.
---! @param file: the file
-function writePcapFileHeader(file)
-	local pcapFile = ffi.new(pcap_hdr_s)
-	--magic_number: used to detect the file format itself and the byte ordering. The writing application writes 0xa1b2c3d4 with it's native byte ordering format into this field. The reading application will read either 0xa1b2c3d4 (identical) or 0xd4c3b2a1 (swapped). If the reading application reads the swapped 0xd4c3b2a1 value, it knows that all the following fields will have to be swapped too. For nanosecond-resolution files, the writing application writes 0xa1b23c4d, with the two nibbles of the two lower-order bytes swapped, and the reading application will read either 0xa1b23c4d (identical) or 0x4d3cb2a1 (swapped). 
-	pcapFile.magic_number = 0xa1b2c3d4
-	pcapFile.version_major = 2
-	pcapFile.version_minor = 4 
-	pcapFile.thiszone = 0 --TODO function for time zones in utils.lua
-	--snaplen: the "snapshot length" for the capture (typically 65535 or even more, but might be limited by the user), see: incl_len vs. orig_len below 
-	pcapFile.snaplen = 65535
-	pcapFile.network = 1 -- 1 for Ethernet
-	file:write(ffi.string(pcapFile, ffi.sizeof(pcapFile)))
-	file:flush()
+--- Write a packet to the pcap file
+--- @param timestamp relative to the timestamp specified when creating the file
+function writer:write(timestamp, data, len, origLen)
+	if self.offset + len + 16 >= self.size then
+		self:resize(self.size * 2)
+	end
+	local time = self.startTime + timestamp
+	local timeSec = math.floor(time)
+	local timeMicros = (time - timeSec) * 1000000
+	C.phobos_write_pcap(self.ptr + self.offset, data, len, origLen or len, time, timeMicros)
+	self.offset = self.offset + len + 16
 end
 
---! Writes a pcap record header.
---! @param file: the file to write to
---! @param buf: the packet buffer
---! @param ts: the timestamp of the packet in seconds
-function writeRecordHeader(file, buf, ts)
-	--pcap record header
-	local pcapRecord = ffi.new(pcaprec_hdr_s)
-	if ts then
-		pcapRecord.ts_sec, pcapRecord.ts_usec = math.floor(ts), (ts - math.floor(ts)) * 10^6
-	else
-		pcapRecord.ts_sec, pcapRecord.ts_usec = 0,0
-	end
-	pcapRecord.incl_len = buf:getSize()
-	pcapRecord.orig_len = buf:getSize()
-	file:write(ffi.string(pcapRecord, ffi.sizeof(pcapRecord)))
+--- Write a mbuf to the pcap file
+--- @param timestamp relative to the timestamp specified when creating the file
+--- @param snapLen truncate the packet to this size
+function writer:writeBuf(timestamp, buf, snapLen)
+	local size = buf:getSize()
+	snapLen = snapLen or size
+	self:write(timestamp, buf:getData(), min(size, snapLen), size)
 end
 
---! Generate an iterator for pcap records.
---! @param file: the pcap file
---! @param rate: the tx link rate in Mbit per second if packets should have proper delays
---! @return: iterator for the pcap records
-function readPcapRecords(file, rate)  
-	local pcapFile = readAs(file, pcap_hdr_s)
-	local pcapNSResolution = false
-	if pcapFile.magic_number == 0xA1B2C34D then
-		pcapNSResolution = true
-	elseif pcapFile.magic_number ~= 0xA1B2C3D4 then
-		error("Bad PCAP magic number in " .. filename)
+local reader = {}
+reader.__index = reader
+
+local function readHeader(ptr)
+	local hdr = headerPointer(ptr)
+	if hdr.magic_number == 0xd4c3b2a1 then
+		log:fatal("big endian pcaps are not supported")
+	elseif hdr.magic_number ~= 0xa1b2c3d4 then
+		log:fatal("not a pcap file")
 	end
-	local lastRecordHdr = nil
-	local function pcapRecordsIterator (t, i)
-		local pcapRecordHdr = readAs(file, pcaprec_hdr_s)
-		if pcapRecordHdr == nil then return nil end
-		local packetData = file:read(math.min(pcapRecordHdr.orig_len, pcapRecordHdr.incl_len))
-		local delay = 0
-		if lastRecordHdr and rate then
-			local diff = timevalSpan(
-					{ tv_sec = pcapRecordHdr.ts_sec, tv_usec = pcapRecordHdr.ts_usec },
-					{ tv_sec = lastRecordHdr.ts_sec, tv_usec = lastRecordHdr.ts_usec }
-				)
-			if not pcapNSResolution then diff = diff * 10^3 end --convert us to ns
-			delay = timeToByteDelay(diff, rate, lastRecordHdr.orig_len)
-		end
-		lastRecordHdr = pcapRecordHdr
-		return packetData, pcapRecordHdr, delay
+	if hdr.version_major ~= 2 or hdr.version_minor ~= 4 then
+		log:fatal("unsupported pcap version")
 	end
-	return pcapRecordsIterator, true, true
+	if hdr.thiszone ~= 0 then
+		log:warn("timezone information in pcap header ignored")
+	end
+	if hdr.network ~= 1 then
+		log:fatal("unsupported link layer type")
+	end
+	return ffi.sizeof(headerType)
 end
 
---! Read a C object of <type> from <file>
---! @param file: tje pcap file
---! @param fileType: the type that the file data should be casted to
-function readAs(file, fileType)
-	local str = file:read(ffi.sizeof(fileType))
-	if str == nil then 
-		return nil 
+--- Create a new fast pcap reader for the given file name.
+--- Call :close() on the reader when you are done to avoid fd leakage.
+function mod:newReader(filename)
+	local fd = S.open(filename, "rdonly")
+	if not fd then
+		log:fatal("could not open pcap file: %s", strError(S.errno()))
 	end
-	if #str ~= ffi.sizeof(fileType) then
-		error("type read error " .. fileType .. ", \"" .. tostring(file) .. "\" is to short ")
+	local size = fd:stat().size
+	fd:nogc()
+	local ptr = S.mmap(nil, size, "read", "private", fd, 0)
+	if not ptr then
+		log:fatal("mmap failed: %s", strError(S.errno()))
 	end
-   local obj = ffi.new(fileType)
-   ffi.copy(obj, str, ffi.sizeof(fileType))
-   return obj
+	local offset = readHeader(ptr)
+	ptr = cast("uint8_t*", ptr)
+	return setmetatable({fd = fd, ptr = ptr, size = size, offset = offset}, reader)
 end
 
-pcapWriter = {}
+ffi.cdef[[
+	struct rte_mbuf* phobos_read_pcap(struct mempool* mp, const void* pcap, uint64_t remaining, uint32_t mempool_buf_size);
+	uint32_t phobos_read_pcap_batch(struct mempool* mp, struct rte_mbuf** bufs, uint32_t num_bufs, const void* pcap, uint64_t remaining, uint32_t mempool_buf_size);
+]]
 
---! Generates a new pcapWriter.
---! @param filename: filename to open and write to
-function pcapWriter:newPcapWriter(filename)
-	local file = io.open(filename, "w")
-	writePcapFileHeader(file)
-	return setmetatable({file = file}, {__index = pcapWriter})
+--- Read the next packet into a buf, the timestamp is stored in the udata64 field as microseconds.
+--- The buffer's packet size corresponds to the original packet size, cut off bytes are zero-filled.
+function reader:readSingle(mempool, mempoolBufSize)
+	mempoolBufSize = memPoolBufSize or 2048
+	local fileRemaining = self.size - self.offset
+	if fileRemaining < 32 then -- header size
+		return nil
+	end
+	local buf = C.phobos_read_pcap(mempool, self.ptr + self.offset, fileRemaining, mempoolBufSize)
+	if buf then
+		self.offset = self.offset + buf.pkt_len + 16
+		-- chained mbufs not supported for now
+		buf.pkt_len = buf.data_len
+	end
+	return buf
 end
 
-function pcapWriter:close()
-	io.close(self.file)
+--- Read a batch of packets into a bufArray, the timestamp is stored in the udata64 field as microseconds.
+--- The buffer's packet size corresponds to the original packet size, cut off bytes are zero-filled.
+--- @return the number of packets read
+function reader:read(bufs, mempoolBufSize)
+	mempoolBufSize = memPoolBufSize or 2048
+	local fileRemaining = self.size - self.offset
+	if fileRemaining < 32 then -- header size
+		return 0
+	end
+	local numRead = C.phobos_read_pcap_batch(bufs.mem, bufs.array, bufs.size, self.ptr + self.offset, fileRemaining, mempoolBufSize)
+	for i = 0, numRead - 1 do
+		self.offset = self.offset + bufs.array[i].pkt_len + 16
+		-- chained mbufs not supported for now
+		bufs.array[i].pkt_len = bufs.array[i].data_len
+	end
+	return numRead
 end
 
---! Writes packets to the pcap.
---! @param buf: packet buffers
---! @param n optional: number of packets for partially filles buffer
---! @param ts optional: timestamps in seconds (as double)
---! @param noflush optional: do not flush file
-function pcapWriter:write(bufs, n, ts, noflush)
-	n = n or #bufs
-	if ts and not self.starttime then
-		self.starttime = ts[1]
-	end
-	for i=1,n do
-		writeRecordHeader(self.file, bufs[i], ts and ts[i] - self.starttime or 0)
-		self.file:write(ffi.string(bufs[i]:getRawPacket(), bufs[i]:getSize()))
-	end
-	if not noflush then
-		self.file:flush()
-	end
+function reader:close()
+	S.munmap(self.ptr, self.size)
+	S.close(self.fd)
+	self.fd = nil
+	self.ptr = nil
 end
 
---! Writes packets with TSC timestamps to the pcap.
---! @param bufs: packet buffers
---! @param ts: timestamps from CPU TSC register
---! @param n optional: number of packets for partially filled buffer
---! @param noflush optional: do not flush file
-function pcapWriter:writeTSC(bufs, ts, n, noflush)
-	n = n or #bufs
-	if not self.starttime then
-		self.tscFreq = mg.getCyclesFrequency()
-		self.starttime = ts[1]
-	end
-	for i=1,n do
-		local tscDelta = tonumber(ts[i] - self.starttime)
-		local realTS = tscDelta / self.tscFreq
-		writeRecordHeader(self.file, bufs[i], realTS)
-		self.file:write(ffi.string(bufs[i]:getRawPacket(), bufs[i]:getSize()))
-	end
-	if not noflush then
-		self.file:flush()
-	end
+function reader:reset()
+	self.offset = ffi.sizeof(headerType)
 end
 
-pcapReader = {}
 
---! Generates a new pcapReader.
---! @param filename: filename to open and read from
---! @param rate: The rate of the link, if the packets are supposed to be replayed
-function pcapReader:newPcapReader(filename, rate)
-	rate = rate or 10000
-	local file = io.open(filename, "r")
-	 --TODO validity checks with more meaningful errors in an extra function
-	if file == nil then error("Cannot open pcap " .. filename) end
-	local records = readPcapRecords(file, rate)
-	return setmetatable({iterator = records, done = false, file = file}, {__index = pcapReader})
-end
+return mod
 
-function pcapReader:close()
-	io.close(self.file)
-end
-
---! Reads a record from the pcap
---! @param bufs: a packet bufArray
---! @param withDelay optional: calculate delay from pcap timestamps
---! @return the number of packets copied to bufs
-function pcapReader:readPkt(bufs, withDelay)
-	withDelay = withDelay or false
-	for i=1,#bufs do
-		local data, pcapRecord, delay = self.iterator()
-		if data then
-			bufs[i]:setRawPacket(data)
-			if withDelay then
-				bufs[i]:setDelay(delay)
-			end
-		else
-			self.done = true
-			return i-1
-		end
-	end
-	return #bufs
-end

@@ -21,6 +21,7 @@ SET(FILES
 	src/ring
 	src/kni
 	src/filter
+	src/pcap
 	src/timestamping
 	src/timestamping_i40e
 	src/timestamping_ixgbe
