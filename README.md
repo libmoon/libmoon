@@ -25,11 +25,10 @@ Tasks can only share state through communication primitives provided by Phobos.
 The example script [inter-task-communication.lua](https://github.com/Phobos-Framework/phobos/blob/master/examples/inter-task-communication.lua?ts=4) showcases the available communication methods.
 
 # Further Examples and Applications Built on Phobos
-TODO: port MoonGen and FlowScope to phobos
-
 The [MoonGen](https://github.com/emmericp/MoonGen) packet generator features user scripts that are essentially small Phobos applications.
 Hence, [MoonGen's examples](https://github.com/emmericp/MoonGen/blob/master/examples) may be useful.
 
+[FlowScope](https://github.com/emmericp/FlowScope) is a traffic analysis tool using Phobos. It's a good example on integration Phobos with custom C++ code.
 
 # Installation
 
