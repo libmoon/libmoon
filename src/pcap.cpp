@@ -17,8 +17,8 @@ struct pcapRecHeader {
 
 extern "C" {
 	void phobos_write_pcap(pcapRecHeader* dst, const void* packet, uint32_t len, uint32_t orig_len, uint32_t ts_sec, uint32_t ts_usec) {
-		dst->ts_sec = 0;
-		dst->ts_usec = 0;
+		dst->ts_sec = ts_sec;
+		dst->ts_usec = ts_usec;
 		dst->incl_len = len;
 		dst->orig_len = len;
 		memcpy(&dst->data, packet, len);
