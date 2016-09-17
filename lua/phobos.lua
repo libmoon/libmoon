@@ -241,9 +241,11 @@ function mod.getCyclesFrequency()
 	return tonumber(dpdkc.rte_get_tsc_hz())
 end
 
+local tscFreq = tonumber(mod.getCyclesFrequency())
+
 --- gets the TSC time (system uptime) in seconds
 function mod.getTime()
-	return tonumber(mod.getCycles()) / tonumber(mod.getCyclesFrequency())
+	return tonumber(mod.getCycles()) / tscFreq
 end
 
 --- limit the total run time (to be called from master core on startup, shared between all cores)
