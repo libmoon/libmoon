@@ -85,7 +85,11 @@ function writer:resize(size)
 	if not S.fallocate(self.fd, 0, 0, size) then
 		log:fatal("fallocate failed: %s", strError(S.errno()))
 	end
-	-- we could prevent the move here by unmapping the old area and only mapping the new space
+	-- two ways to prevent MAP_MAYMOVE here if someone wants to implement this:
+	-- 1) mmap a large virtual address block (and use MAP_FIXED to not have a huge file)
+	-- 2) unmap the whole old area, mmap only the newly allocated file space (and the last page of the old space)
+	-- problem with 1 is: wastes a lot of virtual address space, problematic if we have multiple writers at the same time
+	-- so implement 2) if you feel like it (however, I haven't noticed big problems with the current MAP_MAYMOVE implementation)
 	local ptr = S.mremap(self.ptr, self.size, size, "maymove")
 	if not ptr then
 		log:fatal("mremap failed: %s", strError(S.errno()))
