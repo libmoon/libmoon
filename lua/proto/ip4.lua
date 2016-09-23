@@ -11,7 +11,6 @@
 ------------------------------------------------------------------------
 
 local ffi = require "ffi"
-local pkt = require "packet"
 
 require "utils"
 require "headers"
@@ -27,6 +26,14 @@ local format = string.format
 ----------------------------------------------------------------------------------
 ---- IPv4 constants
 ----------------------------------------------------------------------------------
+
+-- struct
+ffi.cdef[[	
+	union ip4_address {
+		uint8_t		uint8[4];
+		uint32_t	uint32;
+	};
+]]
 
 --- IP4 protocol constants
 local ip = {}
@@ -123,6 +130,24 @@ end
 -----------------------------------------------------------------------------------
 ---- IPv4 header
 -----------------------------------------------------------------------------------
+
+-- definition of the header format
+ip.headerFormat = [[
+	uint8_t			verihl;
+	uint8_t			tos;
+	uint16_t		len;
+	uint16_t		id;
+	uint16_t		frag;
+	uint8_t			ttl;
+	uint8_t			protocol;
+	uint16_t		cs;
+	union ip4_address	src;
+	union ip4_address	dst;
+	uint8_t			options[];
+]]
+
+--- Variable sized member
+ip.headerVariableMember = "options"
 
 --- Module for ip4_header struct (see \ref headers.lua).
 local ip4Header = {}
@@ -417,6 +442,19 @@ function ip4Header:getSrcString()
 	return self.src:getString()
 end
 
+function ip4Header:getOptionsString()
+	local bytes = (self:getHeaderLength() - 5) * 4
+	if bytes <= 0 then
+		return "-"
+	end
+	local options = ffi.cast("uint8_t*", self.options)
+	local str = "0x"
+	for i = 0, bytes - 1 do
+		str = str .. string.format("%02x", options[i])
+	end
+	return str
+end
+
 --- Set all members of the ip header.
 --- Per default, all members are set to default values specified in the respective set function.
 --- Optional named arguments can be used to set a member to a user-provided value.
@@ -490,6 +528,7 @@ function ip4Header:getString()
 		   .. " ihl " .. self:getHeaderLengthString() .. " tos " .. self:getTOSString() .. " len " .. self:getLengthString()
 		   .. " id " .. self:getIDString() .. " flags " .. self:getFlagsString() .. " frag " .. self:getFragmentString() 
 		   .. " ttl " .. self:getTTLString() .. " proto " .. self:getProtocolString() .. " cksum " .. self:getChecksumString()
+		   .. " [" .. self:getOptionsString() .. "]"
 end
 
 -- Maps headers to respective protocol value.
@@ -527,7 +566,7 @@ end
 --- @param accumulatedLength The so far accumulated length for previous headers in a packet
 --- @return Table of namedArgs
 --- @see ip4Header:fill
-function ip4Header:setDefaultNamedArgs(pre, namedArgs, nextHeader, accumulatedLength)
+function ip4Header:setDefaultNamedArgs(pre, namedArgs, nextHeader, accumulatedLength, headerLength)
 	-- set length
 	if not namedArgs[pre .. "Length"] and namedArgs["pktLength"] then
 		namedArgs[pre .. "Length"] = namedArgs["pktLength"] - accumulatedLength
@@ -542,25 +581,14 @@ function ip4Header:setDefaultNamedArgs(pre, namedArgs, nextHeader, accumulatedLe
 			end
 		end
 	end
+
+	-- set IHL
+	if not namedArgs[pre .. "HeaderLength"] then
+		namedArgs[pre .. "HeaderLength"] = headerLength / 4
+	end
+
 	return namedArgs
 end
-
-
-----------------------------------------------------------------------------------
----- Packets
-----------------------------------------------------------------------------------
-
---- Cast the packet to an IP4 packet 
-pkt.getIP4Packet = packetCreate("eth", "ip4") 
---- Cast the packet to either an IP4 (nil/true) or IP6 (false) packet, depending on the passed boolean.
-pkt.getIPPacket = function(self, ip4) 
-	ip4 = ip4 == nil or ip4 
-	if ip4 then 
-		return pkt.getIP4Packet(self) 
-	else 
-		return pkt.getIP6Packet(self) 
-	end 
-end   
 
 
 ------------------------------------------------------------------------
@@ -568,6 +596,6 @@ end
 ------------------------------------------------------------------------
 
 ffi.metatype("union ip4_address", ip4Addr)
-ffi.metatype("struct ip4_header", ip4Header)
+ip.metatype = ip4Header
 
 return ip

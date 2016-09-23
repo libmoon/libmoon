@@ -11,7 +11,6 @@
 ------------------------------------------------------------------------
 
 local ffi = require "ffi"
-local pkt = require "packet"
 
 require "utils"
 require "headers"
@@ -54,6 +53,14 @@ eth.NULL	= "00:00:00:00:00:00"
 ------------------------------------------------------------------------
 ---- Mac addresses
 ------------------------------------------------------------------------
+
+-- struct
+ffi.cdef[[
+	union __attribute__((__packed__)) mac_address {
+		uint8_t		uint8[6];
+		uint64_t	uint64[0]; // for efficient reads
+	};
+]]
 
 --- Module for mac_address struct (see \ref headers.lua).
 local macAddr = {}
@@ -109,6 +116,16 @@ end
 ----------------------------------------------------------------------------
 ---- Ethernet header
 ----------------------------------------------------------------------------
+
+-- definition of the header format
+eth.headerFormat = [[
+	union mac_address	dst;
+	union mac_address	src;
+	uint16_t		type;
+]]
+
+--- Variable sized member
+eth.headerVariableMember = nil
 
 --- Module for ethernet_header struct (see \ref headers.lua).
 local etherHeader = {}
@@ -364,24 +381,11 @@ etherVlanHeader.setDefaultNamedArgs = etherHeader.setDefaultNamedArgs
 
 
 ----------------------------------------------------------------------------------
----- Packets
-----------------------------------------------------------------------------------
-
---- Cast the packet to an ethernet packet
-pkt.getEthernetPacket = packetCreate("eth")
-pkt.getEthernetVlanPacket = packetCreate("eth_8021q")
---- alias for pkt.getEthernet*Packet
-pkt.getEthPacket = pkt.getEthernetPacket
-pkt.getEthVlanPacket = pkt.getEthernetVlanPacket
-
-
-----------------------------------------------------------------------------------
 ---- Metatypes
 ----------------------------------------------------------------------------------
 
 ffi.metatype("union mac_address", macAddr)
-ffi.metatype("struct ethernet_header", etherHeader)
-ffi.metatype("struct ethernet_8021q_header", etherVlanHeader)
-
+eth.metatype = etherHeader
+--ffi.metatype("struct ethernet_8021q_header", etherVlanHeader)
 
 return eth

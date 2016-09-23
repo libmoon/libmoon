@@ -9,27 +9,15 @@ local ffi = require "ffi"
 
 -- structs
 ffi.cdef[[
-	
 	union payload_t {
 		uint8_t	uint8[0];
 		uint16_t uint16[0];
 		uint32_t uint32[0];
 		uint64_t uint64[0];
 	};
-
 	//  -----------------------------------------------------
 	//	---- Address structs
 	//  -----------------------------------------------------
-
-	union __attribute__((__packed__)) mac_address {
-		uint8_t		uint8[6];
-		uint64_t	uint64[0]; // for efficient reads
-	};
-
-	union ip4_address {
-		uint8_t		uint8[4];
-		uint32_t	uint32;
-	};
 
 	union ip6_address {
 		uint8_t 	uint8[16];
@@ -50,20 +38,14 @@ ffi.cdef[[
 	// ---- Header structs
 	// -----------------------------------------------------
 
-	struct __attribute__((__packed__)) ethernet_header {
-		union mac_address	dst;
-		union mac_address	src;
-		uint16_t		type;
-	};
-
 	// note that this isn't necessary for most cases as offloading should be preferred
-	struct __attribute__((__packed__)) ethernet_8021q_header {
-		union mac_address dst;
-		union mac_address src;
-		uint16_t          vlan_id;
-		uint16_t          vlan_tag;
-		uint16_t          type;
-	};
+	//struct __attribute__((__packed__)) ethernet_8021q_header {
+	//	union mac_address dst;
+	//	union mac_address src;
+	//	uint16_t          vlan_id;
+	//	uint16_t          vlan_tag;
+	//	uint16_t          type;
+	//};
 
 	struct __attribute__((__packed__)) arp_header {
 		uint16_t	hrd;
@@ -71,10 +53,10 @@ ffi.cdef[[
 		uint8_t		hln;
 		uint8_t		pln;
 		uint16_t	op;
-		union mac_address	sha;
-		union ip4_address	spa;
-		union mac_address	tha;
-		union ip4_address	tpa;
+	//	union mac_address	sha;
+	//	union ip4_address	spa;
+	//	union mac_address	tha;
+	//	union ip4_address	tpa;
 	};
 	
 	struct __attribute__((__packed__)) ptp_header {
@@ -93,19 +75,6 @@ ffi.cdef[[
 		uint8_t		control;
 		uint8_t		logMessageInterval;
 	};
-
-	struct __attribute__((__packed__)) ip4_header {
-		uint8_t			verihl;
-		uint8_t			tos;
-		uint16_t		len;
-		uint16_t		id;
-		uint16_t		frag;
-		uint8_t			ttl;
-		uint8_t			protocol;
-		uint16_t		cs;
-		union ip4_address	src;
-		union ip4_address	dst;
-	 };
 
 	struct __attribute__((__packed__)) ip6_header {
 		uint32_t 		vtf;
@@ -130,19 +99,6 @@ ffi.cdef[[
 		uint16_t	cs;
 	};
 
-	struct __attribute__((__packed__)) tcp_header {
-		uint16_t	src;
-		uint16_t	dst;
-		uint32_t	seq;
-		uint32_t	ack;
-		uint8_t		offset;
-		uint8_t		flags;
-		uint16_t	window;
-		uint16_t	cs;
-		uint16_t	urg;
-		uint32_t	options[];
-	};
-	
 	struct __attribute__((__packed__)) vxlan_header {
 		uint8_t		flags;
 		uint8_t		reserved[3];
@@ -245,7 +201,7 @@ ffi.cdef[[
 	// structs and constants partially copied from Open vSwitch lacp.c (Apache 2.0 license)
 	struct __attribute__((__packed__)) lacp_info {
 		uint16_t sys_priority;            /* System priority. */
-		union mac_address sys_id;         /* System ID. */
+	//	union mac_address sys_id;         /* System ID. */
 		uint16_t key;                     /* Operational key. */
 		uint16_t port_priority;           /* Port priority. */
 		uint16_t port_id;                 /* Port ID. */

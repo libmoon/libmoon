@@ -10,7 +10,6 @@
 ------------------------------------------------------------------------
 
 local ffi = require "ffi"
-local pkt = require "packet"
 local dpdkc = require "dpdkc"
 
 require "utils"
@@ -21,6 +20,9 @@ local ntoh16, hton16 = ntoh16, hton16
 local bor, band, bnot, rshift, lshift= bit.bor, bit.band, bit.bnot, bit.rshift, bit.lshift
 local istype = ffi.istype
 local format = string.format
+local log = require "log"
+
+local mod = {}
 
 
 ------------------------------------------------------------------------------
@@ -31,6 +33,23 @@ local format = string.format
 ------------------------------------------------------------------------------
 ---- TCP header
 ------------------------------------------------------------------------------
+
+-- definition of the header format
+mod.headerFormat = [[
+	uint16_t	src;
+	uint16_t	dst;
+	uint32_t	seq;
+	uint32_t	ack;
+	uint8_t		offset;
+	uint8_t		flags;
+	uint16_t	window;
+	uint16_t	cs;
+	uint16_t	urg;
+	uint8_t		options[];
+]]
+
+--- Variable sized member
+mod.headerVariableMember = "options"
 
 --- Module for tcp_header struct (see \ref headers.lua).
 local tcpHeader = {}
@@ -470,11 +489,66 @@ function tcpHeader:getUrgentPointerString()
 	return self:getUrgentPointer()
 end
 
--- TODO how do we want to handle options (problem is tcp header variable length array of uint8[] followed by payload variable length array (uint8[]))
---[[function tcpHeader:setOptions(int)
-	int = int or
-	self. = int
-end--]]
+
+------------------------------------------------------------------------------------
+---- TCP options
+------------------------------------------------------------------------------------
+
+function tcpHeader:getOptionsString()
+	local bytes = (self:getDataOffset() - 5) * 4
+	if bytes <= 0 then
+		return "-"
+	end
+	local options = ffi.cast("uint8_t*", self.options)
+	local str = "0x"
+	for i = 0, bytes - 1 do
+		str = str ..  string.format("%02x", options[i])
+	end
+	return str
+end
+
+function tcpHeader:addNopOption(offset)
+	self.options[offset] = offset
+	return offset + 1
+end
+
+function tcpHeader:addEolOption(offset)
+	self.options[offset] = 1
+	return offset + 1
+end
+
+function tcpHeader:fillOptions(offset)
+	offset = offset or 0
+	maxOffset = (self:getDataOffset() - 5) * 4
+	while offset < maxOffset - 1 do
+		offset = self:addNopOption(offset)
+	end
+	if offset == maxOffset - 1 then
+		offset = self:addEolOption(offset)
+	end
+		
+	return offset
+end
+
+function tcpHeader:addWSOption(offset, value)
+	self.options[offset] = 3
+	self.options[offset + 1] = 3
+	self.options[offset + 2] = value
+	return offset + 3
+end
+
+function tcpHeader:addMssOption(offset, value)
+	self.options[offset] = 2
+	self.options[offset + 1] = 4
+	self.options[offset + 2] = value --FIXME 
+	self.options[offset + 3] = value
+	return offset + 4
+end
+
+
+------------------------------------------------------------------------------------
+---- Functions for full header
+------------------------------------------------------------------------------------
 
 --- Set all members of the ip header.
 --- Per default, all members are set to default values specified in the respective set function.
@@ -565,6 +639,7 @@ function tcpHeader:getString()
 		.."] win " 	.. self:getWindowString() 
 		.. " cksum " 	.. self:getChecksumString() 
 		.. " urg " 	.. self:getUrgentPointerString() 
+		.. " ["	.. self:getOptionsString() .. "]"
 end
 
 --- Resolve which header comes after this one (in a packet).
@@ -586,31 +661,18 @@ end
 --- @param accumulatedLength The so far accumulated length for previous headers in a packet
 --- @return Table of namedArgs
 --- @see tcpHeader:fill
-function tcpHeader:setDefaultNamedArgs(pre, namedArgs, nextHeader, accumulatedLength)
+function tcpHeader:setDefaultNamedArgs(pre, namedArgs, nextHeader, accumulatedLength, headerLength)
+	if not namedArgs[pre .. "DataOffset"] then
+		namedArgs[pre .. "DataOffset"] = headerLength / 4
+	end
 	return namedArgs
 end
 
-
-----------------------------------------------------------------------------------
----- Packets
-----------------------------------------------------------------------------------
-
---- Cast the packet to a Tcp (IP4) packet
-pkt.getTcp4Packet = packetCreate("eth", "ip4", "tcp")
---- Cast the packet to a Tcp (IP6) packet
-pkt.getTcp6Packet = packetCreate("eth", "ip6", "tcp")
---- Cast the packet to a Tcp packet, either using IP4 (nil/true) or IP6 (false), depending on the passed boolean.
-pkt.getTcpPacket = function(self, ip4) 
-	ip4 = ip4 == nil or ip4 
-	if ip4 then 
-		return pkt.getTcp4Packet(self) 
-	else 
-		return pkt.getTcp6Packet(self) 
-	end 
-end   
 
 ------------------------------------------------------------------------------------
 ---- Metatypes
 ------------------------------------------------------------------------------------
 
-ffi.metatype("struct tcp_header", tcpHeader)
+mod.metatype = tcpHeader
+
+return mod
