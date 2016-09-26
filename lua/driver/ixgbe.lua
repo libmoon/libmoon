@@ -50,8 +50,10 @@ function dev:getRxStats()
 	return tonumber(self.rxPkts), tonumber(self.rxBytes)
 end
 
--- clear RX counters
+-- clear RX counters.  We want to clear the s/w statistics and how reg read to clear the h/w level
 function dev:clearRxStats()
+	self.rxPkts = dpdkc.read_reg32(self.id, GPRC)
+	self.rxBytes = dpdkc.read_reg32(self.id, GORCL) + dpdkc.read_reg32(self.id, GORCH) * 2^32
 	self.rxPkts = 0ULL
 	self.rxBytes = 0ULL
 	return tonumber(self.rxPkts), tonumber(self.rxBytes)
