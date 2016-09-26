@@ -50,6 +50,13 @@ function dev:getRxStats()
 	return tonumber(self.rxPkts), tonumber(self.rxBytes)
 end
 
+-- clear RX counters
+function dev:clearRxStats()
+	self.rxPkts = 0ULL
+	self.rxBytes = 0ULL
+	return tonumber(self.rxPkts), tonumber(self.rxBytes)
+end
+
 -- necessary because of clear-on-read registers and the interaction with the normal rte_eth_stats_get() call
 function dev:getTxStats()
 	self.txPkts = (self.txPkts or 0ULL) + dpdkc.read_reg32(self.id, GPTC)
