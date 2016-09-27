@@ -541,6 +541,10 @@ function dev:resetTimeCounters()
 	self:unsupported("Time counter tracking")
 end
 
+function dev:clearRxStats()
+	return
+end
+
 --- Enable tx timestamps.
 --- @see dev.enableTxTimestamps()
 function txQueue:enableTimestamps()

@@ -272,8 +272,7 @@ function mod:newDevRxCounter(name, dev, format, file)
 	local obj = newCounter("dev", name, dev, format, file)
 	obj.sleep = 100
 	setmetatable(obj, devRxCounter)
-	obj:getThroughput() -- reset stats on the NIC
-	obj:clearThroughput()
+	obj:clearThroughput() -- reset stats on the NIC
 	return obj
 end
 
