@@ -2,7 +2,6 @@
 --- @file icmp.lua
 --- @brief Internet control message protocol utility.
 --- Utility functions for the icmp_header struct
---- defined in \ref headers.lua . \n
 --- Includes:
 --- - Icmp4 constants
 --- - Icmp6 constants
@@ -21,7 +20,6 @@ local eth     = require "proto.ethernet"
 local ip      = require "proto.ip4"
 
 require "utils"
-require "headers"
 
 local ntoh, hton = ntoh, hton
 local ntoh16, hton16 = ntoh16, hton16
@@ -34,8 +32,6 @@ local format = string.format
 -- - getString() does not work for ICMPv6 correctly without some ugly workarounds (basically adding 'ipv4' flags to getString()'s of type/code and header)
 -- 	 currently getString() simply does not recognise ICMPv6
 -- - Furthermore, packetDump would need a change to pass this flag when calling getString()
--- TODO
--- remove messageBody, instead use new packetCreate with additional header { "ip4", "messageBody" } or similar
 
 
 ---------------------------------------------------------------------------
@@ -74,7 +70,18 @@ icmp6.ECHO_REPLY				= { type = 129, code = 0 }
 ---- ICMP header
 ---------------------------------------------------------------------------
 
---- Module for icmp_header struct (see \ref headers.lua).
+-- definition of the header format
+icmp.headerFormat = [[
+	uint8_t		type;
+	uint8_t		code;
+	uint16_t	cs;
+	uint8_t		body[];
+]]
+
+--- Variable sized member
+icmp.headerVariableMember = "body"
+
+--- Module for icmp_header struct
 local icmpHeader = {}
 icmpHeader.__index = icmpHeader
 
@@ -190,7 +197,7 @@ end
 --- Retrieve the message body.
 --- @return Message body as TODO.
 function icmpHeader:getMessageBody()
-	return self.body
+	return 0 --self.body
 end
 
 --- Retrieve the message body.
@@ -268,20 +275,10 @@ function icmpHeader:setDefaultNamedArgs(pre, namedArgs, nextHeader, accumulatedL
 end
 
 
-------------------------------------------------------------------------
----- Packets
-------------------------------------------------------------------------
-
---- Cast the packet to an Icmp4 packet 
-pkt.getIcmp4Packet = packetCreate("eth", "ip4", "icmp")
---- Cast the packet to an Icmp6 packet 
-pkt.getIcmp6Packet = packetCreate("eth", "ip6", "icmp")
---- Cast the packet to either an Icmp4 (nil/true) or Icmp6 (false) packet, depending on the passed boolean.
-pkt.getIcmpPacket = function(self, ip4) ip4 = ip4 == nil or ip4 if ip4 then return pkt.getIcmp4Packet(self) else return pkt.getIcmp6Packet(self) end end   
-
-
--- ICMP responder, IPv4 only for now
--- Pull requests for IPv6 are welcome :)
+--------------------------------------------------------------------------------------
+---- ICMP responder, IPv4 only for now
+---- Pull requests for IPv6 are welcome :)
+--------------------------------------------------------------------------------------
 
 
 --- Starts a simple ICMPv4 ping responder on a shared core.
@@ -397,10 +394,11 @@ end
 
 __LM_ICMP_TASK = icmpTask
 
+
 ------------------------------------------------------------------------
 ---- Metatypes
 ------------------------------------------------------------------------
 
-ffi.metatype("struct icmp_header", icmpHeader)
+icmp.metatype = icmpHeader
 
 return icmp, icmp6

@@ -2,7 +2,6 @@
 --- @file udp.lua
 --- @brief User datagram protocol (UDP) utility.
 --- Utility functions for udp_header struct
---- defined in \ref headers.lua . \n
 --- Includes:
 --- - Udp constants
 --- - Udp header utility
@@ -10,10 +9,8 @@
 ------------------------------------------------------------------------
 
 local ffi = require "ffi"
-local pkt = require "packet"
 
 require "utils"
-require "headers"
 
 local ntoh, hton = ntoh, hton
 local ntoh16, hton16 = ntoh16, hton16
@@ -43,8 +40,19 @@ udp.PORT_SFLOW = 6343
 ---------------------------------------------------------------------------
 ---- UDP header
 ---------------------------------------------------------------------------
+	
+-- definition of the header format
+udp.headerFormat = [[
+	uint16_t	src;
+	uint16_t	dst;
+	uint16_t	len;
+	uint16_t	cs;
+]]
 
---- Module for udp_header struct (see \ref headers.lua).
+--- Variable sized member
+udp.headerVariableMember = nil
+
+--- Module for udp_header struct
 local udpHeader = {}
 udpHeader.__index = udpHeader
 
@@ -210,7 +218,7 @@ end
 --- @param accumulatedLength The so far accumulated length for previous headers in a packet
 --- @return Table of namedArgs
 --- @see ip4Header:fill
-function udpHeader:setDefaultNamedArgs(pre, namedArgs, nextHeader, accumulatedLength)
+function udpHeader:setDefaultNamedArgs(pre, namedArgs, nextHeader, accumulatedLength, packetLength)
 	-- set length
 	if not namedArgs[pre .. "Length"] and namedArgs["pktLength"] then
 		namedArgs[pre .. "Length"] = namedArgs["pktLength"] - accumulatedLength
@@ -228,30 +236,12 @@ function udpHeader:setDefaultNamedArgs(pre, namedArgs, nextHeader, accumulatedLe
 	return namedArgs
 end
 
-----------------------------------------------------------------------------------
----- Packets
-----------------------------------------------------------------------------------
-
---- Cast the packet to an Udp (IP4) packet
-pkt.getUdp4Packet = packetCreate("eth", "ip4", "udp")
---- Cast the packet to an Udp (IP6) packet
-pkt.getUdp6Packet = packetCreate("eth", "ip6", "udp") 
---- Cast the packet to an Udp packet, either using IP4 (nil/true) or IP6 (false), depending on the passed boolean.
-pkt.getUdpPacket = function(self, ip4) 
-	ip4 = ip4 == nil or ip4 
-	if ip4 then 
-		return pkt.getUdp4Packet(self) 
-	else 
-		return pkt.getUdp6Packet(self)
-	end 
-end   
-
 
 ------------------------------------------------------------------------
 ---- Metatypes
 ------------------------------------------------------------------------
 
-ffi.metatype("struct udp_header", udpHeader)
+udp.metatype = udpHeader
 
 
 return udp

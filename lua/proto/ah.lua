@@ -2,7 +2,6 @@
 --- @file ah.lua
 --- @brief AH utility.
 --- Utility functions for the ah_header structs 
---- defined in \ref headers.lua . \n
 --- Includes:
 --- - AH constants
 --- - IPsec ICV
@@ -11,9 +10,6 @@
 ------------------------------------------------------------------------
 
 local ffi = require "ffi"
-local pkt = require "packet"
-
-require "headers"
 
 ---------------------------------------------------------------------------
 ---- ah constants 
@@ -28,6 +24,12 @@ local ah = {}
 -------------------------------------------------------------------------------------
 ---- IPsec ICV
 -------------------------------------------------------------------------------------
+
+ffi.cdef[[
+	union ipsec_icv {
+		uint32_t	uint32[4];
+	};
+]]
 
 local ipsecICV = {}
 ipsecICV.__index = ipsecICV
@@ -75,6 +77,20 @@ end
 ---------------------------------------------------------------------------
 ---- ah header
 ---------------------------------------------------------------------------
+
+-- definition of the header format
+ah.headerFormat = [[
+	uint8_t		nextHeader;
+	uint8_t		len;
+	uint16_t	reserved;
+	uint32_t	spi;
+	uint32_t	sqn;
+	union ipsec_iv	iv;
+	union ipsec_icv	icv;
+]]
+
+--- Variable sized member
+ah.headerVariableMember = nil
 
 local ahHeader = {}
 ahHeader.__index = ahHeader
@@ -262,22 +278,12 @@ function ahHeader:setDefaultNamedArgs(pre, namedArgs, nextHeader, accumulatedLen
 	return namedArgs
 end
 
-----------------------------------------------------------------------------------
----- Packets
-----------------------------------------------------------------------------------
-
--- Ah4 packets should not be shorter than 70 bytes (cf. x540 datasheet page 308: SECP field)
-pkt.getAh4Packet = packetCreate("eth", "ip4", "ah")
--- Ah6 packets should not be shorter than 94 bytes (cf. x540 datasheet page 308: SECP field)
-pkt.getAh6Packet = nil --packetCreate("eth", "ip6", "ah6") --TODO: AH6 needs to be implemented
-pkt.getAhPacket = function(self, ip4) ip4 = ip4 == nil or ip4 if ip4 then return pkt.getAh4Packet(self) else return pkt.getAh6Packet(self) end end
 
 ------------------------------------------------------------------------
 ---- Metatypes
 ------------------------------------------------------------------------
 
---ffi.metatype("union ipsec_iv", ipsecIV)
 ffi.metatype("union ipsec_icv", ipsecICV)
-ffi.metatype("struct ah_header", ahHeader)
+ah.metatype = ahHeader
 
 return ah

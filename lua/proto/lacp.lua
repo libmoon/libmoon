@@ -2,7 +2,6 @@
 --- @file lacp.lua
 --- @brief Implementation of 802.3ad aka LACP.
 --- Utility functions for the lacp_header structs 
---- defined in \ref headers.lua . \n
 --- Includes:
 --- - LACP constants
 --- - LACP header utility
@@ -12,15 +11,12 @@
 -- structs and constants partially copied from Open vSwitch lacp.c (Apache 2.0 license)
 
 local ffi    = require "ffi"
-local pkt    = require "packet"
 local dpdk   = require "dpdk"
 local memory = require "memory"
 local filter = require "filter"
 local ns     = require "namespaces"
 local eth    = require "proto.ethernet"
 local libmoon = require "libmoon"
-
-require "headers"
 
 
 ---------------------------------------------------------------------------
@@ -43,11 +39,53 @@ lacp.STATE_DIST = 0x20 -- Distributing. Is the link sending frames?
 lacp.STATE_DEF  = 0x40 -- Defaulted. Using default partner info?
 lacp.STATE_EXP  = 0x80 -- Expired. Using expired partner info?
 
+
+---------------------------------------------------------------------------
+---- lacp structs
+---------------------------------------------------------------------------
+
+ffi.cdef[[
+	// structs and constants partially copied from Open vSwitch lacp.c (Apache 2.0 license)
+	struct __attribute__((__packed__)) lacp_info {
+		uint16_t sys_priority;            /* System priority. */
+		union mac_address sys_id;         /* System ID. */
+		uint16_t key;                     /* Operational key. */
+		uint16_t port_priority;           /* Port priority. */
+		uint16_t port_id;                 /* Port ID. */
+		uint8_t state;                    /* State mask.  See lacp.STATE_ consts. */
+	};
+]]
+
+
 ---------------------------------------------------------------------------
 ---- lacp header
 ---------------------------------------------------------------------------
 
---- Module for lacp_address struct (see \ref headers.lua).
+-- definition of the header format
+lacp.headerFormat = [[
+	uint8_t subtype;          /* Always 1. */
+	uint8_t version;          /* Always 1. */
+
+	uint8_t actor_type;       /* Always 1. */
+	uint8_t actor_len;        /* Always 20. */
+	struct lacp_info actor;   /* LACP actor information. */
+	uint8_t z1[3];            /* Reserved.  Always 0. */
+
+	uint8_t partner_type;     /* Always 2. */
+	uint8_t partner_len;      /* Always 20. */
+	struct lacp_info partner; /* LACP partner information. */
+	uint8_t z2[3];            /* Reserved.  Always 0. */
+
+	uint8_t collector_type;   /* Always 3. */
+	uint8_t collector_len;    /* Always 16. */
+	uint16_t collector_delay; /* Maximum collector delay. Set to 0. */
+	uint8_t z3[64];           /* Combination of several fields.  Always 0. */
+]]
+
+--- Variable sized member
+lacp.headerVariableMember = nil
+
+--- Module for lacp_address struct
 local lacpHeader, lacpInfo = {}, {}
 lacpHeader.__index = lacpHeader
 lacpInfo.__index = lacpInfo
@@ -253,20 +291,13 @@ function lacpHeader:setDefaultNamedArgs(pre, namedArgs, nextHeader, accumulatedL
 	return namedArgs
 end
 
-----------------------------------------------------------------------------------
----- Packets
-----------------------------------------------------------------------------------
-
---- Cast the packet to a lacp packet 
-pkt.getLacpPacket = packetCreate('eth', 'lacp')
-
 
 ------------------------------------------------------------------------
 ---- Metatypes
 ------------------------------------------------------------------------
 
 ffi.metatype("struct lacp_info", lacpInfo)
-ffi.metatype("struct lacp_header", lacpHeader)
+lacp.metatype = lacpHeader
 
 
 ------------------------------------------------------------------------

@@ -2,7 +2,6 @@
 --- @file vxlan.lua
 --- @brief VXLAN utility.
 --- Utility functions for the vxlan_header struct
---- defined in \ref headers.lua . \n
 --- Includes:
 --- - VXLAN constants
 --- - VXLAN header utility
@@ -10,9 +9,6 @@
 ------------------------------------------------------------------------
 
 local ffi = require "ffi"
-local pkt = require "packet"
-
-require "headers"
 
 local bor, band, bnot, rshift, lshift= bit.bor, bit.band, bit.bnot, bit.rshift, bit.lshift
 local format = string.format
@@ -28,7 +24,18 @@ local vxlan = {}
 ---- vxlan header
 ---------------------------------------------------------------------------
 
---- Module for vxlan_header struct (see \ref headers.lua).
+-- definition of the header format
+vxlan.headerFormat = [[
+	uint8_t		flags;
+	uint8_t		reserved[3];
+	uint8_t		vni[3];
+	uint8_t		reserved2;
+]]
+
+--- Variable sized member
+vxlan.headerVariableMember = nil
+
+--- Module for vxlan_header struct
 local vxlanHeader = {}
 vxlanHeader.__index = vxlanHeader
 
@@ -183,22 +190,12 @@ function vxlanHeader:setDefaultNamedArgs(pre, namedArgs, nextHeader, accumulated
 	return namedArgs
 end
 
-----------------------------------------------------------------------------------
----- Packets
-----------------------------------------------------------------------------------
-
--- the raw version (only the encapsulating headers, everything else is payload)
-pkt.getVxlanPacket = packetCreate("eth", "ip4", "udp", "vxlan")
-
--- Vxlan packet with an inner Ethernet header
-pkt.getVxlanEthernetPacket = packetCreate("eth", "ip4", "udp", "vxlan", { "eth", "innerEth" })
-
 
 ------------------------------------------------------------------------
 ---- Metatypes
 ------------------------------------------------------------------------
 
-ffi.metatype("struct vxlan_header", vxlanHeader)
+vxlan.metatype = vxlanHeader
 
 
 return vxlan

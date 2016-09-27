@@ -2,7 +2,6 @@
 --- @file ip4.lua
 --- @brief Internet protocol (v4) utility.
 --- Utility functions for the ip4_address and ip4_header structs 
---- defined in \ref headers.lua . \n
 --- Includes:
 --- - IP4 constants
 --- - IP4 address utility
@@ -13,7 +12,6 @@
 local ffi = require "ffi"
 
 require "utils"
-require "headers"
 
 local ntoh, hton = ntoh, hton
 local ntoh16, hton16 = ntoh16, hton16
@@ -26,14 +24,6 @@ local format = string.format
 ----------------------------------------------------------------------------------
 ---- IPv4 constants
 ----------------------------------------------------------------------------------
-
--- struct
-ffi.cdef[[	
-	union ip4_address {
-		uint8_t		uint8[4];
-		uint32_t	uint32;
-	};
-]]
 
 --- IP4 protocol constants
 local ip = {}
@@ -53,7 +43,15 @@ ip.NULL	= "0.0.0.0"
 ---- IPv4 addresses
 ----------------------------------------------------------------------------------
 
---- Module for ip4_address struct (see \ref headers.lua).
+-- struct
+ffi.cdef[[	
+	union ip4_address {
+		uint8_t		uint8[4];
+		uint32_t	uint32;
+	};
+]]
+
+--- Module for ip4_address struct
 local ip4Addr = {}
 ip4Addr.__index = ip4Addr
 local ip4AddrType = ffi.typeof("union ip4_address")
@@ -149,7 +147,7 @@ ip.headerFormat = [[
 --- Variable sized member
 ip.headerVariableMember = "options"
 
---- Module for ip4_header struct (see \ref headers.lua).
+--- Module for ip4_header struct
 local ip4Header = {}
 
 ip4Header.__index = ip4Header

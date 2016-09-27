@@ -2,7 +2,6 @@
 --- @file ethernet.lua
 --- @brief Ethernet protocol utility.
 --- Utility functions for the mac_address and ethernet_header structs 
---- defined in \ref headers.lua . \n
 --- Includes:
 --- - Ethernet constants
 --- - Mac address utility
@@ -13,7 +12,6 @@
 local ffi = require "ffi"
 
 require "utils"
-require "headers"
 
 local ntoh, hton = ntoh, hton
 local ntoh16, hton16 = ntoh16, hton16
@@ -62,7 +60,7 @@ ffi.cdef[[
 	};
 ]]
 
---- Module for mac_address struct (see \ref headers.lua).
+--- Module for mac_address struct
 local macAddr = {}
 macAddr.__index = macAddr
 local macAddrType = ffi.typeof("union mac_address")
@@ -117,17 +115,31 @@ end
 ---- Ethernet header
 ----------------------------------------------------------------------------
 
+eth.default = {}
 -- definition of the header format
-eth.headerFormat = [[
+eth.default.headerFormat = [[
 	union mac_address	dst;
 	union mac_address	src;
 	uint16_t		type;
 ]]
 
 --- Variable sized member
-eth.headerVariableMember = nil
+eth.default.headerVariableMember = nil
 
---- Module for ethernet_header struct (see \ref headers.lua).
+eth.vlan = {}
+-- definition of the header format
+eth.vlan.headerFormat = [[
+	union mac_address	dst;
+	union mac_address	src;
+	uint16_t		vlan_id;
+	uint16_t		vlan_tag;
+	uint16_t		type;
+]]
+
+--- Variable sized member
+eth.vlan.headerVariableMember = nil
+
+--- Module for ethernet_header struct
 local etherHeader = {}
 local etherVlanHeader = {}
 etherHeader.__index = etherHeader
@@ -385,7 +397,7 @@ etherVlanHeader.setDefaultNamedArgs = etherHeader.setDefaultNamedArgs
 ----------------------------------------------------------------------------------
 
 ffi.metatype("union mac_address", macAddr)
-eth.metatype = etherHeader
---ffi.metatype("struct ethernet_8021q_header", etherVlanHeader)
+eth.default.metatype = etherHeader
+eth.vlan.metatype = etherVlanHeader
 
 return eth

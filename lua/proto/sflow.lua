@@ -1,7 +1,6 @@
 --- sFlowv5 implementation
 
 local ffi = require "ffi"
-local pkt = require "packet"
 
 local ntoh, hton = ntoh, hton
 local ntoh16, hton16 = ntoh16, hton16
@@ -12,29 +11,8 @@ local cast = ffi.cast
 local uint32 = ffi.typeof("uint32_t*")
 
 -- http://www.sflow.org/SFLOW-DATAGRAM5.txt
+
 ffi.cdef[[
-struct __attribute__((__packed__)) sflow_header {
-	uint32_t version;
-	uint32_t agent_ip_type;
-	union ip4_address agent_ip;
-	uint32_t sub_agent_id;
-	uint32_t seq;
-	uint32_t uptime;
-	uint32_t num_samples;
-	union payload_t payload; // use with a noPayload proto stack
-};
-
-struct __attribute__((__packed__)) sflow_ipv6_header {
-	uint32_t version;
-	uint32_t agent_ip_type;
-	union ip6_address agent_ip;
-	uint32_t sub_agent_id;
-	uint32_t seq;
-	uint32_t uptime;
-	uint32_t num_samples;
-	union payload_t payload; // use with a noPayload proto stack
-};
-
 struct __attribute__((__packed__)) sflow_unknown_entry {
 	uint32_t type;
 	uint32_t len;
@@ -85,6 +63,42 @@ local sflow = {}
 sflow.RECORD_TYPE_FLOW_SAMPLE_BE = hton(0x01)
 sflow.RECORD_TYPE_EXT_SWITCH_DATA_BE = 0xe9030000
 sflow.RECORD_TYPE_RAW_PACKET_BE = hton(0x01)
+
+--- sflow ip6 header
+sflow.ip6 = {}
+
+-- definition of the header format
+sflow.ip6.headerFormat = [[
+	uint32_t version;
+	uint32_t agent_ip_type;
+	union ip6_address agent_ip;
+	uint32_t sub_agent_id;
+	uint32_t seq;
+	uint32_t uptime;
+	uint32_t num_samples;
+	uint8_t payload[]; // use with a noPayload proto stack
+]]
+
+--- Variable sized member
+sflow.ip6.headerVariableMember = "payload"
+
+--- slfow ip4 header
+sflow.ip4 = {}
+
+-- definition of the header format
+sflow.ip4.headerFormat = [[
+	uint32_t version;
+	uint32_t agent_ip_type;
+	union ip4_address agent_ip;
+	uint32_t sub_agent_id;
+	uint32_t seq;
+	uint32_t uptime;
+	uint32_t num_samples;
+	uint8_t payload[]; // use with a noPayload proto stack
+]]
+
+--- Variable sized member
+sflow.ip4.headerVariableMember = "payload"
 
 local sflowHeader = {}
 sflowHeader.__index = sflowHeader
@@ -237,7 +251,7 @@ function sflowHeader:fill(args, pre)
 	args = args or {}
 	pre = pre or "sflow"
 	self:setVersion(args[pre .. "Version"])
-	self:setAgentIp(args[pre .. "AgentIp"])
+	self:setAgentIp(args[pre .. "AgentIp"] or 0)
 	self:setSubAgentId(args[pre .. "SubAgentId"])
 	self:setSeq(args[pre .. "Seq"])
 	self:setUptime(args[pre .. "Uptime"])
@@ -263,9 +277,10 @@ end
 --- Retrieve the values of all members.
 --- @return Values in string format.
 function sflowHeader:getString()
-	local str = "" ("sFlowv5, agent IP %s, sub agent id %d, seq %d, uptime %d, samples %d \n"):format(
+	local str = ("sFlowv5, agent IP %s, sub agent id %d, seq %d, uptime %d, samples %d \n"):format(
 		self:getAgentIpString(), self:getSubAgentId(), self:getSeq(), self:getUptime(), self:getNumSamples()
 	)
+	
 	for i, record in self:iterateSamples() do
 		str = str .. "   " .. record:getString() .. "\n"
 		for i, entry in record:iterateEntries() do
@@ -319,13 +334,13 @@ function sflowHeader:iterateSamples()
 			return
 		end
 		-- nope, there is no alignment or whatsoever
-		local recordType = cast(uint32, payload.uint8 + pos)[0]
-		local recordLen = ntoh(cast(uint32, payload.uint8 + pos)[1])
+		local recordType = cast(uint32, payload + pos)[0]
+		local recordLen = ntoh(cast(uint32, payload + pos)[1])
 		local record
 		if recordType == sflow.RECORD_TYPE_FLOW_SAMPLE_BE then
-			record = cast(sflowFlowSampleType, payload.uint8 + pos)
+			record = cast(sflowFlowSampleType, payload + pos)
 		else
-			record = cast(sflowUnknownEntryType, payload.uint8 + pos)
+			record = cast(sflowUnknownEntryType, payload + pos)
 		end
 		pos = pos + recordLen + 8
 		if pos > 1600 then
@@ -371,11 +386,9 @@ function sflowUnknownEntry:iterateEntries()
 	return it
 end
 
---- Cast the packet to a IPv4 sflow packet
-pkt.getSFlowPacket = packetCreate("eth", "ip4", "udp", "sflow", "noPayload")
 
 
-ffi.metatype("struct sflow_header", sflowHeader)
+sflow.ip4.metatype = sflowHeader
 ffi.metatype("struct sflow_unknown_entry", sflowUnknownEntry)
 ffi.metatype("struct sflow_flow_sample", sflowFlowSample)
 ffi.metatype("struct sflow_ext_switch_data", sflowExtSwitchData)

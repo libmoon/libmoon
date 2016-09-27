@@ -2,7 +2,6 @@
 --- @file ptp.lua
 --- @brief Precision time protocol (PTP) utility.
 --- Utility functions for the ptp_header struct
---- defined in \ref headers.lua . \n
 --- Includes:
 --- - PTP constants
 --- - PTP header utility
@@ -10,10 +9,8 @@
 ------------------------------------------------------------------------
 
 local ffi = require "ffi"
-local pkt = require "packet"
 
 require "utils"
-require "headers"
 
 local ntoh, hton = ntoh, hton
 local ntoh16, hton16 = ntoh16, hton16
@@ -52,7 +49,28 @@ ptp.CONTROL_DELAY_RESP = 3
 ---- PTP header
 ---------------------------------------------------------------------------
 
---- Module for ptp_header struct (see \ref headers.lua).
+-- definition of the header format
+ptp.headerFormat = [[
+	uint8_t 	messageType;
+	uint8_t		versionPTP;
+	uint16_t	len;
+	uint8_t		domain;
+	uint8_t		reserved;
+	uint16_t	flags;
+	uint32_t	correction[2];
+	uint32_t	reserved2;
+	uint8_t		oui[3];
+	uint8_t		uuid[5];
+	uint16_t	ptpNodePort;
+	uint16_t	sequenceId;
+	uint8_t		control;
+	uint8_t		logMessageInterval;
+]]
+
+--- Variable sized member
+ptp.headerVariableMember = nil
+
+--- Module for ptp_header struct
 local ptpHeader = {}
 ptpHeader.__index = ptpHeader
 
@@ -372,7 +390,7 @@ function ptpHeader:getLogMessageIntervalString()
 	return self:getLogMessageInterval()
 end
 
---- Set all members of the ip header.
+--- Set all members of the ptp header.
 --- Per default, all members are set to default values specified in the respective set function.
 --- Optional named arguments can be used to set a member to a user-provided value.
 --- @param args Table of named arguments. Available arguments: MessageType, Version, Length, Domain, Reserved, Flags, Correction, Reserved2, Oui, Uuid, NodePort, SequenceID, Control, LogMessageInterval 
@@ -474,20 +492,10 @@ function ptpHeader:setDefaultNamedArgs(pre, namedArgs, nextHeader, accumulatedLe
 end
 
 
----------------------------------------------------------------------------------
----- Packets
----------------------------------------------------------------------------------
-
---- Cast the packet to a layer 2 Ptp packet 
-pkt.getPtpPacket = packetCreate("eth", "ptp")
---- Cast the packet to a Ptp over Udp (IP4) packet
-pkt.getUdpPtpPacket = packetCreate("eth", "ip4", "udp", "ptp")
-
-
 ------------------------------------------------------------------------
 ---- Metatypes
 ------------------------------------------------------------------------
 
-ffi.metatype("struct ptp_header", ptpHeader)
+ptp.metatype = ptpHeader
 
 return ptp

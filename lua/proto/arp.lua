@@ -2,7 +2,6 @@
 --- @file arp.lua
 --- @brief Address resolution protocol (ARP) utility.
 --- Utility functions for the arp_header struct
---- defined in \ref headers.lua . \n
 --- Includes:
 --- - Arp constants
 --- - Arp address utility
@@ -12,9 +11,7 @@
 ------------------------------------------------------------------------
 
 local ffi = require "ffi"
-local pkt = require "packet"
 
-require "headers"
 local dpdkc = require "dpdkc"
 local dpdk = require "dpdk"
 local memory = require "memory"
@@ -56,7 +53,23 @@ arp.OP_REPLY = 2
 ---- ARP header
 --------------------------------------------------------------------------------------------------------
 
---- Module for arp_header struct (see \ref headers.lua).
+-- definition of the header format
+arp.headerFormat = [[
+	uint16_t	hrd;
+	uint16_t	pro;
+	uint8_t		hln;
+	uint8_t		pln;
+	uint16_t	op;
+	union mac_address	sha;
+	union ip4_address	spa;
+	union mac_address	tha;
+	union ip4_address	tpa;
+]]
+
+--- Variable sized member
+arp.headerVariableMember = nil
+
+--- Module for arp_header struct
 local arpHeader = {}
 arpHeader.__index = arpHeader
 
@@ -392,17 +405,10 @@ end
 --- @param accumulatedLength The so far accumulated length for previous headers in a packet
 --- @return Table of namedArgs
 --- @see arpHeader:fill
-function arpHeader:setDefaultNamedArgs(pre, namedArgs, nextHeader, accumulatedLength)
+function arpHeader:setDefaultNamedArgs(pre, namedArgs, nextHeader, accumulatedLength, headerLength)
 	return namedArgs
 end
 	
----------------------------------------------------------------------------------
----- Packets
----------------------------------------------------------------------------------
-
---- Cast the packet to an Arp packet 
-pkt.getArpPacket = packetCreate("eth", "arp")
-
 
 ---------------------------------------------------------------------------------
 ---- ARP Handler Task
@@ -648,7 +654,7 @@ __MG_ARP_TASK = arpTask
 ---- Metatypes
 ---------------------------------------------------------------------------------
 
-ffi.metatype("struct arp_header", arpHeader)
+arp.metatype = arpHeader
 
 return arp
 

@@ -2,7 +2,6 @@
 --- @file PROTO.lua
 --- @brief (PROTO) utility.
 --- Utility functions for the PROTO_header structs 
---- defined in \ref headers.lua . \n
 --- Includes:
 --- - PROTO constants
 --- - PROTO header utility
@@ -14,15 +13,11 @@
 -- Replace all occurrences of PROTO with your protocol (e.g. sctp)
 -- Remove unnecessary comments in this file (comments inbetween [[...]])
 -- Necessary changes to other files:
--- - headers.lua: add the header struct (and other structs, e.g. address), named PROTO_header
 -- - packet.lua: if the header has a length member, adapt packetSetLength; 
 -- 				 if the packet has a checksum, adapt packetCreate (loop at end of function) and packetCalculateChecksums
 -- - proto/proto.lua: add PROTO.lua to the list so it gets loaded
 --]]
 local ffi = require "ffi"
-local pkt = require "packet"
-
-require "headers"
 
 
 ---------------------------------------------------------------------------
@@ -37,7 +32,7 @@ local PROTO = {}
 ---- PROTO header
 ---------------------------------------------------------------------------
 
---- Module for PROTO_address struct (see \ref headers.lua).
+--- Module for PROTO_address struct
 local PROTOHeader = {}
 PROTOHeader.__index = PROTOHeader
 

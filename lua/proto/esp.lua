@@ -2,7 +2,6 @@
 --- @file esp.lua
 --- @brief ESP utility.
 --- Utility functions for the esp_header structs 
---- defined in \ref headers.lua . \n
 --- Includes:
 --- - ESP constants
 --- - IPsec IV
@@ -11,10 +10,7 @@
 ------------------------------------------------------------------------
 
 local ffi = require "ffi"
-local pkt = require "packet"
 local math = require "math"
-
-require "headers"
 
 
 ---------------------------------------------------------------------------
@@ -26,6 +22,13 @@ local esp = {}
 -------------------------------------------------------------------------------------
 ---- IPsec IV
 -------------------------------------------------------------------------------------
+
+-- struct
+ffi.cdef[[	
+	union ipsec_iv {
+		uint32_t	uint32[2];
+	};
+]]
 
 local ipsecIV = {}
 ipsecIV.__index = ipsecIV
@@ -66,6 +69,16 @@ end
 ---------------------------------------------------------------------------
 ---- esp header
 ---------------------------------------------------------------------------
+
+-- definition of the header format
+esp.headerFormat = [[
+	uint32_t	spi;
+	uint32_t	sqn;
+	union ipsec_iv	iv;
+]]
+
+--- Variable sized member
+esp.headerVariableMember = nil
 
 local espHeader = {}
 espHeader.__index = espHeader
@@ -188,22 +201,13 @@ function espHeader:setDefaultNamedArgs(pre, namedArgs, nextHeader, accumulatedLe
 	return namedArgs
 end
 
-----------------------------------------------------------------------------------
----- Packets
-----------------------------------------------------------------------------------
-
--- Esp4 packets should not be shorter than 70 bytes (cf. x540 datasheet page 308: SECP field)
-pkt.getEsp4Packet = packetCreate("eth", "ip4", "esp")
--- Esp6 packets should not be shorter than 90 bytes (cf. x540 datasheet page 308: SECP field)
-pkt.getEsp6Packet = packetCreate("eth", "ip6", "esp") 
-pkt.getEspPacket = function(self, ip4) ip4 = ip4 == nil or ip4 if ip4 then return pkt.getEsp4Packet(self) else return pkt.getEsp6Packet(self) end end
 
 ------------------------------------------------------------------------
 ---- Metatypes
 ------------------------------------------------------------------------
 
 ffi.metatype("union ipsec_iv", ipsecIV)
-ffi.metatype("struct esp_header", espHeader)
+esp.metatype = espHeader
 
 
 return esp

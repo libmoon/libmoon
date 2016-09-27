@@ -2,7 +2,6 @@
 --- @file tcp.lua
 --- @brief Transmission control protocol (TCP) utility.
 --- Utility functions for the tcp_header struct
---- defined in \ref headers.lua . \n
 --- Includes:
 --- - TCP constants
 --- - TCP header utility
@@ -13,7 +12,6 @@ local ffi = require "ffi"
 local dpdkc = require "dpdkc"
 
 require "utils"
-require "headers"
 
 local ntoh, hton = ntoh, hton
 local ntoh16, hton16 = ntoh16, hton16
@@ -51,7 +49,7 @@ mod.headerFormat = [[
 --- Variable sized member
 mod.headerVariableMember = "options"
 
---- Module for tcp_header struct (see \ref headers.lua).
+--- Module for tcp_header struct
 local tcpHeader = {}
 tcpHeader.__index = tcpHeader
 
