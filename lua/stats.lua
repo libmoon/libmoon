@@ -272,7 +272,7 @@ function mod:newDevRxCounter(name, dev, format, file)
 	local obj = newCounter("dev", name, dev, format, file)
 	obj.sleep = 100
 	setmetatable(obj, devRxCounter)
-	obj:getThroughput() -- reset stats on the NIC
+	obj:clearThroughput() -- reset stats on the NIC
 	return obj
 end
 
@@ -323,6 +323,10 @@ end
 function devRxCounter:getThroughput() 
     return self.dev:getRxStats() 
 end 
+
+function devRxCounter:clearThroughput() 
+    return self.dev:clearRxStats() 
+end
 
 --- Packet-based counter
 function pktRxCounter:countPacket(buf)

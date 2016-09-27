@@ -50,6 +50,16 @@ function dev:getRxStats()
 	return tonumber(self.rxPkts), tonumber(self.rxBytes)
 end
 
+-- clear RX counters.  We want to clear the s/w statistics and also reg read to clear the h/w level
+function dev:clearRxStats()
+	dpdkc.read_reg32(self.id, GPRC)
+	dpdkc.read_reg32(self.id, GORCL)
+	dpdkc.read_reg32(self.id, GORCH)
+	self.rxPkts = 0ULL
+	self.rxBytes = 0ULL
+	return
+end
+
 -- necessary because of clear-on-read registers and the interaction with the normal rte_eth_stats_get() call
 function dev:getTxStats()
 	self.txPkts = (self.txPkts or 0ULL) + dpdkc.read_reg32(self.id, GPTC)
