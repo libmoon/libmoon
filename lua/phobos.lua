@@ -241,10 +241,13 @@ function mod.getCyclesFrequency()
 	return tonumber(dpdkc.rte_get_tsc_hz())
 end
 
-local tscFreq = tonumber(mod.getCyclesFrequency())
+local tscFreq
 
 --- gets the TSC time (system uptime) in seconds
 function mod.getTime()
+	if not tscFreq then
+		tscFreq = tonumber(mod.getCyclesFrequency())
+	end
 	return tonumber(mod.getCycles()) / tscFreq
 end
 
