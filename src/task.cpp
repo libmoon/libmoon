@@ -16,7 +16,7 @@ extern "C" {
 #include "task.hpp"
 #include "main.hpp"
 
-namespace phobos {
+namespace libmoon {
 
 	std::string build_lua_path() {
 		std::string base = base_dir;
@@ -67,7 +67,7 @@ extern "C" {
 		size_t arg_len = strlen(arg);
 		char* arg_copy = new char[arg_len + 1];
 		strcpy(arg_copy, arg);
-		rte_eal_remote_launch(&phobos::lua_core_main, arg_copy, core);
+		rte_eal_remote_launch(&libmoon::lua_core_main, arg_copy, core);
 	}
 }
 

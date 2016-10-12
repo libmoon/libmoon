@@ -1,11 +1,11 @@
-local phobos = require "phobos"
+local lm = require "libmoon"
 
 function master(...)
 	print("Hello, world!")
 	print("Command line arguments: ", ...)
-	phobos.startTask("slave", "Hello, world from first slave!")
-	phobos.startTask("slave", "Hello, world from second slave!")
-	phobos.waitForTasks()
+	lm.startTask("slave", "Hello, world from first slave!")
+	lm.startTask("slave", "Hello, world from second slave!")
+	lm.waitForTasks()
 	print("All slaves finished, exiting...")
 end
 

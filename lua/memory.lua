@@ -1,14 +1,14 @@
 --- Memory management and DPDK mempools
 local mod = {}
 
-local phobos  = require "phobos"
+local libmoon  = require "libmoon"
 local ffi     = require "ffi"
 local dpdkc   = require "dpdkc"
 local dpdk    = require "dpdk"
 local ns      = require "namespaces"
 local serpent = require "Serpent"
 local log     = require "log"
-local phobos  = require "phobos"
+local libmoon  = require "libmoon"
 
 local function loadAllocator()
 	local ok, jemalloc = pcall(ffi.load, "libjemalloc.so")
@@ -125,7 +125,7 @@ local function getPoolFromCache(socket, n, bufSize)
 			if pool.socket == socket
 			and	pool.n == n
 			and pool.bufSize == bufSize
-			and pool.core == phobos.getCore() then
+			and pool.core == libmoon.getCore() then
 				result = key
 			end
 		end)
@@ -173,7 +173,7 @@ function mod.createMemPool(...)
 	end
 	-- DPDK recommends to use a value of n=2^k - 1 here
 	args.n = args.n or 2047
-	args.socket = args.socket or select(2, phobos.getCore())
+	args.socket = args.socket or select(2, libmoon.getCore())
 	args.bufSize = args.bufSize or 2048
 	-- TODO: get cached mempool from the mempool pool if possible and use that instead
 	-- FIXME: the todo seems to be already implemented here.
@@ -195,7 +195,7 @@ function mod.createMemPool(...)
 		socket = args.socket,
 		n = args.n,
 		bufSize = args.bufSize,
-		core = phobos.getCore()
+		core = libmoon.getCore()
 	}
 	return mem
 end

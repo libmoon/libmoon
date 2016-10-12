@@ -6,7 +6,7 @@ local mod = {}
 local S      = require "syscall"
 local ffi    = require "ffi"
 local log    = require "log"
-local phobos = require "phobos"
+local libmoon = require "libmoon"
 
 local cast = ffi.cast
 local memcopy = ffi.copy
@@ -60,9 +60,9 @@ end
 --- Create a new fast pcap writer with the given file name.
 --- Call :close() on the writer when you are done.
 --- @param startTime posix timestamp, all timestamps of inserted packets will be relative to this timestamp
----        default: relative to phobos.getTime() == 0
+---        default: relative to libmoon.getTime() == 0
 function mod:newWriter(filename, startTime)
-	startTime = startTime or wallTime() - phobos.getTime()
+	startTime = startTime or wallTime() - libmoon.getTime()
 	local fd = S.open(filename, "creat, rdwr, trunc", "0666")
 	if not fd then
 		log:fatal("could not create pcap file: %s", strError(S.errno()))
@@ -109,7 +109,7 @@ function writer:close()
 end
 
 ffi.cdef[[
-	void phobos_write_pcap(void* dst, const void* packet, uint32_t len, uint32_t orig_len, uint32_t ts_sec, uint32_t ts_usec);
+	void libmoon_write_pcap(void* dst, const void* packet, uint32_t len, uint32_t orig_len, uint32_t ts_sec, uint32_t ts_usec);
 ]]
 
 --- Write a packet to the pcap file
@@ -121,7 +121,7 @@ function writer:write(timestamp, data, len, origLen)
 	local time = self.startTime + timestamp
 	local timeSec = math.floor(time)
 	local timeMicros = (time - timeSec) * 1000000
-	C.phobos_write_pcap(self.ptr + self.offset, data, len, origLen or len, time, timeMicros)
+	C.libmoon_write_pcap(self.ptr + self.offset, data, len, origLen or len, time, timeMicros)
 	self.offset = self.offset + len + 16
 end
 
@@ -175,8 +175,8 @@ function mod:newReader(filename)
 end
 
 ffi.cdef[[
-	struct rte_mbuf* phobos_read_pcap(struct mempool* mp, const void* pcap, uint64_t remaining, uint32_t mempool_buf_size);
-	uint32_t phobos_read_pcap_batch(struct mempool* mp, struct rte_mbuf** bufs, uint32_t num_bufs, const void* pcap, uint64_t remaining, uint32_t mempool_buf_size);
+	struct rte_mbuf* libmoon_read_pcap(struct mempool* mp, const void* pcap, uint64_t remaining, uint32_t mempool_buf_size);
+	uint32_t libmoon_read_pcap_batch(struct mempool* mp, struct rte_mbuf** bufs, uint32_t num_bufs, const void* pcap, uint64_t remaining, uint32_t mempool_buf_size);
 ]]
 
 --- Read the next packet into a buf, the timestamp is stored in the udata64 field as microseconds.
@@ -187,7 +187,7 @@ function reader:readSingle(mempool, mempoolBufSize)
 	if fileRemaining < 32 then -- header size
 		return nil
 	end
-	local buf = C.phobos_read_pcap(mempool, self.ptr + self.offset, fileRemaining, mempoolBufSize)
+	local buf = C.libmoon_read_pcap(mempool, self.ptr + self.offset, fileRemaining, mempoolBufSize)
 	if buf then
 		self.offset = self.offset + buf.pkt_len + 16
 		-- chained mbufs not supported for now
@@ -205,7 +205,7 @@ function reader:read(bufs, mempoolBufSize)
 	if fileRemaining < 32 then -- header size
 		return 0
 	end
-	local numRead = C.phobos_read_pcap_batch(bufs.mem, bufs.array, bufs.size, self.ptr + self.offset, fileRemaining, mempoolBufSize)
+	local numRead = C.libmoon_read_pcap_batch(bufs.mem, bufs.array, bufs.size, self.ptr + self.offset, fileRemaining, mempoolBufSize)
 	for i = 0, numRead - 1 do
 		self.offset = self.offset + bufs.array[i].pkt_len + 16
 		-- chained mbufs not supported for now

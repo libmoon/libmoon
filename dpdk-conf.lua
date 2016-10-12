@@ -1,7 +1,7 @@
 -- Configuration for all DPDK command line parameters.
 -- See DPDK documentation at http://dpdk.org/doc/guides/testpmd_app_ug/run_app.html for details.
--- Phobos tries to choose reasonable defaults, so this config file can almost always be empty.
--- Be careful when running Phobos in a VM that also uses another virtio NIC, e.g., for internet access.
+-- libmoon tries to choose reasonable defaults, so this config file can almost always be empty.
+-- Be careful when running libmoon in a VM that also uses another virtio NIC, e.g., for internet access.
 -- In this case it may be necessary to use the blacklist or whitelist features in some configurations.
 DPDKConfig {
 	-- configure the CPU cores to use, default: all cores

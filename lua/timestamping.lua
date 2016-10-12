@@ -10,7 +10,7 @@ local memory = require "memory"
 local timer  = require "timer"
 local log    = require "log"
 local filter = require "filter"
-local phobos = require "phobos"
+local libmoon = require "libmoon"
 
 local timestamper = {}
 timestamper.__index = timestamper
@@ -163,7 +163,7 @@ function mod.syncClocks(dev1, dev2)
 	or regs1[4] ~= regs2[4] then
 		log:fatal("NICs incompatible, cannot sync clocks")
 	end
-	dpdkc.phobos_sync_clocks(dev1.id, dev2.id, unpack(regs1))
+	dpdkc.libmoon_sync_clocks(dev1.id, dev2.id, unpack(regs1))
 	-- just to tell the driver that we are resetting the clock
 	-- otherwise the cycle tracker becomes confused on long latencies
 	dev1:resetTimeCounters()

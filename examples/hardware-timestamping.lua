@@ -1,6 +1,6 @@
 --- Demonstrates and tests hardware timestamping capabilities
 
-local phobos = require "phobos"
+local lm     = require "libmoon"
 local device = require "device"
 local memory = require "memory"
 local ts     = require "timestamping"
@@ -24,17 +24,17 @@ function master(args)
 	local txQueue1 = args.dev[1]:getTxQueue(1)
 	local rxQueue0 = args.dev[2]:getRxQueue(0)
 	local rxQueue1 = args.dev[2]:getRxQueue(1)
-	phobos.startTask("timestamper", txQueue0, rxQueue0):wait()
-	phobos.startTask("timestamper", txQueue0, rxQueue1):wait()
-	phobos.startTask("timestamper", txQueue0, rxQueue0, nil, nil, true):wait()
-	phobos.startTask("timestamper", txQueue0, rxQueue0, 319):wait()
-	phobos.startTask("timestamper", txQueue0, rxQueue0, 1234):wait()
-	phobos.startTask("timestamper", txQueue0, rxQueue0, 319, nil, true):wait()
-	phobos.startTask("timestamper", txQueue0, rxQueue1, 319):wait()
-	phobos.startTask("timestamper", txQueue0, rxQueue1, 319, true):wait()
-	phobos.startTask("timestamper", txQueue0, rxQueue1, 319)
-	phobos.startTask("flooder", txQueue1, 319)
-	phobos.waitForTasks()
+	lm.startTask("timestamper", txQueue0, rxQueue0):wait()
+	lm.startTask("timestamper", txQueue0, rxQueue1):wait()
+	lm.startTask("timestamper", txQueue0, rxQueue0, nil, nil, true):wait()
+	lm.startTask("timestamper", txQueue0, rxQueue0, 319):wait()
+	lm.startTask("timestamper", txQueue0, rxQueue0, 1234):wait()
+	lm.startTask("timestamper", txQueue0, rxQueue0, 319, nil, true):wait()
+	lm.startTask("timestamper", txQueue0, rxQueue1, 319):wait()
+	lm.startTask("timestamper", txQueue0, rxQueue1, 319, true):wait()
+	lm.startTask("timestamper", txQueue0, rxQueue1, 319)
+	lm.startTask("flooder", txQueue1, 319)
+	lm.waitForTasks()
 end
 
 
@@ -59,7 +59,7 @@ function timestamper(txQueue, rxQueue, udp, randomSrc, vlan)
 	else
 		timestamper = ts:newTimestamper(txQueue, rxQueue)
 	end
-	while phobos.running() and runtime:running() do
+	while lm.running() and runtime:running() do
 		local lat = timestamper:measureLatency(function(buf)
 			if udp then
 				if randomSrc then
@@ -94,7 +94,7 @@ function flooder(queue, port)
 	end)
 	local bufs = mempool:bufArray()
 	local runtime = timer:new(RUN_TIME + 0.1)
-	while phobos.running() and runtime:running() do
+	while lm.running() and runtime:running() do
 		bufs:alloc(60)
 		queue:send(bufs)
 	end

@@ -3,7 +3,7 @@
 
 #include "device.h"
 
-void phobos_sync_clocks(uint8_t port1, uint8_t port2, uint32_t timl, uint32_t timh, uint32_t adjl, uint32_t adjh) {
+void libmoon_sync_clocks(uint8_t port1, uint8_t port2, uint32_t timl, uint32_t timh, uint32_t adjl, uint32_t adjh) {
 	// resetting SYSTIML twice prevents a race-condition when SYSTIML is just about to overflow into SYSTIMH
 	write_reg32(port1, timl, 0);
 	write_reg32(port2, timl, 0);

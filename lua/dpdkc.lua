@@ -214,7 +214,7 @@ ffi.cdef[[
 		uint16_t nb_tx_queues; 
 	};
 
-	struct phobos_device_config {
+	struct libmoon_device_config {
 		uint32_t port;
 		struct mempool** mempools;
 		uint16_t rx_queues;
@@ -258,7 +258,7 @@ ffi.cdef[[
 	uint64_t dpdk_get_mac_addr(int port, char* buf);
 	void rte_eth_link_get(uint8_t port, struct rte_eth_link* link);
 	void rte_eth_link_get_nowait(uint8_t port, struct rte_eth_link* link);
-	int dpdk_configure_device(struct phobos_device_config*);
+	int dpdk_configure_device(struct libmoon_device_config*);
 	void get_mac_addr(int port, char* buf);
 	uint32_t dpdk_get_pci_id(uint8_t port);
 	uint32_t read_reg32(uint8_t port, uint32_t reg);
@@ -313,7 +313,7 @@ ffi.cdef[[
 	int rte_eth_timesync_read_tx_timestamp(uint8_t port_id, struct timespec* timestamp);
 	int rte_eth_timesync_read_rx_timestamp(uint8_t port_id, struct timespec* timestamp, uint32_t timesync);
 	int rte_eth_timesync_read_time(uint8_t port_id, struct timespec* time);
-	void phobos_sync_clocks(uint8_t port1, uint8_t port2, uint32_t timl, uint32_t timh, uint32_t adjl, uint32_t adjh);
+	void libmoon_sync_clocks(uint8_t port1, uint8_t port2, uint32_t timl, uint32_t timh, uint32_t adjl, uint32_t adjh);
 
 
 	// statistics

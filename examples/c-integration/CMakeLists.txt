@@ -7,13 +7,13 @@ SET(PRJ swap-macs)
 
 file(GLOB SOURCES *.c *.cpp)
 
-SET(PHOBOS_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../../)
+SET(LIBMOON_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../../)
 
-# header files for stuff that is available in phobos
+# header files for stuff that is available in libmoon
 INCLUDE_DIRECTORIES(
-	${PHOBOS_DIR}/deps/dpdk/x86_64-native-linuxapp-gcc/include
-	${PHOBOS_DIR}/deps/luajit/src
-	${PHOBOS_DIR}/lib
+	${LIBMOON_DIR}/deps/dpdk/x86_64-native-linuxapp-gcc/include
+	${LIBMOON_DIR}/deps/luajit/src
+	${LIBMOON_DIR}/lib
 )
 
 ADD_LIBRARY(${PRJ} SHARED ${SOURCES})

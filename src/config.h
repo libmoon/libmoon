@@ -1,7 +1,7 @@
 // change these defines via cmake, not by editing this file
 // we just define the defaults here
 
-// build phobos as static library without main()
+// build libmoon as static library without main()
 //#define LIBMOON_BUILD_LIB
 
 // the lua module loaded on startup of a new task

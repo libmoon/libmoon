@@ -16,7 +16,7 @@ struct pcapRecHeader {
 };
 
 extern "C" {
-	void phobos_write_pcap(pcapRecHeader* dst, const void* packet, uint32_t len, uint32_t orig_len, uint32_t ts_sec, uint32_t ts_usec) {
+	void libmoon_write_pcap(pcapRecHeader* dst, const void* packet, uint32_t len, uint32_t orig_len, uint32_t ts_sec, uint32_t ts_usec) {
 		dst->ts_sec = ts_sec;
 		dst->ts_usec = ts_usec;
 		dst->incl_len = len;
@@ -24,7 +24,7 @@ extern "C" {
 		memcpy(&dst->data, packet, len);
 	}
 
-	rte_mbuf* phobos_read_pcap(rte_mempool* mp, const pcapRecHeader* src, uint64_t remaining, uint32_t mempool_buf_size) {
+	rte_mbuf* libmoon_read_pcap(rte_mempool* mp, const pcapRecHeader* src, uint64_t remaining, uint32_t mempool_buf_size) {
 		if (src->incl_len >= remaining) {
 			return nullptr;
 		}
@@ -43,11 +43,11 @@ extern "C" {
 		return res;
 	}
 
-	uint32_t phobos_read_pcap_batch(rte_mempool* mp, rte_mbuf** bufs, uint32_t num_bufs, const uint8_t* pcap, uint64_t remaining, uint32_t mempool_buf_size) {
+	uint32_t libmoon_read_pcap_batch(rte_mempool* mp, rte_mbuf** bufs, uint32_t num_bufs, const uint8_t* pcap, uint64_t remaining, uint32_t mempool_buf_size) {
 		uint64_t offset = 0;
 		for (uint32_t i = 0; i < num_bufs; ++i) {
 			const pcapRecHeader* header = reinterpret_cast<const pcapRecHeader*>(pcap + offset);
-			rte_mbuf* buf = phobos_read_pcap(mp, header, remaining, mempool_buf_size);
+			rte_mbuf* buf = libmoon_read_pcap(mp, header, remaining, mempool_buf_size);
 			bufs[i] = buf;
 			if (!buf) return i;
 			offset += header->incl_len + sizeof(pcapRecHeader);

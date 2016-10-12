@@ -10,7 +10,7 @@ log:setLevel("INFO")
 -- globally available utility functions
 require "utils"
 
-local phobos     = require "phobos"
+local libmoon     = require "libmoon"
 local dpdk       = require "dpdk"
 local dpdkc      = require "dpdkc"
 local device     = require "device"
@@ -27,7 +27,7 @@ require "proto.proto"
 --require("jit.v").on()
 
 local function getStackTrace(err)
-	print(red("[FATAL] Lua error in task %s", PHOBOS_TASK_NAME))
+	print(red("[FATAL] Lua error in task %s", LIBMOON_TASK_NAME))
 	print(stp.stacktrace(err, 2))
 end
 
@@ -62,11 +62,11 @@ end
 
 local function master(_, file, ...)
 	memory.testAllocationSpace()
-	PHOBOS_TASK_NAME = "master"
+	LIBMOON_TASK_NAME = "master"
 	local args, cfgFile = parseCommandLineArgs(...)
-	phobos.config.dpdkConfig = cfgFile
-	phobos.config.userscript = file
-	phobos.setupPaths() -- need the userscript first because we want to use the path
+	libmoon.config.dpdkConfig = cfgFile
+	libmoon.config.userscript = file
+	libmoon.setupPaths() -- need the userscript first because we want to use the path
 	-- run the userscript
 	local ok = run(file)
 	if not ok then
@@ -88,7 +88,7 @@ local function master(_, file, ...)
 			parsedArgs = {parser:parse()}
 		end
 	end
-	if not phobos.config.skipInit then
+	if not libmoon.config.skipInit then
 		if not dpdk.init() then
 			log:fatal("Could not initialize DPDK")
 		end
@@ -99,16 +99,16 @@ local function master(_, file, ...)
 end
 
 local function slave(args)
-	phobos.setupPaths()
+	libmoon.setupPaths()
 	-- must be done before parsing the args as they might rely on deserializers loaded by the script
-	local ok = run(phobos.config.userscript)
+	local ok = run(libmoon.config.userscript)
 	if not ok then
 		return
 	end
 	-- core > max core means this is a shared task
-	if phobos.getCore() > phobos.config.cores[#phobos.config.cores] then
+	if libmoon.getCore() > libmoon.config.cores[#libmoon.config.cores] then
 		-- disabling this warning must be done before deserializing the arguments
-		phobos.disableBadSocketWarning()
+		libmoon.disableBadSocketWarning()
 	end
 	args = loadstring(args)()
 	local taskId = args[1]
@@ -118,14 +118,14 @@ local function slave(args)
 	end
 	--require("jit.p").start("l")
 	--require("jit.dump").on()
-	PHOBOS_TASK_NAME = func
-	PHOBOS_TASK_ID = taskId
+	LIBMOON_TASK_NAME = func
+	LIBMOON_TASK_ID = taskId
 	local results = { select(2, xpcall(_G[func], getStackTrace, select(3, unpackAll(args)))) }
 	local vals = serpent.dump(results)
 	local buf = ffi.new("char[?]", #vals + 1)
 	ffi.copy(buf, vals)
 	ffi.C.task_store_result(taskId, buf)
-	if phobos.running() then
+	if libmoon.running() then
 		local ok, err = pcall(device.reclaimTxBuffers)
 		if ok then
 			memory.freeMemPools()

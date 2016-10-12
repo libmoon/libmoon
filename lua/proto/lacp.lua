@@ -18,7 +18,7 @@ local memory = require "memory"
 local filter = require "filter"
 local ns     = require "namespaces"
 local eth    = require "proto.ethernet"
-local phobos = require "phobos"
+local libmoon = require "libmoon"
 
 require "headers"
 
@@ -285,7 +285,7 @@ lacp.lacpTask = "__MG_LACP_TASK"
 -- I actually didn't read the spec, so this may be slightly wrong
 -- tested against an Arista EOS 4.15.3FX MLAG LACP and Linux bonding
 function lacp.startLacpTask(name, queues)
-	phobos.startSharedTask(lacp.lacpTask, name, queues)
+	libmoon.startSharedTask(lacp.lacpTask, name, queues)
 end
 
 local LACP_TIMEOUT = 30
@@ -297,7 +297,7 @@ function lacp:waitForLink(name, minLinks)
 		return lacp:waitForLink(self, name)
 	end
 	if not status[name] then
-		phobos.sleepMillisIdle(100)
+		libmoon.sleepMillisIdle(100)
 	end
 	if not status[name] then
 		-- yes, this is technically speaking a race condition if the other thread takes >= 100ms to startup...
@@ -315,7 +315,7 @@ function lacp:waitForLink(name, minLinks)
 				break
 			end
 		end
-		phobos.sleepMillisIdle(100)
+		libmoon.sleepMillisIdle(100)
 	end
 end
 
@@ -356,7 +356,7 @@ local function lacpTask(name, queues)
 	end
 	status[name] = { up = 0, numPorts = #queues, mac = lacpMac }
 	local lastUpdate = 0
-	while phobos.running() do
+	while libmoon.running() do
 		for i, port in ipairs(queues) do
 			-- receive
 			local rx = port.rxQueue:tryRecvIdle(bufs, 100)
@@ -424,7 +424,7 @@ local function lacpTask(name, queues)
 			end
 		end
 		status[name] = { up = numPortsUp, numPorts = #queues, mac = lacpMac }
-		phobos.sleepMillisIdle(1)
+		libmoon.sleepMillisIdle(1)
 	end
 end
 

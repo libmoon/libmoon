@@ -20,7 +20,7 @@ local dpdk = require "dpdk"
 local memory = require "memory"
 local filter = require "filter"
 local ns = require "namespaces"
-local phobos = require "phobos"
+local libmoon = require "libmoon"
 local pipe = require "pipe"
 local log = require "log"
 
@@ -421,7 +421,7 @@ arp.arpTask = "__MG_ARP_TASK"
 --- {rxQueue = rxQueue, txQueue = txQueue, ips = "ip" | {"ip", ...}}
 --- rxQueue is optional, packets can alternatively be provided through the pipe API, see arp.handlePacket()
 function arp.startArpTask(queues)
-	phobos.startSharedTask(arp.arpTask, queues)
+	libmoon.startSharedTask(arp.arpTask, queues)
 end
 
 -- Arp table
@@ -500,7 +500,7 @@ local function arpTask(qs)
 	
 	arpTable.taskRunning = true
 
-	while phobos.running() do
+	while libmoon.running() do
 		
 		for _, nic in pairs(qs) do
 			if nic.rxQueue then
@@ -571,7 +571,7 @@ local function arpTask(qs)
 		for _, ip in ipairs(timedOutEntries) do
 			arpTable[ip] = nil
 		end
-		phobos.sleepMillisIdle(1)
+		libmoon.sleepMillisIdle(1)
 	end
 end
 
@@ -603,7 +603,7 @@ function arp.lookup(ip)
 	if not arpTable.taskRunning then
 		local waitForArpTask = 0
 		while not arpTable.taskRunning and waitForArpTask < 10 do
-			phobos.sleepMillis(100)
+			libmoon.sleepMillis(100)
 		end
 		if not arpTable.taskRunning then
 			error("ARP task is not running")
@@ -625,19 +625,19 @@ end
 --- @param ip The ip address in string or cdata format to look up.
 --- @param timeout timeout in seconds
 function arp.blockingLookup(ip, timeout)
-	local timeout = phobos.getTime() + timeout
+	local timeout = libmoon.getTime() + timeout
 	repeat
 		local mac, ts = arp.lookup(ip)
 		if mac then
 			return mac, ts
 		end
-		phobos.sleepMillisIdle(1000)
-	until phobos.getTime() >= timeout or not phobos.running()
+		libmoon.sleepMillisIdle(1000)
+	until libmoon.getTime() >= timeout or not libmoon.running()
 end
 
 function arp.waitForStartup()
-	while not arpTable.taskRunning and phobos.running() do
-		phobos.sleepMillisIdle(1)
+	while not arpTable.taskRunning and libmoon.running() do
+		libmoon.sleepMillisIdle(1)
 	end
 end
 

@@ -1156,7 +1156,7 @@ local function normalizeArgs(...)
    local args = ...
    if args and type(args) ~= "table" then
       args = {...}
-      -- undo phobos pre-parsing of numbers
+      -- undo libmoon pre-parsing of numbers
       for i, v in ipairs(args) do
          args[i] = tostring(v)
       end

@@ -3,7 +3,7 @@
 #include <vector>
 #include <string>
 
-namespace phobos {
+namespace libmoon {
 	extern const char* base_dir;
 	extern const char* extra_lua_path;
 

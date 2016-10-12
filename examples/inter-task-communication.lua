@@ -1,5 +1,5 @@
 --- Different methods to communicate between tasks.
-local phobos     = require "phobos"
+local lm         = require "libmoon"
 local ffi        = require "ffi"
 local memory     = require "memory"
 local namespaces = require "namespaces"
@@ -13,15 +13,15 @@ SOME_GLOBAL_VARIABLE = "foo"
 -- hook print to show the current task's name
 local print = function(str, ...)
 	if not str then return print() end
-	print(("[Task: %s] " .. str):format(PHOBOS_TASK_NAME, ...))
+	print(("[Task: %s] " .. str):format(LIBMOON_TASK_NAME, ...))
 end
 
 local function globalVarDemo()
 	print("Global variable SOME_GLOBAL_VARIABLE = %s", SOME_GLOBAL_VARIABLE)
 	print("Changing value to \"bar\"")
 	SOME_GLOBAL_VARIABLE = "bar"
-	phobos.startTask("globalVarSlave")
-	phobos.waitForTasks()
+	lm.startTask("globalVarSlave")
+	lm.waitForTasks()
 	print("Back in master task")
 	print("Global variable SOME_GLOBAL_VARIABLE = %s", SOME_GLOBAL_VARIABLE)
 end
@@ -37,7 +37,7 @@ local function argumentsDemo()
 	print("All arguments are serialized to be passed to the other LuaJIT VM")
 	print("This means all arguments are copied and modifications don't propagate")
 	print("Calling argumentSlave with a few examples values")
-	local task = phobos.startTask("argumentSlave", "string", 3.14, {key = { key = "value"}})
+	local task = lm.startTask("argumentSlave", "string", 3.14, {key = { key = "value"}})
 	local tbl, str = task:wait()
 	print("Received a %s return value: tbl.foo = \"%s\"", type(tbl), tbl.foo)
 	print("Received a %s return value: \"%s\"", type(str), str)
@@ -64,8 +64,8 @@ local function namespaceDemo()
 	print("Saving same values to the namespace...")
 	ns.foo = 5
 	ns.key = "value"
-	phobos.startTask("namespaceSlave")
-	phobos.waitForTasks()
+	lm.startTask("namespaceSlave")
+	lm.waitForTasks()
 	print("Namespaces use the same serialization mechanism as argument passing")
 	print("That means retrieving a value results in a copy")
 	print("A more complete example for namespaces is the ARP implementation in lua/proto/arp.lua")
@@ -78,20 +78,20 @@ end
 
 
 local function pipeDemo()
-	print("There are two types of pipes in Phobos: slowPipes and fastPipes")
+	print("There are two types of pipes in lm: slowPipes and fastPipes")
 	print("The former rely on serialization, the latter can only handle LuaJIT FFI cdata pointers")
 	print("A typical usecase for slow pipes would be transferring statistics between tasks")
 	print("Fast pipes are suitable to pass packets between tasks")
 	local slowPipe = pipe:newSlowPipe()
 	local fastPipe = pipe:newFastPipe()
-	phobos.startTask("slowPipeSlave", slowPipe)
+	lm.startTask("slowPipeSlave", slowPipe)
 	print("Sending data to slow pipe")
 	slowPipe:send({key = "value"})
-	phobos.waitForTasks()
+	lm.waitForTasks()
 	print("Starting multiple fastPipe tasks")
-	phobos.startTask("fastPipeSendSlave", fastPipe)
-	phobos.startTask("fastPipeRecvSlave", fastPipe)
-	phobos.waitForTasks()
+	lm.startTask("fastPipeSendSlave", fastPipe)
+	lm.startTask("fastPipeRecvSlave", fastPipe)
+	lm.waitForTasks()
 	print("Note: both types of pipes are single-producer single-consumer")
 end
 
@@ -123,22 +123,22 @@ end
 
 
 local function syncDemo()
-	print("Phobos provides locks and barriers")
+	print("lm provides locks and barriers")
 	print("Locks work exactly as you expect them to work")
 	local l = lock:new()
 	print("Acquiring lock")
 	l:lock()
-	phobos.startTask("lockSlave", l)
+	lm.startTask("lockSlave", l)
 	print("Waiting 500ms before releasing lock")
-	phobos.sleepMillisIdle(500)
+	lm.sleepMillisIdle(500)
 	l:unlock()
-	phobos.waitForTasks()
+	lm.waitForTasks()
 	print("Barriers are used to ensure a set of tasks reached the same point before continuing")
 	local b = barrier:new(3)
-	phobos.startTask("barrierSlave", b, 1, 0)
-	phobos.startTask("barrierSlave", b, 2, 100)
-	phobos.startTask("barrierSlave", b, 3, 1000)
-	phobos.waitForTasks()
+	lm.startTask("barrierSlave", b, 1, 0)
+	lm.startTask("barrierSlave", b, 2, 100)
+	lm.startTask("barrierSlave", b, 3, 1000)
+	lm.waitForTasks()
 end
 
 function lockSlave(l)
@@ -150,7 +150,7 @@ end
 
 function barrierSlave(b, taskId, sleep)
 	print("Slave task %d, sleeping for %d milliseconds", taskId, sleep)
-	phobos.sleepMillisIdle(sleep)
+	lm.sleepMillisIdle(sleep)
 	print("Waiting on barrier at timestamp %f", time())
 	b:wait()
 	print("Got through barrier at timestamp %f", time())

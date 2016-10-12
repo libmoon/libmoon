@@ -125,11 +125,11 @@ end
 
 
 ffi.cdef[[
-int phobos_i40e_reset_timecounters(uint32_t port_id);
+int libmoon_i40e_reset_timecounters(uint32_t port_id);
 ]]
 
 function dev:resetTimeCounters()
-	ffi.C.phobos_i40e_reset_timecounters(self.id)
+	ffi.C.libmoon_i40e_reset_timecounters(self.id)
 end
 
 function dev:enableRxTimestamps(queue, udpPort)

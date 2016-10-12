@@ -44,7 +44,7 @@ int dpdk_get_max_ports() {
 	return RTE_MAX_ETHPORTS;
 }
 
-struct phobos_device_config {
+struct libmoon_device_config {
 	uint32_t port;
 	struct rte_mempool** mempools;
 	uint16_t rx_queues;
@@ -58,7 +58,7 @@ struct phobos_device_config {
 	uint32_t rss_mask;
 };
 
-int dpdk_configure_device(struct phobos_device_config* cfg) {
+int dpdk_configure_device(struct libmoon_device_config* cfg) {
 	const char* driver = dpdk_get_driver_name(cfg->port);
 	bool is_i40e_device = strcmp("rte_i40e_pmd", driver) == 0;
 	// TODO: make fdir configurable

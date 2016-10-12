@@ -164,7 +164,7 @@ function checksum(data, len)
 		end
 	end
 	-- missing the very last uint_8 for odd sized packets
-	-- note that this access is always valid in Phobos
+	-- note that this access is always valid in libmoon
 	--  * buffers are a fixed even size >= pkt len
 	--  * pkt length is just metadata and not the actual length of the buffer
 	if (len % 2) == 1 then
@@ -475,16 +475,16 @@ function imixSize()
 end
 
 function waitForFunc(wait, f, ...)
-	local phobos = require "phobos"
+	local libmoon = require "libmoon"
 	wait = wait or 0
 	repeat
 		local res = f(...)
 		if res then
 			return res
 		end
-		phobos.sleepMicrosIdle(math.min(10, wait))
+		libmoon.sleepMicrosIdle(math.min(10, wait))
 		wait = wait - 10
-		if not phobos.running() then
+		if not libmoon.running() then
 			break
 		end
 	until wait < 0

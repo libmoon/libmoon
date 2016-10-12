@@ -1,5 +1,5 @@
 --- Layer 2 reflector, swaps src and dst MACs and echoes the packet
-local phobos = require "phobos"
+local lm     = require "libmoon"
 local memory = require "memory"
 local device = require "device"
 local stats  = require "stats"
@@ -40,15 +40,15 @@ function master(args)
 
 	for i, dev in ipairs(args.dev) do 
 		for i = 1, args.threads do
-			phobos.startTask("reflector", dev:getRxQueue(i - 1), dev:getTxQueue(i - 1))
+			lm.startTask("reflector", dev:getRxQueue(i - 1), dev:getTxQueue(i - 1))
 		end
 	end
-	phobos.waitForTasks()
+	lm.waitForTasks()
 end
 
 function reflector(rxQ, txQ)
 	local bufs = memory.bufArray()
-	while phobos.running() do
+	while lm.running() do
 		local rx = rxQ:tryRecv(bufs, 1000)
 		for i = 1, rx do
 			-- swap MAC addresses

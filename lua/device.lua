@@ -2,7 +2,7 @@
 
 local mod = {}
 
-local phobos     = require "phobos"
+local libmoon     = require "libmoon"
 local ffi        = require "ffi"
 local dpdkc      = require "dpdkc"
 local dpdk       = require "dpdk"
@@ -180,7 +180,7 @@ function mod.config(args)
 	for i, v in ipairs(args.mempools) do
 		mempools[i - 1] = v
 	end
-	local rc = dpdkc.dpdk_configure_device(ffi.new("struct phobos_device_config", {
+	local rc = dpdkc.dpdk_configure_device(ffi.new("struct libmoon_device_config", {
 		port = args.port,
 		mempools = mempools,
 		rx_queues = args.rxQueues,
@@ -296,11 +296,11 @@ end
 
 local warningShown = {} -- per-core
 function dev:checkSocket()
-	if PHOBOS_TASK_NAME ~= "master" and not PHOBOS_IGNORE_BAD_NUMA_MAPPING then
+	if LIBMOON_TASK_NAME ~= "master" and not LIBMOON_IGNORE_BAD_NUMA_MAPPING then
 		-- check the NUMA association if we are running in a worker thread
 		-- (it's okay to do the initial config from the wrong socket, but sending packets from it is a bad idea)
 		local devSocket = self:getSocket()
-		local core, threadSocket = phobos.getCore()
+		local core, threadSocket = libmoon.getCore()
 		if devSocket ~= threadSocket then
 			if not warningShown[self.id] then
 				warningShown[self.id] = true
@@ -351,7 +351,7 @@ function mod.waitForLinks(...)
 				port:wait(0) -- prints message immediately
 			end
 		end
-		phobos.sleepMillisIdle(100)
+		libmoon.sleepMillisIdle(100)
 	end
 	for i, port in ipairs(ports) do -- ports that did not come up
 		port:wait(0)
@@ -370,7 +370,7 @@ function dev:wait(maxWait)
 	repeat
 		link = self:getLinkStatus()
 		if maxWait > 0 then
-			phobos.sleepMillisIdle(100)
+			libmoon.sleepMillisIdle(100)
 			maxWait = maxWait - 0.1
 		else
 			break
@@ -656,7 +656,7 @@ do
 	--- Get the total number of packets and bytes transmitted successfully.
 	--- This does not include packets that were queued but not yet sent by the NIC.
 	--- This counter should include the CRC checksum, but drivers are inconsistent here.
-	--- Phobos tries to correct this inconsistency, currently tested with ixgbe, i40e and igb NICs.
+	--- libmoon tries to correct this inconsistency, currently tested with ixgbe, i40e and igb NICs.
 	--- @return packets, bytes
 	function dev:getTxStats()
 		if not ethStatsType then
@@ -675,7 +675,7 @@ do
 	
 	--- Get the number packets and bytes received at the physical layer regardless whether they were received by the driver.
 	--- The drivers may be inconsistent regarding counting of packets dropped due to insufficient buffer space...
-	--- Phobos has custom implementations for this function for ixgbe and i40e that work correctly.
+	--- libmoon has custom implementations for this function for ixgbe and i40e that work correctly.
 	--- Use dev:getStats() to get the full statistics exposed by DPDK.
 	--- @return packets, bytes
 	function dev:getRxStats()
@@ -759,8 +759,8 @@ end
 --- Restarts all tx queues that were actively used by this task.
 --- 'Actively used' means that :send() was called from the current task.
 function mod.reclaimTxBuffers()
-	local old = PHOBOS_IGNORE_BAD_NUMA_MAPPING
-	PHOBOS_IGNORE_BAD_NUMA_MAPPING = true
+	local old = LIBMOON_IGNORE_BAD_NUMA_MAPPING
+	LIBMOON_IGNORE_BAD_NUMA_MAPPING = true
 	devices:forEach(function(_, dev)
 		for _, queue in pairs(dev.txQueues) do
 			if queue.used then
@@ -769,14 +769,14 @@ function mod.reclaimTxBuffers()
 			end
 		end
 	end)
-	PHOBOS_IGNORE_BAD_NUMA_MAPPING = old
+	LIBMOON_IGNORE_BAD_NUMA_MAPPING = old
 end
 
 --- Receive packets from a rx queue.
 --- Returns as soon as at least one packet is available.
 function rxQueue:recv(bufArray, numpkts)
 	numpkts = numpkts or bufArray.size
-	while phobos.running() do
+	while libmoon.running() do
 		local rx = dpdkc.rte_eth_rx_burst_export(self.id, self.qid, bufArray.array, math.min(bufArray.size, numpkts))
 		if rx > 0 then
 			return rx
@@ -813,7 +813,7 @@ function rxQueue:tryRecv(bufArray, maxWait)
 		if maxWait < 0 then
 			break
 		end
-		phobos.sleepMicros(1)
+		libmoon.sleepMicros(1)
 	end
 	return 0
 end
@@ -832,7 +832,7 @@ function rxQueue:tryRecvIdle(bufArray, maxWait)
 		if maxWait < 0 then
 			break
 		end
-		phobos.sleepMicrosIdle(1)
+		libmoon.sleepMicrosIdle(1)
 	end
 	return 0
 end

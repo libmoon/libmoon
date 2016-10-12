@@ -1,7 +1,7 @@
 --- IO stats for devices
 local mod = {}
 
-local phobos    = require "phobos"
+local libmoon    = require "libmoon"
 local dpdk      = require "dpdk"
 local device    = require "device"
 local log       = require "log"
@@ -230,11 +230,11 @@ end
 
 local function finalizeCounter(self, sleep)
 	-- wait for any remaining packets to arrive/be sent if necessary
-	phobos.sleepMillis(sleep)
+	libmoon.sleepMillis(sleep)
 	-- last stats are probably complete nonsense, especially if sleep ~= 0
 	-- we just do this to get the correct totals
 	local pkts, bytes = self:getThroughput()
-	updateCounter(self, phobos.getTime(), pkts, bytes, true)
+	updateCounter(self, libmoon.getTime(), pkts, bytes, true)
 	mod.addStats(self.mpps, true)
 	mod.addStats(self.mbit, true)
 	mod.addStats(self.wireMbit, true)
@@ -304,7 +304,7 @@ function rxCounter:print(event, ...)
 end
 
 function rxCounter:update()
-	local time = phobos.getTime()
+	local time = libmoon.getTime()
 	if self.lastUpdate and time <= self.lastUpdate + 1 then
 		return
 	end
@@ -315,7 +315,7 @@ end
 function rxCounter:getStats()
 	-- force an update
 	local pkts, bytes = self:getThroughput()
-	updateCounter(self, phobos.getTime(), pkts, bytes, true)
+	updateCounter(self, libmoon.getTime(), pkts, bytes, true)
 	return getStats(self)
 end
 
@@ -344,7 +344,7 @@ end
 function manualRxCounter:update(pkts, bytes)
 	self.current = self.current + pkts
 	self.currentBytes = self.currentBytes + bytes
-	local time = phobos.getTime()
+	local time = libmoon.getTime()
 	if self.lastUpdate and time <= self.lastUpdate + 1 then
 		return
 	end
@@ -360,7 +360,7 @@ end
 function manualRxCounter:updateWithSize(pkts, size)
 	self.current = self.current + pkts
 	self.currentBytes = self.currentBytes + pkts * (size + 4)
-	local time = phobos.getTime()
+	local time = libmoon.getTime()
 	if self.lastUpdate and time <= self.lastUpdate + 1 then
 		return
 	end
@@ -429,7 +429,7 @@ end
 
 --- Device-based counter
 function txCounter:update()
-	local time = phobos.getTime()
+	local time = libmoon.getTime()
 	if self.lastUpdate and time <= self.lastUpdate + 1 then
 		return
 	end
@@ -442,7 +442,7 @@ end
 function txCounter:getStats()
 	-- force an update
 	local pkts, bytes = self:getThroughput()
-	updateCounter(self, phobos.getTime(), pkts, bytes, true)
+	updateCounter(self, libmoon.getTime(), pkts, bytes, true)
 	return getStats(self)
 end
 
@@ -465,7 +465,7 @@ end
 function manualTxCounter:update(pkts, bytes)
 	self.current = self.current + pkts
 	self.currentBytes = self.currentBytes + bytes
-	local time = phobos.getTime()
+	local time = libmoon.getTime()
 	if self.lastUpdate and time <= self.lastUpdate + 1 then
 		return
 	end
@@ -476,7 +476,7 @@ end
 function manualTxCounter:updateWithSize(pkts, size)
 	self.current = self.current + pkts
 	self.currentBytes = self.currentBytes + pkts * (size + 4)
-	local time = phobos.getTime()
+	local time = libmoon.getTime()
 	if self.lastUpdate and time <= self.lastUpdate + 1 then
 		return
 	end
@@ -506,7 +506,7 @@ function mod.startStatsTask(args)
 			args.devices[i] = v
 		end
 	end
-	phobos.startSharedTask("__PHOBOS_STATS_TASK", args)
+	libmoon.startSharedTask("__LIBMOON_STATS_TASK", args)
 end
 
 local function removeDuplicates(tbl)
@@ -533,18 +533,18 @@ local function statsTask(args)
 	for i, dev in ipairs(args.txDevices) do
 		table.insert(counters, mod:newDevTxCounter(dev, args.format, args.file))
 	end
-	while phobos.running(200) do
+	while libmoon.running(200) do
 		for i, ctr in ipairs(counters) do
 			ctr:update()
 		end
-		phobos.sleepMillisIdle(10)
+		libmoon.sleepMillisIdle(10)
 	end
 	for i, ctr in ipairs(counters) do
 		ctr:finalize(0)
 	end
 end
 
-__PHOBOS_STATS_TASK = statsTask
+__LIBMOON_STATS_TASK = statsTask
 
 return mod
 

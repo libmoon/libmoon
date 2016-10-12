@@ -16,12 +16,12 @@
 #include "timestamping.h"
 #undef NO_INCLUDE_RTE_TIME
 
-int phobos_i40e_reset_timecounters(uint32_t port_id) {
+int libmoon_i40e_reset_timecounters(uint32_t port_id) {
 	RTE_ETH_VALID_PORTID_OR_ERR_RET(port_id, -ENODEV);
 	struct rte_eth_dev* dev = &rte_eth_devices[port_id];
 	struct i40e_adapter* adapter = (struct i40e_adapter*) dev->data->dev_private;
-	phobos_reset_timecounter(&adapter->systime_tc);
-	phobos_reset_timecounter(&adapter->rx_tstamp_tc);
-	phobos_reset_timecounter(&adapter->tx_tstamp_tc);
+	libmoon_reset_timecounter(&adapter->systime_tc);
+	libmoon_reset_timecounter(&adapter->rx_tstamp_tc);
+	libmoon_reset_timecounter(&adapter->tx_tstamp_tc);
 	return 0;
 }

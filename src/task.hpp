@@ -4,7 +4,7 @@ extern "C" {
 #include <lualib.h>
 }
 
-namespace phobos {
+namespace libmoon {
 	lua_State* launch_lua();
 }
 

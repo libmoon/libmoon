@@ -8,7 +8,7 @@
 
 #include "lifecycle.hpp"
 
-namespace phobos {
+namespace libmoon {
 	// this code is, strictly speaking, incorrect as there are no memory fences
 	// and these variables are accessed by multiple threads
 	// however, memory fences are slow and this works in practice
@@ -39,11 +39,11 @@ namespace phobos {
 
 extern "C" {
 	uint8_t is_running(uint32_t extra_time) {
-		return phobos::is_running(extra_time);
+		return libmoon::is_running(extra_time);
 	}
 
 	void set_runtime(uint32_t run_time) {
-		phobos::stop_at = rte_rdtsc() + run_time * rte_get_tsc_hz() / 1000;
+		libmoon::stop_at = rte_rdtsc() + run_time * rte_get_tsc_hz() / 1000;
 	}
 }
 

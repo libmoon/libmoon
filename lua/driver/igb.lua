@@ -42,11 +42,11 @@ dev.timeRegisters = {SYSTIMEL, SYSTIMEH, TIMEADJL, TIMEADJH}
 dev.crcPatch      = true
 
 ffi.cdef[[
-int phobos_igb_reset_timecounters(uint32_t port_id);
+int libmoon_igb_reset_timecounters(uint32_t port_id);
 ]]
 
 function dev:resetTimeCounters()
-	ffi.C.phobos_igb_reset_timecounters(self.id)
+	ffi.C.libmoon_igb_reset_timecounters(self.id)
 end
 
 -- just rte_eth_timesync_enable doesn't do the trick :(

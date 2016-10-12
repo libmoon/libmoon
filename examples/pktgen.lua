@@ -1,10 +1,10 @@
 --- A simple UDP packet generator
-local phobos   = require "phobos"
-local device   = require "device"
-local stats    = require "stats"
-local log      = require "log"
-local memory   = require "memory"
-local arp      = require "proto.arp"
+local lm     = require "libmoon"
+local device = require "device"
+local stats  = require "stats"
+local log    = require "log"
+local memory = require "memory"
+local arp    = require "proto.arp"
 
 -- set addresses here
 local DST_MAC       = nil -- resolved via ARP on GW_IP or DST_IP, can be overriden with a string here
@@ -32,7 +32,7 @@ function configure(parser)
 end
 
 function master(args,...)
-	log:info("Check out MoonGen (built on Phobos) if you are looking for a fully featured packet generator")
+	log:info("Check out MoonGen (built on lm) if you are looking for a fully featured packet generator")
 	log:info("https://github.com/emmericp/MoonGen")
 
 	-- configure devices and queues
@@ -75,10 +75,10 @@ function master(args,...)
 			if args.rate then
 				queue:setRate(args.rate / args.threads)
 			end
-			phobos.startTask("txSlave", queue, DST_MAC)
+			lm.startTask("txSlave", queue, DST_MAC)
 		end
 	end
-	phobos.waitForTasks()
+	lm.waitForTasks()
 end
 
 function txSlave(queue, dstMac)
@@ -97,7 +97,7 @@ function txSlave(queue, dstMac)
 	end)
 	-- a bufArray is just a list of buffers from a mempool that is processed as a single batch
 	local bufs = mempool:bufArray()
-	while phobos.running() do -- check if Ctrl+c was pressed
+	while lm.running() do -- check if Ctrl+c was pressed
 		-- this actually allocates some buffers from the mempool the array is associated with
 		-- this has to be repeated for each send because sending is asynchronous, we cannot reuse the old buffers here
 		bufs:alloc(PKT_LEN)

@@ -11,7 +11,7 @@
 --- Note that the stats shown at the end will probably not add up when plugging this into live traffic:
 --- Some packets are simply lost during NIC reset and startup (the NIC counter is a hardware counter).
 
-local phobos = require "phobos"
+local lm     = require "libmoon"
 local device = require "device"
 local memory = require "memory"
 local stats  = require "stats"
@@ -47,9 +47,9 @@ function master(args)
 	end
 	stats.startStatsTask{rxDevices = {dev}}
 	for i = 1, args.threads do
-		phobos.startTask("dumper", dev:getRxQueue(i - 1), args, i)
+		lm.startTask("dumper", dev:getRxQueue(i - 1), args, i)
 	end
-	phobos.waitForTasks()
+	lm.waitForTasks()
 end
 
 function dumper(queue, args, threadId)
@@ -75,9 +75,9 @@ function dumper(queue, args, threadId)
 		filterCtr = stats:newPktRxCounter("Filter reject, thread #" .. threadId)
 	end
 	local bufs = memory.bufArray()
-	while phobos.running() do
+	while lm.running() do
 		local rx = queue:tryRecv(bufs, 100)
-		local batchTime = phobos.getTime()
+		local batchTime = lm.getTime()
 		for i = 1, rx do
 			local buf = bufs[i]
 			if filter(buf:getBytes(), buf:getSize()) then

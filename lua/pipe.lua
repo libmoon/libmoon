@@ -4,7 +4,7 @@ local mod = {}
 local memory   = require "memory"
 local ffi      = require "ffi"
 local serpent  = require "Serpent"
-local phobos   = require "phobos"
+local libmoon   = require "libmoon"
 local log      = require "log"
 
 ffi.cdef [[
@@ -75,7 +75,7 @@ slowPipe.__index = slowPipe
 --- A pipe can only be used by exactly two tasks: a single reader and a single writer.
 --- Slow pipes are called slow pipe because they are slow (duh).
 --- Any objects passed to it will be *serialized* as strings.
---- This means that it supports arbitrary Lua objects following Phobos' usual serialization rules.
+--- This means that it supports arbitrary Lua objects following libmoon's usual serialization rules.
 --- Use a 'fast pipe' if you need fast inter-task communication. Fast pipes are restricted to LuaJIT FFI objects.
 function mod:newSlowPipe()
 	return setmetatable({
@@ -102,7 +102,7 @@ function slowPipe:tryRecv(wait)
 		if wait < 0 then
 			break
 		end
-		phobos.sleepMicrosIdle(10)
+		libmoon.sleepMicrosIdle(10)
 	end
 end
 
@@ -163,7 +163,7 @@ function fastPipe:tryRecv(wait)
 		if wait < 0 then
 			break
 		end
-		phobos.sleepMicrosIdle(10)
+		libmoon.sleepMicrosIdle(10)
 	end
 end
 

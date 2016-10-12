@@ -6,7 +6,7 @@
 
 --- high-level dpdk wrapper
 local mod = {}
-local phobos = require "phobos"
+local libmoon = require "libmoon"
 local dpdkc  = require "dpdkc"
 local ffi    = require "ffi"
 local log    = require "log"
@@ -90,15 +90,15 @@ mod.ETH_RSS_IPV6_TCP_EX        = bit.lshift(1ULL, mod.RTE_ETH_FLOW_IPV6_TCP_EX)
 mod.ETH_RSS_IPV6_UDP_EX        = bit.lshift(1ULL, mod.RTE_ETH_FLOW_IPV6_UDP_EX)
 
 --- Do not call dpdk.init() automatically on startup.
---- You must not call any DPDK functions prior to invoking phobos.init().
+--- You must not call any DPDK functions prior to invoking libmoon.init().
 function mod.skipInit()
-	phobos.config.skipInit = true
+	libmoon.config.skipInit = true
 end
 
 --- Initializes DPDK. Called automatically on startup unless
---- phobos.skipInit() is called before master().
+--- libmoon.skipInit() is called before master().
 function mod.init()
-	local cfgFile = phobos.config.dpdkConfig
+	local cfgFile = libmoon.config.dpdkConfig
 	log:info("Initializing DPDK. This will take a few seconds...")
 	-- register drivers
 	dpdkc.register_pmd_drivers()
@@ -111,8 +111,8 @@ function mod.init()
 	else
 		cfgFileLocations = {
 			"./dpdk-conf.lua",
-			phobos.config.basePath .. "/dpdk-conf.lua",
-			"/etc/phobos/dpdk-conf.lua"
+			libmoon.config.basePath .. "/dpdk-conf.lua",
+			"/etc/libmoon/dpdk-conf.lua"
 		}
 	end
 	local cfg
@@ -149,19 +149,19 @@ function mod.init()
 		cpus:close()
 	end
 	table.sort(cfg.cores)
-	phobos.config.cores = cfg.cores
-	phobos.config.numSharedCores = cfg.sharedCores or 8
+	libmoon.config.cores = cfg.cores
+	libmoon.config.numSharedCores = cfg.sharedCores or 8
 	local coreMask = 0ULL
 	for i, v in ipairs(cfg.cores) do
 		coreMask = bit.bor(coreMask, bit.lshift(1ULL, v))
 	end
-	local argv = { "phobos" }
+	local argv = { "libmoon" }
 	local coreMaskUpper = tonumber(bit.rshift(coreMask, 32ULL))
 	local coreMaskLower = tonumber(bit.band(coreMask, 0xFFFFFFFFULL))
 	argv[#argv + 1] = ("-c0x%08X%08X"):format(coreMaskUpper, coreMaskLower)
 	-- core mapping, shared cores use the highest IDs
 	local maxCore = cfg.cores[#cfg.cores]
-	local coreMapping = ("%d-%d,(%d-%d)@0"):format(cfg.cores[1], maxCore, maxCore + 1, maxCore + phobos.config.numSharedCores)
+	local coreMapping = ("%d-%d,(%d-%d)@0"):format(cfg.cores[1], maxCore, maxCore + 1, maxCore + libmoon.config.numSharedCores)
 	argv[#argv + 1] = ("--lcores=%s"):format(coreMapping)
 
 	if cfg.pciBlacklist then

@@ -4,7 +4,7 @@
 #include <rte_mbuf.h>
 
 // you can do everything DPDK can do from here, all libraries are available
-// here we just modify some packets and let Phobos handle IO
+// here we just modify some packets and let libmoon handle IO
 // you could also handle the whole main loop here, however, that is unnecessarily complex
 void swap_macs(struct rte_mbuf* mbufs[], uint32_t num_bufs) {
 	for (uint32_t i = 0; i < num_bufs; i++) {

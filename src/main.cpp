@@ -19,7 +19,7 @@ extern "C" {
 #include "task.hpp"
 #include "lifecycle.hpp"
 
-namespace phobos {
+namespace libmoon {
 
 	const char* base_dir;
 	const char* extra_lua_path;
@@ -32,9 +32,9 @@ namespace phobos {
 	bool is_base_dir(std::string const& path) {
 		struct stat buf;
 		// having one of these files in some random folder might be just co-incidence
-		// these are reasonable filenames for some phobos-related scripts...
+		// these are reasonable filenames for some libmoon-related scripts...
 		// so we just check for both
-		return ::stat((path + "/lua/phobos.lua").c_str(), &buf) == 0
+		return ::stat((path + "/lua/libmoon.lua").c_str(), &buf) == 0
 		    && ::stat((path + "/lua/main.lua").c_str(), &buf) == 0;
 	}
 
@@ -90,11 +90,11 @@ namespace phobos {
 
 	int main(int argc, char** argv) {
 		if (argc < 2) {
-			phobos::print_usage(argv[0]);
+			libmoon::print_usage(argv[0]);
 			return 1;
 		}
-		phobos::install_signal_handlers();
-		lua_State* L = phobos::launch_lua();
+		libmoon::install_signal_handlers();
+		lua_State* L = libmoon::launch_lua();
 		if (!L) {
 			return -1;
 		}
@@ -114,8 +114,8 @@ namespace phobos {
 #ifndef LIBMOON_BUILD_LIB
 int main(int argc, char** argv) {
 	// TODO: get the install-path via cmake
-	phobos::setup_base_dir({".", "..", "/usr/local/lib/phobos"}, true);
-	return phobos::main(argc, argv);
+	libmoon::setup_base_dir({".", "..", "/usr/local/lib/libmoon"}, true);
+	return libmoon::main(argc, argv);
 }
 #endif
 
