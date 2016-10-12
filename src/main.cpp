@@ -111,7 +111,7 @@ namespace phobos {
 	}
 }
 
-#ifndef PHOBOS_BUILD_LIB
+#ifndef LIBMOON_BUILD_LIB
 int main(int argc, char** argv) {
 	// TODO: get the install-path via cmake
 	phobos::setup_base_dir({".", "..", "/usr/local/lib/phobos"}, true);

@@ -1,5 +1,5 @@
 CMAKE_MINIMUM_REQUIRED(VERSION 2.8)
-PROJECT(phobos C CXX)
+PROJECT(libmoon C CXX)
 
 SET(CMAKE_CXX_FLAGS "-fno-stack-protector -Wall -Wextra -Wno-unused-parameter -g -O3 -std=gnu++11 -march=native -msse4.2")
 SET(CMAKE_C_FLAGS "-fno-stack-protector -Wall -Wextra -Wno-unused-parameter -g -O3 -std=gnu11 -march=native -msse4.2")
@@ -63,12 +63,14 @@ LINK_DIRECTORIES(
 	${CMAKE_CURRENT_SOURCE_DIR}/deps/luajit/usr/local/lib
 )
 
-IF(PHOBOS_BUILD_LIBRARY)
-	ADD_DEFINITIONS(-DPHOBOS_BUILD_LIB)
-	ADD_LIBRARY(phobos STATIC ${FILES})
+IF(LIBMOON_BUILD_LIBRARY)
+	ADD_DEFINITIONS(-DLIBMOON_BUILD_LIB)
+	# we want libmoon.a, not liblibmoon.a
+	ADD_LIBRARY(moon STATIC ${FILES})
+	TARGET_LINK_LIBRARIES(moon ${ALL_LIBS})
 ELSE()
-	ADD_EXECUTABLE(phobos ${FILES})
+	ADD_EXECUTABLE(libmoon ${FILES})
+	TARGET_LINK_LIBRARIES(libmoon ${ALL_LIBS})
 ENDIF()
 
-TARGET_LINK_LIBRARIES(phobos ${ALL_LIBS})
 
