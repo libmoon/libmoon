@@ -122,7 +122,7 @@ function timestamper:measureLatency(pktSize, packetModifier, maxWait)
 						end
 						self.rxBufs:freeAll()
 						local lat = rxTs - tx
-						if lat > 0 and lat < 2 * maxWait * 10^6 then
+						if lat > 0 and lat < 2 * maxWait * 10^9 then
 							-- negative latencies may happen if the link state changes
 							-- (timers depend on a clock that scales with link speed on some NICs)
 							-- really large latencies (we only wait for up to maxWait ms)
