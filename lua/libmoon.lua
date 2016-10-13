@@ -18,7 +18,13 @@ end
 function mod.setupPaths()
 	-- looks like this: ;$BASE/lua/lib/?/init.lua, see task.cpp
 	if not mod.config.basePath then
-		mod.config.basePath = package.path:match(";([^;]+)/lua/lib/%?/init.lua;") .. "/"
+		local path
+		-- use the last match for this pattern as we need the base path of libmoon
+		-- applications building it as library might prepend their own path before this
+		for match in package.path:gmatch(";([^;]+)/lua/lib/%?/init.lua;") do
+			path = match .. "/"
+		end
+		mod.config.basePath = path
 	end
 	local base = mod.config.basePath
 	local userscriptPath = mod.config.userscript:match("(.-)/([^/]+)$")
