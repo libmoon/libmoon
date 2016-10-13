@@ -27,6 +27,7 @@ namespace libmoon {
 		ss << base << "/lua/?.lua;";
 		ss << base << "/lua/?/init.lua;";
 		ss << base << "/lua/lib/?.lua;";
+		ss << base << "/lua/lib/turbo/?.lua;";
 		ss << base << "/lua/lib/?/init.lua";
 		ss << "'";
 		return ss.str();

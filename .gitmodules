@@ -20,3 +20,6 @@
 [submodule "lua/lib/pf"]
 	path = lua/lib/pf
 	url = https://github.com/emmericp/pflua
+[submodule "lua/lib/turbo"]
+	path = lua/lib/turbo
+	url = https://github.com/emmericp/turbo

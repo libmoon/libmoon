@@ -19,6 +19,17 @@ make -j $NUM_CPUS install T=x86_64-native-linuxapp-gcc
 )
 
 (
+cd lua/lib/turbo
+make 2> /dev/null
+if [[ $? > 0 ]]
+then
+	echo "Could not compile Turbo with TLS support, disabling TLS"
+	echo "Install libssl-dev and OpenSSL to enable TLS support"
+	make SSL=none
+fi
+)
+
+(
 cd build
 cmake ..
 make -j $NUM_CPUS
