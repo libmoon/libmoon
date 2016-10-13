@@ -18,7 +18,7 @@ end
 function mod.setupPaths()
 	-- looks like this: ;$BASE/lua/lib/?/init.lua, see task.cpp
 	if not mod.config.basePath then
-		mod.config.basePath = package.path:match(";([^;]+)/lua/lib/%?/init.lua$") .. "/"
+		mod.config.basePath = package.path:match(";([^;]+)/lua/lib/%?/init.lua;") .. "/"
 	end
 	local base = mod.config.basePath
 	local userscriptPath = mod.config.userscript:match("(.-)/([^/]+)$")

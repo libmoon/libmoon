@@ -28,7 +28,7 @@ namespace libmoon {
 		ss << base << "/lua/?/init.lua;";
 		ss << base << "/lua/lib/?.lua;";
 		ss << base << "/lua/lib/turbo/?.lua;";
-		ss << base << "/lua/lib/?/init.lua";
+		ss << base << "/lua/lib/?/init.lua;";
 		ss << "'";
 		return ss.str();
 	}
@@ -36,7 +36,7 @@ namespace libmoon {
 	lua_State* launch_lua() {
 		lua_State* L = luaL_newstate();
 		luaL_openlibs(L);
-		luaL_dostring(L, (std::string("package.path = package.path .. ';' .. ") + build_lua_path()).c_str());
+		luaL_dostring(L, (std::string("package.path = ") + build_lua_path() + " .. package.path" ).c_str());
 		if (luaL_dostring(L, "require '" LIBMOON_LUA_MAIN_MODULE "'")) {
 			std::cerr << "Could not run main script: " << lua_tostring(L, -1) << std::endl;
 			std::abort();
