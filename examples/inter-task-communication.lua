@@ -92,7 +92,7 @@ local function pipeDemo()
 	lm.startTask("fastPipeSendSlave", fastPipe)
 	lm.startTask("fastPipeRecvSlave", fastPipe)
 	lm.waitForTasks()
-	print("Note: both types of pipes are single-producer single-consumer")
+	print("Note: Slow pipes are multi-producer multi-consumer. Fast pipes default to single-producer single-consumer.")
 end
 
 function slowPipeSlave(pipe)
