@@ -345,7 +345,15 @@ local function icmpTask(queues)
 			nic.ips = { nic.ips }
 		end
 		if nic.rxQueue then
-			log:warn("5tuple filter NYI")
+			for i, v in ipairs(nic.ips) do
+				local ok = nic.rxQueue.dev:fiveTupleFilter({
+					dstIp = v,
+					proto = ip.PROTO_ICMP
+				}, nic.rxQueue)
+				if not ok then
+					break
+				end
+			end
 		end
 		local pipe = pipe:newFastPipe()
 		nic.pipe = pipe
