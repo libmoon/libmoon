@@ -3,39 +3,53 @@
 #include <cstring>
 
 #include "spsc-queue/readerwriterqueue.h"
+#include "concurrentqueue/concurrentqueue.h"
 
 using namespace moodycamel;
 
 extern "C" {
 
-	ReaderWriterQueue<void*>* make_pipe(int capacity = 512) {
-		auto queue = new ReaderWriterQueue<void*>(capacity);
-		return queue;
+	ReaderWriterQueue<void*>* pipe_spsc_new(int capacity) {
+		return new ReaderWriterQueue<void*>(capacity);
 	}
 
-	void enqueue(ReaderWriterQueue<void*>* queue, void* data) {
+	void pipe_spsc_enqueue(ReaderWriterQueue<void*>* queue, void* data) {
 		queue->enqueue(data);
 	}
 
-	bool try_enqueue(ReaderWriterQueue<void*>* queue, void* data) {
+	bool pipe_spsc_try_enqueue(ReaderWriterQueue<void*>* queue, void* data) {
 		return queue->try_enqueue(data);
 	}
 
-	void* try_dequeue(ReaderWriterQueue<void*>* queue) {
+	void* pipe_spsc_try_dequeue(ReaderWriterQueue<void*>* queue) {
 		void* data;
 		bool ok = queue->try_dequeue(data);
 		return ok ? data : nullptr;
 	}
 
-	void* peek(ReaderWriterQueue<void*>* queue) {
-		return queue->peek();
+	size_t pipe_spsc_count(ReaderWriterQueue<void*>* queue) {
+		return queue->size_approx();
 	}
 
-	uint8_t pop(ReaderWriterQueue<void*>* queue) {
-		return queue->pop();
+	ConcurrentQueue<void*>* pipe_mpmc_new(int capacity) {
+		return new ConcurrentQueue<void*>(capacity);
 	}
 
-	size_t count(ReaderWriterQueue<void*>* queue) {
+	void pipe_mpmc_enqueue(ConcurrentQueue<void*>* queue, void* data) {
+		queue->enqueue(data);
+	}
+
+	bool pipe_mpmc_try_enqueue(ConcurrentQueue<void*>* queue, void* data) {
+		return queue->try_enqueue(data);
+	}
+
+	void* pipe_mpmc_try_dequeue(ConcurrentQueue<void*>* queue) {
+		void* data;
+		bool ok = queue->try_dequeue(data);
+		return ok ? data : nullptr;
+	}
+
+	size_t pipe_mpmc_count(ConcurrentQueue<void*>* queue) {
 		return queue->size_approx();
 	}
 }

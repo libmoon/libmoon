@@ -10,14 +10,19 @@ local log      = require "log"
 ffi.cdef [[
 	// dummy
 	struct spsc_ptr_queue { };
+	struct mpmc_ptr_queue { };
 
-	struct spsc_ptr_queue* make_pipe(int size);
-	void enqueue(struct spsc_ptr_queue* queue, void* data);
-	uint8_t try_enqueue(struct spsc_ptr_queue* queue, void* data);
-	void* try_dequeue(struct spsc_ptr_queue* queue);
-	void* peek(struct spsc_ptr_queue* queue);
-	uint8_t pop(struct spsc_ptr_queue* queue);
-	size_t count(struct spsc_ptr_queue* queue);
+	struct spsc_ptr_queue* pipe_spsc_new(int size);
+	void pipe_spsc_enqueue(struct spsc_ptr_queue* queue, void* data);
+	uint8_t pipe_spsc_try_enqueue(struct spsc_ptr_queue* queue, void* data);
+	void* pipe_spsc_try_dequeue(struct spsc_ptr_queue* queue);
+	size_t pipe_spsc_count(struct spsc_ptr_queue* queue);
+
+	struct mpmc_ptr_queue* pipe_mpmc_new(int size);
+	void pipe_mpmc_enqueue(struct mpmc_ptr_queue* queue, void* data);
+	uint8_t pipe_mpmc_try_enqueue(struct mpmc_ptr_queue* queue, void* data);
+	void* pipe_mpmc_try_dequeue(struct mpmc_ptr_queue* queue);
+	size_t pipe_mpmc_count(struct mpmc_ptr_queue* queue);
 	
 	// DPDK SPSC ring
 	struct rte_ring { };
@@ -72,14 +77,16 @@ local slowPipe = mod.slowPipe
 slowPipe.__index = slowPipe
 
 --- Create a new slow pipe.
---- A pipe can only be used by exactly two tasks: a single reader and a single writer.
 --- Slow pipes are called slow pipe because they are slow (duh).
 --- Any objects passed to it will be *serialized* as strings.
 --- This means that it supports arbitrary Lua objects following libmoon's usual serialization rules.
 --- Use a 'fast pipe' if you need fast inter-task communication. Fast pipes are restricted to LuaJIT FFI objects.
+--- Rule of thumb: use a slow pipe if you don't need more than a few thousand messages per second,
+--- e.g. to pass aggregated data or statistics between tasks. Use fast pipes if you intend to do something for
+--- every (or almost every) packet you process.
 function mod:newSlowPipe()
 	return setmetatable({
-		pipe = C.make_pipe(512)
+		pipe = C.pipe_mpmc_new(512)
 	}, slowPipe)
 end
 
@@ -87,12 +94,12 @@ function slowPipe:send(...)
 	local vals = serpent.dump({ ... })
 	local buf = memory.alloc("char*", #vals + 1)
 	ffi.copy(buf, vals)
-	C.enqueue(self.pipe, buf)
+	C.pipe_mpmc_enqueue(self.pipe, buf)
 end
 
 function slowPipe:tryRecv(wait)
 	while wait >= 0 do
-		local buf = C.try_dequeue(self.pipe)
+		local buf = C.pipe_mpmc_try_dequeue(self.pipe)
 		if buf ~= nil then
 			local result = loadstring(ffi.string(buf))()
 			memory.free(buf)
@@ -118,7 +125,7 @@ function slowPipe:recv()
 end
 
 function slowPipe:count()
-	return tonumber(C.count(self.pipe))
+	return tonumber(C.pipe_mpmc_count(self.pipe))
 end
 
 function slowPipe:__serialize()
@@ -134,28 +141,29 @@ fastPipe.__index = fastPipe
 --- A pipe can only be used by exactly two tasks: a single reader and a single writer.
 --- Fast pipes are fast, but only accept FFI cdata pointers and nothing else.
 --- Use a slow pipe to pass arbitrary objects.
+--- TODO: add a MPMC variant (pull requests welcome)
 function mod:newFastPipe(size)
 	return setmetatable({
-		pipe = C.make_pipe(size or 512)
+		pipe = C.pipe_spsc_new(size or 512)
 	}, fastPipe)
 end
 
 function fastPipe:send(obj)
-	C.enqueue(self.pipe, obj)
+	C.pipe_spsc_enqueue(self.pipe, obj)
 end
 
 function fastPipe:trySend(obj)
-	return C.try_enqueue(self.pipe, obj) ~= 0
+	return C.pipe_spsc_try_enqueue(self.pipe, obj) ~= 0
 end
 
 -- FIXME: this is work-around for some bug with the serialization of nested objects
 function mod:sendToFastPipe(pipe, obj)
-	return C.try_enqueue(pipe, obj) ~= 0
+	return C.pipe_spsc_try_enqueue(pipe, obj) ~= 0
 end
 
 function fastPipe:tryRecv(wait)
 	while wait >= 0 do
-		local buf = C.try_dequeue(self.pipe)
+		local buf = C.pipe_spsc_try_dequeue(self.pipe)
 		if buf ~= nil then
 			return buf
 		end
@@ -179,7 +187,7 @@ function fastPipe:recv()
 end
 
 function fastPipe:count()
-	return tonumber(C.count(self.pipe))
+	return tonumber(C.pipe_spsc_count(self.pipe))
 end
 
 function fastPipe:__serialize()
