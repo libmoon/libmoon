@@ -42,7 +42,7 @@ mod.colorPallet = { 'blue', 'bgreen', 'dpurple', 'bred', 'brown', 'cyan', 'green
 --- @return Escape sequence as string
 function getColorCode(color)
 	if type(color) == "number" then
-		color = colorCode[mod.colorPallet[color % #mod.colorPallet]]
+		color = colorCode[mod.colorPallet[((color - 1) % #mod.colorPallet) + 1]]
 	else
 		color = colorCode[color] or colorCode["none"]
 	end
