@@ -10,8 +10,13 @@
 --- - Definition of Icmp packets
 ------------------------------------------------------------------------
 
-local ffi = require "ffi"
-local pkt = require "packet"
+local ffi     = require "ffi"
+local pkt     = require "packet"
+local ns      = require "namespaces"
+local pipe    = require "pipe"
+local memory  = require "memory"
+local libmoon = require "libmoon"
+local log     = require "log"
 
 require "utils"
 require "headers"
@@ -272,6 +277,98 @@ pkt.getIcmp6Packet = packetCreate("eth", "ip6", "icmp")
 --- Cast the packet to either an Icmp4 (nil/true) or Icmp6 (false) packet, depending on the passed boolean.
 pkt.getIcmpPacket = function(self, ip4) ip4 = ip4 == nil or ip4 if ip4 then return pkt.getIcmp4Packet(self) else return pkt.getIcmp6Packet(self) end end   
 
+
+-- ICMP responder, IPv4 only for now
+-- Pull requests for IPv6 are welcome :)
+
+
+--- Starts a simple ICMPv4 ping responder on a shared core.
+--- This is *not optimized for latency* ping relies will be slow (> 1ms)
+--- The main usecase of this is letting others on the network know that an IP is being used.
+--- This will try to setup a filter on the rx queue to match ICMP packets addressed to the given IP.
+--- @param queues array of queue pairs to use, each entry has the following format
+--- {rxQueue = rxQueue, txQueue = txQueue, ips = "ip" | {"ip", ...}}
+--- rxQueue is optional, packets can alternatively be provided through the pipe API, see icmp.handlePacket()
+function icmp.startIcmpTask(queues)
+	libmoon.startSharedTask("__LM_ICMP_TASK", queues)
+end
+
+local pipes = ns:get()
+
+local function handleIcmpPacket(rxBufs, nic)
+	-- FIXME: support non-offloaded vlan tags
+	local pkt = rxBufs[1]:getIcmpPacket()
+	-- yes, we assume that the path is symmetric and that the source MAC is correct
+	-- could be improved by using the ARP task here, pull requests welcome
+	pkt.eth.dst:set(pkt.eth.src:get())
+	pkt.eth.src:set(nic.txQueue.dev:getMac(true))
+	local tmp = pkt.ip4.src:get()
+	pkt.ip4.src:set(pkt.ip4.dst:get())
+	pkt.ip4.dst:set(tmp)
+	pkt.ip4.ttl = 64
+	pkt.icmp:setType(icmp.ECHO_REPLY.type)
+	pkt.ip4:calculateChecksum() -- avoid offloading dependency
+	pkt.icmp:calculateChecksum(pkt.ip4:getLength() - pkt.ip4:getHeaderLength() * 4)
+	nic.txQueue:send(rxBufs)
+end
+
+local function icmpTask(queues)
+	-- two ways to call this: single nic or array of nics
+	if queues[1] == nil and queues.txQueue then
+		return icmpTask({queues})
+	end
+
+	for i, nic in ipairs(queues) do
+		if nic.rxQueue and nic.txQueue.id ~= nic.rxQueue.id then
+			error("both queues must belong to the same device")
+		end
+		if type(nic.ips) == "string" then
+			nic.ips = { nic.ips }
+		end
+		if nic.rxQueue then
+			log:warn("5tuple filter NYI")
+		end
+		local pipe = pipe:newFastPipe()
+		nic.pipe = pipe
+		pipes[tostring(i)] = pipe
+	end
+
+	local rxBufs = memory.createBufArray(1)
+	while libmoon.running() do
+		for _, nic in pairs(queues) do
+			if nic.rxQueue then
+				rx = nic.rxQueue:tryRecvIdle(rxBufs, 1000)
+				assert(rx <= 1)
+				if rx > 0 then
+					handleIcmpPacket(rxBufs, nic)
+				end
+			end
+			-- if only we had something like poll :/
+			-- maybe write some wrapper that takes multiple tryRecv-able things?
+			local pkt = nic.pipe:tryRecv(1000)
+			if pkt then
+				rxBufs[1] = pkt
+				handleIcmpPacket(rxBufs, nic)
+			end
+		end
+	end
+end
+
+--- Send a buf containing an ICMP packet to the ICMP reseponder.
+--- The buf is free'd by the ICMP task, do not free this (or increase ref count if you still need the buf).
+--- @param buf the ICMP packet
+--- @param nic the ID of the NIC from which the packt was received, defaults to 1
+---            corresponds to the index in the queue array passed to the ICMP task
+function icmp.handlePacket(buf, nic)
+	nic = nic or 1
+	local pipe = pipes[tostring(nic)]
+	if not pipe then
+		log:fatal("NIC %s not found", nic)
+	end
+	pipe:send(buf)
+end
+
+__LM_ICMP_TASK = icmpTask
 
 ------------------------------------------------------------------------
 ---- Metatypes

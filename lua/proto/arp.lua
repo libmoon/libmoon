@@ -416,7 +416,7 @@ local ARP_AGING_TIME = 30
 --- the current implementation does not handle large tables efficiently \n
 arp.arpTask = "__MG_ARP_TASK"
 
---- Start the ARP task on a shared cores
+--- Start the ARP task on a shared core
 --- @param queues array of queue pairs to use, each entry has the following format
 --- {rxQueue = rxQueue, txQueue = txQueue, ips = "ip" | {"ip", ...}}
 --- rxQueue is optional, packets can alternatively be provided through the pipe API, see arp.handlePacket()
@@ -575,8 +575,8 @@ local function arpTask(qs)
 	end
 end
 
---- Send a buf containing an ARP to the ARP task.
---- The buf is free'd by the ARP task, do not free this (or increase ref count).
+--- Send a buf containing an ARP packet to the ARP task.
+--- The buf is free'd by the ARP task, do not free this (or increase ref count if you still need the buf).
 --- @param buf the arp packet
 --- @param nic the ID of the NIC from which the packt was received, defaults to 1
 ---            corresponds to the index in the queue array passed to the arp task
