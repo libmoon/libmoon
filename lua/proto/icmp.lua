@@ -17,6 +17,8 @@ local pipe    = require "pipe"
 local memory  = require "memory"
 local libmoon = require "libmoon"
 local log     = require "log"
+local eth     = require "proto.ethernet"
+local ip      = require "proto.ip4"
 
 require "utils"
 require "headers"
@@ -298,6 +300,23 @@ local pipes = ns:get()
 local function handleIcmpPacket(rxBufs, nic)
 	-- FIXME: support non-offloaded vlan tags
 	local pkt = rxBufs[1]:getIcmpPacket()
+	if pkt.eth:getType() ~= eth.TYPE_IP
+	or pkt.ip4:getProtocol() ~= ip.PROTO_ICMP then
+		rxBufs:freeAll()
+		return
+	end
+	local dstIp = pkt.ip4.dst:getString()
+	local ipOk = false
+	for i, v in ipairs(nic.ips) do
+		if v == dstIp then
+			ipOk = true
+			break
+		end
+	end
+	if not ipOk then
+		rxBufs:freeAll()
+		return
+	end
 	-- yes, we assume that the path is symmetric and that the source MAC is correct
 	-- could be improved by using the ARP task here, pull requests welcome
 	pkt.eth.dst:set(pkt.eth.src:get())
