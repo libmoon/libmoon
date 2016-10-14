@@ -827,12 +827,12 @@ function rxQueue:tryRecvIdle(bufArray, maxWait)
 		if rx > 0 then
 			return rx
 		end
-		maxWait = maxWait - 1
+		maxWait = maxWait - 10
 		-- don't sleep pointlessly
 		if maxWait < 0 then
 			break
 		end
-		libmoon.sleepMicrosIdle(1)
+		libmoon.sleepMicrosIdle(10)
 	end
 	return 0
 end
