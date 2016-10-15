@@ -492,26 +492,93 @@ end
 ---- TCP options
 ------------------------------------------------------------------------------------
 
-function tcpHeader:getOptionsString()
-	local bytes = (self:getDataOffset() - 5) * 4
-	if bytes <= 0 then
-		return "-"
+do 
+	function createOptionsDict()
+		mod.option = {
+			err = -1,
+			eol = 0,
+			nop = 1,
+			mss = 2,
+			ws = 3,
+			ts = 8,
+		}
+		for k, v in pairs(mod.option) do
+			mod.option[v] = k
+		end
 	end
-	local options = ffi.cast("uint8_t*", self.options)
-	local str = "0x"
-	for i = 0, bytes - 1 do
-		str = str ..  string.format("%02x", options[i])
-	end
-	return str
+	createOptionsDict()
 end
 
-function tcpHeader:addNopOption(offset)
-	self.options[offset] = offset
+function tcpHeader:getOptions(offset, len)
+	offset = offset or 0
+	len = len or (self:getDataOffset() - 5) * 4
+
+	local options = {}
+	local num = 1
+	local starting_offset = offset
+	while offset < starting_offset + len do -- this is to prevent an infinite loop
+		local code = self.options[offset]
+		local opt = mod.option[code]
+		options[num] = { type = code, offset = offset }
+		if code == mod.option['eol'] then
+			-- if there are still options missing, add error option with number of missing bytes
+			if offset < starting_offset + (len - 1) then
+				options[num + 1] = { type = -1, offset = offset, error = "missing " .. (starting_offset + (len - 1)) - offset .. "b" }
+			end
+			break
+		elseif code == mod.option['nop'] then
+			offset = offset + 1
+		else
+			local len = self.options[offset + 1]
+			if len < 1 then -- prevent infinite loop
+				len = 1
+			end
+			-- simply add the bytes to table
+			options[num]['byte'] = {}
+			for i = 1, len - 2 do
+				options[num]['byte'][i] = self.options[offset + 1 + i]
+			end
+			offset = offset + len
+		end
+		num = num + 1
+	end
+	return options
+end
+
+function tcpHeader:getOptionsString()
+	local opts = self:getOptions()
+	local str = ""
+	for k, v in pairs(opts) do
+		local t = v['type']
+		str = str .. ','
+		if t == mod.option['err'] then
+			str = str .. v['error']
+		elseif t == mod.option['eol'] or t == mod.option['nop'] then
+			str = str .. mod.option[t]
+		elseif t == mod.option['ws'] then
+			str = str .. self:getWSOptionString(v)
+		elseif t == mod.option['mss'] then
+			str = str .. self:getMssOptionString(v)
+		elseif t == mod.option['ts'] then
+			str = str .. self:getTSOptionString(v)
+		else
+			local opt = mod.option[t] and mod.option[t] or t
+			str = str .. opt .. " 0x"
+			for k, v in pairs(v['byte']) do
+				str = str .. string.format("%02x", v)
+			end
+		end
+	end
+	return string.sub(str, 2, -1)
+end
+
+function tcpHeader:setNopOption(offset)
+	self.options[offset] = 1
 	return offset + 1
 end
 
-function tcpHeader:addEolOption(offset)
-	self.options[offset] = 1
+function tcpHeader:setEolOption(offset)
+	self.options[offset] = 0
 	return offset + 1
 end
 
@@ -519,28 +586,87 @@ function tcpHeader:fillOptions(offset)
 	offset = offset or 0
 	maxOffset = (self:getDataOffset() - 5) * 4
 	while offset < maxOffset - 1 do
-		offset = self:addNopOption(offset)
+		offset = self:setNopOption(offset)
 	end
 	if offset == maxOffset - 1 then
-		offset = self:addEolOption(offset)
+		offset = self:setEolOption(offset)
 	end
 		
 	return offset
 end
 
-function tcpHeader:addWSOption(offset, value)
-	self.options[offset] = 3
+function tcpHeader:setWSOption(offset, value)
+	self.options[offset] = mod.option['ws']
 	self.options[offset + 1] = 3
 	self.options[offset + 2] = value
 	return offset + 3
 end
 
-function tcpHeader:addMssOption(offset, value)
-	self.options[offset] = 2
+function tcpHeader:getWSOption(offset)
+	if type(offset) == number then
+		return self.options[offset + 2]
+	else
+		return offset['byte'][1]
+	end
+end
+
+function tcpHeader:getWSOptionString(offset)
+	return "WS " .. self:getWSOption(offset)
+end
+
+function tcpHeader:setMssOption(offset, value)
+	self.options[offset] = mod.option['mss']
 	self.options[offset + 1] = 4
-	self.options[offset + 2] = value --FIXME 
+	self.options[offset + 2] = rshift(value, 8) 
 	self.options[offset + 3] = value
 	return offset + 4
+end
+
+function tcpHeader:getMssOption(offset)
+	local dat 
+	if type(offset) == number then
+		dat = { self.option[offset + 2], self.option[offset + 3] }
+	else
+		dat = offset['byte']
+	end
+	return lshift(dat[1], 8) + dat[2]
+end
+
+function tcpHeader:getMssOptionString(offset)
+	return "MSS " .. self:getMssOption(offset)
+end
+
+function tcpHeader:setTSOption(offset, tsval, tsecr)
+	self.options[offset] = mod.option['ts']
+	self.options[offset + 1] = 10
+	self.options[offset + 2] = rshift(tsval, 24) 
+	self.options[offset + 3] = rshift(tsval, 16) 
+	self.options[offset + 4] = rshift(tsval, 8) 
+	self.options[offset + 5] = tsval
+	self.options[offset + 6] = rshift(tsecr, 24) 
+	self.options[offset + 7] = rshift(tsecr, 16) 
+	self.options[offset + 8] = rshift(tsecr, 8) 
+	self.options[offset + 9] = tsecr
+	return offset + 10
+end
+
+function tcpHeader:getTSOption(offset)
+	local dat = {}
+	if type(offset) == number then
+		for i = 2, 10 do
+			dat[i] = self.option[offset + i]
+		end
+	else
+		dat = offset['byte']
+	end
+	local tsval = lshift(dat[1], 24) + lshift(dat[2], 16) + lshift(dat[3], 8) + dat[4]
+	local tsecr = lshift(dat[5], 24) + lshift(dat[6], 16) + lshift(dat[7], 8) + dat[8]
+	return { tsval = tsval, tsecr = tsecr }
+end
+
+function tcpHeader:getTSOptionString(offset)
+	local r = self:getTSOption(offset)
+	return "TSval " .. r['tsval'] .. " TSecr " .. r['tsecr']
 end
 
 
@@ -637,7 +763,7 @@ function tcpHeader:getString()
 		.."] win " 	.. self:getWindowString() 
 		.. " cksum " 	.. self:getChecksumString() 
 		.. " urg " 	.. self:getUrgentPointerString() 
-		.. " ["	.. self:getOptionsString() .. "]"
+		.. " ["		.. self:getOptionsString() .. "]"
 end
 
 --- Resolve which header comes after this one (in a packet).

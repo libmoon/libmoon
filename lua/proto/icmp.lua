@@ -10,7 +10,6 @@
 ------------------------------------------------------------------------
 
 local ffi     = require "ffi"
-local pkt     = require "packet"
 local ns      = require "namespaces"
 local pipe    = require "pipe"
 local memory  = require "memory"

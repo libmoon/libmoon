@@ -5,6 +5,7 @@ local stats  = require "stats"
 local log    = require "log"
 local memory = require "memory"
 local arp    = require "proto.arp"
+local pkt    = require "packet"
 
 -- set addresses here
 local DST_MAC       = nil -- resolved via ARP on GW_IP or DST_IP, can be overriden with a string here
