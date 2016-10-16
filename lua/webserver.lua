@@ -1,6 +1,9 @@
 local mod = {}
 
 local libmoon = require "libmoon"
+local ns = require "namespaces"
+
+mod.share = ns:get()
 
 --- Start a webserver task with some default handlers.
 --- @param options, table of server settings
@@ -11,9 +14,17 @@ local libmoon = require "libmoon"
 ---   TODO: SSL options
 ---  @param ..., vararg passed through to the init function after the turbo parameter
 function mod.startWebserverTask(options, ...)
+	mod.share.taskRunning = true
 	libmoon.startSharedTask("__LM_WEBSERVER_TASK", options, ...)
 end
 
 __LM_WEBSERVER_TASK = require "webserver-task".webserverTask
+
+function mod.running()
+	if not mod.taskRunning then
+		mod.taskRunning = mod.share.taskRunning
+	end
+	return mod.taskRunning
+end
 
 return mod
