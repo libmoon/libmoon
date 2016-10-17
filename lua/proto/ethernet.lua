@@ -391,6 +391,9 @@ end
 
 etherVlanHeader.setDefaultNamedArgs = etherHeader.setDefaultNamedArgs
 
+function etherHeader:getVariableLength()
+	return
+end
 
 ----------------------------------------------------------------------------------
 ---- Metatypes

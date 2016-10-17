@@ -511,7 +511,7 @@ end
 
 function tcpHeader:getOptions(offset, len)
 	offset = offset or 0
-	len = len or (self:getDataOffset() - 5) * 4
+	len = len or self:getVariableLength()
 
 	local options = {}
 	local num = 1
@@ -584,7 +584,7 @@ end
 
 function tcpHeader:fillOptions(offset)
 	offset = offset or 0
-	maxOffset = (self:getDataOffset() - 5) * 4
+	maxOffset = self:getVariableLength()
 	while offset < maxOffset - 1 do
 		offset = self:setNopOption(offset)
 	end
@@ -790,6 +790,14 @@ function tcpHeader:setDefaultNamedArgs(pre, namedArgs, nextHeader, accumulatedLe
 		namedArgs[pre .. "DataOffset"] = headerLength / 4
 	end
 	return namedArgs
+end
+
+function tcpHeader:getVariableLength()
+	local r = (self:getDataOffset() - 5) * 4
+	if r <= 0 then
+		return 0
+	end
+	return r
 end
 
 

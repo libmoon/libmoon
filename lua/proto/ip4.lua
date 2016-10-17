@@ -441,7 +441,7 @@ function ip4Header:getSrcString()
 end
 
 function ip4Header:getOptionsString()
-	local bytes = (self:getHeaderLength() - 5) * 4
+	local bytes = self:getVariableLength()
 	if bytes <= 0 then
 		return "-"
 	end
@@ -586,6 +586,10 @@ function ip4Header:setDefaultNamedArgs(pre, namedArgs, nextHeader, accumulatedLe
 	end
 
 	return namedArgs
+end
+
+function ip4Header:getVariableLength()
+	return (self:getHeaderLength() - 5) * 4
 end
 
 

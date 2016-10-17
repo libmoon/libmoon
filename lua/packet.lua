@@ -121,7 +121,11 @@ end
 --- Starting with ethernet header.
 --- @return packet data as cdata of best fitting packet
 function pkt:get()
-	return self:getEthernetPacket():resolveLastHeader()
+	local pkt = self:getEthernetPacket()
+	if pkt.eth:getType() == proto.eth.TYPE_8021Q then
+		pkt = self:getEthernetVlanPacket()
+	end
+	return pkt:resolveLastHeader()
 end
 
 --- Dumps the packet data cast to the best fitting packet struct.
@@ -476,6 +480,26 @@ function packetGet(self)
 	return namedArgs 
 end
 
+-- from http://lua-users.org/wiki/SplitJoin
+local function split(str, pat)
+	local t = {}  -- NOTE: use {n = 0} in Lua-5.0
+	local fpat = "(.-)" .. pat
+	local last_end = 1
+	local s, e, cap = str:find(fpat, 1)
+	while s do
+		if s ~= 1 or cap ~= "" then
+			table.insert(t,cap)
+		end
+		last_end = e+1
+		s, e, cap = str:find(fpat, last_end)
+	end
+	if last_end <= #str then
+		cap = str:sub(last_end)
+		table.insert(t, cap)
+	end
+	return t
+end
+
 --- Try to find out what the next header in the payload of this packet is.
 --- This function is only used for buf:get/buf:dump
 --- TODO support variable sized headers
@@ -483,6 +507,28 @@ end
 function packetResolveLastHeader(self)
 	local name = self:getName()
 	local headers = self:getHeaders()
+	
+	local len = headers[#headers]:getVariableLength() 
+	if len and len > 0 then	
+		local sub = split(name, "_")
+		local l = sub[#sub - 1]
+		if len ~= l then
+			local newArgs = self:getArgs()
+			local last = newArgs[#newArgs]
+			if type(last) == "string" then
+				newArgs[#newArgs] = { last, last, length = len}
+			else
+				newArgs[#newArgs]["length"] = len
+			end
+			pkt.TMP_PACKET = packetCreate(unpack(newArgs))
+			-- build name with len adjusted
+			sub[#sub - 1] = len
+			local newName = table.concat(sub, "_")
+			if name ~= newName then
+				return ffi.cast(newName .. "*", self):resolveLastHeader()
+			end
+		end
+	end	
 	local nextHeader = headers[#headers]:resolveNextHeader()
 
 	-- unable to resolve: either there is no next header, or libmoon does not support it yet
@@ -495,11 +541,11 @@ function packetResolveLastHeader(self)
 
 		nextHeader, _, _ = getHeaderData(nextHeader)	
 		-- we know the next header, append it
-		name = name .. "__" .. nextHeader .. "_"
+		name = name .. "__" .. nextHeader
 
 		-- if simple struct (headername = membername) already exists we can directly cast
 		nextMember = nextHeader
-		newName = name .. nextMember
+		newName = name .. nextMember .. "_x_x"
 
 		if not pkt.packetStructs[newName] then
 			-- check if a similar struct with this header order exists
@@ -528,7 +574,7 @@ function packetResolveLastHeader(self)
 					if member == newMember then
 						-- found duplicate, increase counter for newMember and keep checking for this one now
 						counter = counter + 1
-						newMember = nextMember .. "_" .. counter
+						newMember = nextMember .. "_" .. counter .. "_x_x"
 						-- TODO this assumes that there never will be a <member_X+1> before a <member_X>
 					end
 					newArgs[i] = v
@@ -649,7 +695,7 @@ local function defineHeaderStruct(p, subType, size)
 	str = string.gsub(str, "NAME", name)
 
 	-- define and add header related functions
-	log:debug(name .. " " .. str)
+	log:debug(str)
 	ffi.cdef(str)
 	ffi.metatype("struct " .. name, (subType and proto[p][subType].metatype or proto[p].metatype))
 	log:debug("Created " .. name)
@@ -694,11 +740,11 @@ end
 function packetMakeStruct(args, noPayload)
 	local name = ""
 	local str = ""
-	
+
 	-- add the specified headers and build the name
 	for _, v in ipairs(args) do
 		local header, member, length, subType = getHeaderData(v)
-		
+
 		local headerStruct = defineHeaderStruct(header, subType, length)
 
 		-- add header
@@ -707,7 +753,7 @@ function packetMakeStruct(args, noPayload)
 		]]
 
 		-- build name
-		name = name .. "__" .. headerStruct .. "_" .. member
+		name = name .. "__" .. header .. "_" .. member .. "_" .. (length or "x") .. "_" .. (subType or "x")
 	end
 
 	-- handle raw packet
@@ -738,7 +784,7 @@ function packetMakeStruct(args, noPayload)
 		-- add to list of existing structs
 		pkt.packetStructs[name] = {args}
 
-		log:debug("Created struct %s %s", name, str)
+		log:debug("Created struct %s", name)
 		
 		-- add struct definition
 		ffi.cdef(str)
