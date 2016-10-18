@@ -23,6 +23,7 @@ local ns = require "namespaces"
 local libmoon = require "libmoon"
 local pipe = require "pipe"
 local log = require "log"
+local timer = require "timer"
 
 local eth = require "proto.ethernet"
 
@@ -417,9 +418,12 @@ local ARP_AGING_TIME = 30
 arp.arpTask = "__MG_ARP_TASK"
 
 --- Start the ARP task on a shared core
---- @param queues array of queue pairs to use, each entry has the following format
---- {rxQueue = rxQueue, txQueue = txQueue, ips = "ip" | {"ip", ...}}
---- rxQueue is optional, packets can alternatively be provided through the pipe API, see arp.handlePacket()
+--- @param queues array of queue pairs and options, each array entry has the following format
+---   {rxQueue = rxQueue, txQueue = txQueue, ips = "ip" | {"ip", ...}}
+---   rxQueue is optional, packets can alternatively be provided through the pipe API, see arp.handlePacket()
+--- Options:
+---   gratArpInterval, interval in seconds in which the gratuitous is repeated.
+---      this can be useful in poorly configured networks (switch MAC timeout vs router ARP timeout) on ports that never send out packets except for ARP
 function arp.startArpTask(queues)
 	libmoon.startSharedTask(arp.arpTask, queues)
 end
@@ -500,9 +504,26 @@ local function arpTask(qs)
 	
 	arpTable.taskRunning = true
 
+	local gratArpTimer = timer:new(0)
 	while libmoon.running() do
-		
-		for _, nic in pairs(qs) do
+		-- send out gratuitous arp
+		if gratArpTimer:expired() then
+			gratArpTimer:reset(qs.gratArpInterval or math.huge)
+			for _, nic in ipairs(qs) do
+				txBufs:alloc(60)
+				local pkt = txBufs[1]:getArpPacket()
+				pkt.eth:setDstString(eth.BROADCAST)
+				local mac = nic.txQueue.dev:getMacString()
+				pkt.eth:setSrcString(mac)
+				pkt.arp:setOperation(arp.OP_REQUEST)
+				pkt.arp:setHardwareDstString(eth.BROADCAST)
+				pkt.arp:setProtoDst(parseIPAddress(nic.ips[1]))
+				pkt.arp:setProtoSrc(parseIPAddress(nic.ips[1]))
+				pkt.arp:setHardwareSrcString(mac)
+				nic.txQueue:send(txBufs)
+			end
+		end
+		for _, nic in ipairs(qs) do
 			if nic.rxQueue then
 				rx = nic.rxQueue:tryRecvIdle(rxBufs, 1000)
 				assert(rx <= 1)
