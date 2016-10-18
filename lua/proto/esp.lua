@@ -2,7 +2,6 @@
 --- @file esp.lua
 --- @brief ESP utility.
 --- Utility functions for the esp_header structs 
---- defined in \ref headers.lua . \n
 --- Includes:
 --- - ESP constants
 --- - IPsec IV
@@ -11,10 +10,9 @@
 ------------------------------------------------------------------------
 
 local ffi = require "ffi"
-local pkt = require "packet"
+require "proto.template"
+local initHeader = initHeader
 local math = require "math"
-
-require "headers"
 
 
 ---------------------------------------------------------------------------
@@ -26,6 +24,13 @@ local esp = {}
 -------------------------------------------------------------------------------------
 ---- IPsec IV
 -------------------------------------------------------------------------------------
+
+-- struct
+ffi.cdef[[	
+	union ipsec_iv {
+		uint32_t	uint32[2];
+	};
+]]
 
 local ipsecIV = {}
 ipsecIV.__index = ipsecIV
@@ -67,7 +72,17 @@ end
 ---- esp header
 ---------------------------------------------------------------------------
 
-local espHeader = {}
+-- definition of the header format
+esp.headerFormat = [[
+	uint32_t	spi;
+	uint32_t	sqn;
+	union ipsec_iv	iv;
+]]
+
+--- Variable sized member
+esp.headerVariableMember = nil
+
+local espHeader = initHeader()
 espHeader.__index = espHeader
 
 --- Set the SPI.
@@ -164,46 +179,13 @@ function espHeader:getString()
 	return "ESP spi " .. self:getSPIString() .. " sqn " .. self:getSQNString() .. " iv " .. self:getIVString()
 end
 
---- Resolve which header comes after this one (in a packet)
---- For instance: in tcp/udp based on the ports
---- This function must exist and is only used when get/dump is executed on 
---- an unknown (mbuf not yet casted to e.g. tcpv6 packet) packet (mbuf)
---- @return String next header (e.g. 'eth', 'ip4', nil)
-function espHeader:resolveNextHeader()
-	--TODO: next_header field is in ESP trailer
-	return nil
-end	
-
---- Change the default values for namedArguments (for fill/get)
---- This can be used to for instance calculate a length value based on the total packet length
---- See proto/ip4.setDefaultNamedArgs as an example
---- This function must exist and is only used by packet.fill
---- @param pre The prefix used for the namedArgs, e.g. 'esp'
---- @param namedArgs Table of named arguments (see See more)
---- @param nextHeader The header following after this header in a packet
---- @param accumulatedLength The so far accumulated length for previous headers in a packet
---- @return Table of namedArgs
---- @see espHeader:fill
-function espHeader:setDefaultNamedArgs(pre, namedArgs, nextHeader, accumulatedLength)
-	return namedArgs
-end
-
-----------------------------------------------------------------------------------
----- Packets
-----------------------------------------------------------------------------------
-
--- Esp4 packets should not be shorter than 70 bytes (cf. x540 datasheet page 308: SECP field)
-pkt.getEsp4Packet = packetCreate("eth", "ip4", "esp")
--- Esp6 packets should not be shorter than 90 bytes (cf. x540 datasheet page 308: SECP field)
-pkt.getEsp6Packet = packetCreate("eth", "ip6", "esp") 
-pkt.getEspPacket = function(self, ip4) ip4 = ip4 == nil or ip4 if ip4 then return pkt.getEsp4Packet(self) else return pkt.getEsp6Packet(self) end end
 
 ------------------------------------------------------------------------
 ---- Metatypes
 ------------------------------------------------------------------------
 
 ffi.metatype("union ipsec_iv", ipsecIV)
-ffi.metatype("struct esp_header", espHeader)
+esp.metatype = espHeader
 
 
 return esp

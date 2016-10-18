@@ -15,7 +15,6 @@ local pciIds     = require "pci-ids"
 local drivers    = require "drivers"
 local eth        = require "proto.ethernet"
 local E          = require "syscall".c.E
-require "headers"
 
 function mod.init()
 	dpdkc.rte_pmd_init_all_export();

@@ -2,7 +2,6 @@
 --- @file ethernet.lua
 --- @brief Ethernet protocol utility.
 --- Utility functions for the mac_address and ethernet_header structs 
---- defined in \ref headers.lua . \n
 --- Includes:
 --- - Ethernet constants
 --- - Mac address utility
@@ -11,17 +10,16 @@
 ------------------------------------------------------------------------
 
 local ffi = require "ffi"
-local pkt = require "packet"
 
 require "utils"
-require "headers"
+require "proto.template"
+local initHeader = initHeader
 
 local ntoh, hton = ntoh, hton
 local ntoh16, hton16 = ntoh16, hton16
 local bor, band, bnot, rshift, lshift= bit.bor, bit.band, bit.bnot, bit.rshift, bit.lshift
 local istype = ffi.istype
 local format = string.format
-
 
 ------------------------------------------------------------------------
 ---- Ethernet constants
@@ -55,7 +53,15 @@ eth.NULL	= "00:00:00:00:00:00"
 ---- Mac addresses
 ------------------------------------------------------------------------
 
---- Module for mac_address struct (see \ref headers.lua).
+-- struct
+ffi.cdef[[
+	union __attribute__((__packed__)) mac_address {
+		uint8_t		uint8[6];
+		uint64_t	uint64[0]; // for efficient reads
+	};
+]]
+
+--- Module for mac_address struct
 local macAddr = {}
 macAddr.__index = macAddr
 local macAddrType = ffi.typeof("union mac_address")
@@ -110,9 +116,35 @@ end
 ---- Ethernet header
 ----------------------------------------------------------------------------
 
---- Module for ethernet_header struct (see \ref headers.lua).
-local etherHeader = {}
-local etherVlanHeader = {}
+eth.default = {}
+-- definition of the header format
+eth.default.headerFormat = [[
+	union mac_address	dst;
+	union mac_address	src;
+	uint16_t		type;
+]]
+
+--- Variable sized member
+eth.default.headerVariableMember = nil
+
+eth.vlan = {}
+-- definition of the header format
+eth.vlan.headerFormat = [[
+	union mac_address	dst;
+	union mac_address	src;
+	uint16_t		vlan_id;
+	uint16_t		vlan_tag;
+	uint16_t		type;
+]]
+
+--- Variable sized member
+eth.vlan.headerVariableMember = nil
+
+eth.defaultType = "default"
+
+--- Module for ethernet_header struct
+local etherHeader = initHeader()
+local etherVlanHeader = initHeader()
 etherHeader.__index = etherHeader
 etherVlanHeader.__index = etherVlanHeader
 
@@ -362,26 +394,28 @@ end
 
 etherVlanHeader.setDefaultNamedArgs = etherHeader.setDefaultNamedArgs
 
+function etherHeader:getSubType()
+	if self:getType() == eth.TYPE_8021Q then
+		return "vlan"
+	else
+		return "default"
+	end
+end
 
-----------------------------------------------------------------------------------
----- Packets
-----------------------------------------------------------------------------------
+function etherVlanHeader:getSubType()
+	return "vlan"
+end
 
---- Cast the packet to an ethernet packet
-pkt.getEthernetPacket = packetCreate("eth")
-pkt.getEthernetVlanPacket = packetCreate("eth_8021q")
---- alias for pkt.getEthernet*Packet
-pkt.getEthPacket = pkt.getEthernetPacket
-pkt.getEthVlanPacket = pkt.getEthernetVlanPacket
-
+function etherVlanHeader:testing()
+	print("eth vlan testing")
+end
 
 ----------------------------------------------------------------------------------
 ---- Metatypes
 ----------------------------------------------------------------------------------
 
 ffi.metatype("union mac_address", macAddr)
-ffi.metatype("struct ethernet_header", etherHeader)
-ffi.metatype("struct ethernet_8021q_header", etherVlanHeader)
-
+eth.default.metatype = etherHeader
+eth.vlan.metatype = etherVlanHeader
 
 return eth

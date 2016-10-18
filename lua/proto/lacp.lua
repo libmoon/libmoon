@@ -2,7 +2,6 @@
 --- @file lacp.lua
 --- @brief Implementation of 802.3ad aka LACP.
 --- Utility functions for the lacp_header structs 
---- defined in \ref headers.lua . \n
 --- Includes:
 --- - LACP constants
 --- - LACP header utility
@@ -12,15 +11,14 @@
 -- structs and constants partially copied from Open vSwitch lacp.c (Apache 2.0 license)
 
 local ffi    = require "ffi"
-local pkt    = require "packet"
 local dpdk   = require "dpdk"
 local memory = require "memory"
 local filter = require "filter"
 local ns     = require "namespaces"
 local eth    = require "proto.ethernet"
 local libmoon = require "libmoon"
-
-require "headers"
+require "proto.template"
+local initHeader = initHeader
 
 
 ---------------------------------------------------------------------------
@@ -43,12 +41,54 @@ lacp.STATE_DIST = 0x20 -- Distributing. Is the link sending frames?
 lacp.STATE_DEF  = 0x40 -- Defaulted. Using default partner info?
 lacp.STATE_EXP  = 0x80 -- Expired. Using expired partner info?
 
+
+---------------------------------------------------------------------------
+---- lacp structs
+---------------------------------------------------------------------------
+
+ffi.cdef[[
+	// structs and constants partially copied from Open vSwitch lacp.c (Apache 2.0 license)
+	struct __attribute__((__packed__)) lacp_info {
+		uint16_t sys_priority;            /* System priority. */
+		union mac_address sys_id;         /* System ID. */
+		uint16_t key;                     /* Operational key. */
+		uint16_t port_priority;           /* Port priority. */
+		uint16_t port_id;                 /* Port ID. */
+		uint8_t state;                    /* State mask.  See lacp.STATE_ consts. */
+	};
+]]
+
+
 ---------------------------------------------------------------------------
 ---- lacp header
 ---------------------------------------------------------------------------
 
---- Module for lacp_address struct (see \ref headers.lua).
-local lacpHeader, lacpInfo = {}, {}
+-- definition of the header format
+lacp.headerFormat = [[
+	uint8_t subtype;          /* Always 1. */
+	uint8_t version;          /* Always 1. */
+
+	uint8_t actor_type;       /* Always 1. */
+	uint8_t actor_len;        /* Always 20. */
+	struct lacp_info actor;   /* LACP actor information. */
+	uint8_t z1[3];            /* Reserved.  Always 0. */
+
+	uint8_t partner_type;     /* Always 2. */
+	uint8_t partner_len;      /* Always 20. */
+	struct lacp_info partner; /* LACP partner information. */
+	uint8_t z2[3];            /* Reserved.  Always 0. */
+
+	uint8_t collector_type;   /* Always 3. */
+	uint8_t collector_len;    /* Always 16. */
+	uint16_t collector_delay; /* Maximum collector delay. Set to 0. */
+	uint8_t z3[64];           /* Combination of several fields.  Always 0. */
+]]
+
+--- Variable sized member
+lacp.headerVariableMember = nil
+
+--- Module for lacp_address struct
+local lacpHeader, lacpInfo = initHeader(), {}
 lacpHeader.__index = lacpHeader
 lacpInfo.__index = lacpInfo
 
@@ -230,43 +270,13 @@ function lacpHeader:getString()
 		.. "    Max Delay " .. ntoh16(self.collector_delay)
 end
 
---- Resolve which header comes after this one (in a packet)
---- For instance: in tcp/udp based on the ports
---- This function must exist and is only used when get/dump is executed on 
---- an unknown (mbuf not yet casted to e.g. tcpv6 packet) packet (mbuf)
---- @return String next header (e.g. 'eth', 'ip4', nil)
-function lacpHeader:resolveNextHeader()
-	return nil
-end	
-
---- Change the default values for namedArguments (for fill/get)
---- This can be used to for instance calculate a length value based on the total packet length
---- See proto/ip4.setDefaultNamedArgs as an example
---- This function must exist and is only used by packet.fill
---- @param pre The prefix used for the namedArgs, e.g. 'lacp'
---- @param namedArgs Table of named arguments (see See more)
---- @param nextHeader The header following after this header in a packet
---- @param accumulatedLength The so far accumulated length for previous headers in a packet
---- @return Table of namedArgs
---- @see lacpHeader:fill
-function lacpHeader:setDefaultNamedArgs(pre, namedArgs, nextHeader, accumulatedLength)
-	return namedArgs
-end
-
-----------------------------------------------------------------------------------
----- Packets
-----------------------------------------------------------------------------------
-
---- Cast the packet to a lacp packet 
-pkt.getLacpPacket = packetCreate('eth', 'lacp')
-
 
 ------------------------------------------------------------------------
 ---- Metatypes
 ------------------------------------------------------------------------
 
 ffi.metatype("struct lacp_info", lacpInfo)
-ffi.metatype("struct lacp_header", lacpHeader)
+lacp.metatype = lacpHeader
 
 
 ------------------------------------------------------------------------

@@ -20,8 +20,8 @@ local memory     = require "memory"
 local serpent    = require "Serpent"
 local argparse   = require "argparse"
 
--- all available headers, packets, ... and their utility functions
-require "proto.proto"
+-- loads all headers of the protocol stack
+require "packet"
 
 -- TODO: add command line switches for this and other luajit-debugging features
 --require("jit.v").on()

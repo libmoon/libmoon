@@ -2,7 +2,6 @@
 --- @file PROTO.lua
 --- @brief (PROTO) utility.
 --- Utility functions for the PROTO_header structs 
---- defined in \ref headers.lua . \n
 --- Includes:
 --- - PROTO constants
 --- - PROTO header utility
@@ -14,15 +13,13 @@
 -- Replace all occurrences of PROTO with your protocol (e.g. sctp)
 -- Remove unnecessary comments in this file (comments inbetween [[...]])
 -- Necessary changes to other files:
--- - headers.lua: add the header struct (and other structs, e.g. address), named PROTO_header
 -- - packet.lua: if the header has a length member, adapt packetSetLength; 
 -- 				 if the packet has a checksum, adapt packetCreate (loop at end of function) and packetCalculateChecksums
 -- - proto/proto.lua: add PROTO.lua to the list so it gets loaded
 --]]
 local ffi = require "ffi"
-local pkt = require "packet"
-
-require "headers"
+require "proto.template"
+local initHeader = initHeader
 
 
 ---------------------------------------------------------------------------
@@ -37,8 +34,15 @@ local PROTO = {}
 ---- PROTO header
 ---------------------------------------------------------------------------
 
---- Module for PROTO_address struct (see \ref headers.lua).
-local PROTOHeader = {}
+PROTO.headerFormat = [[
+	uint8_t		xyz;
+]]
+
+--- Variable sized member
+PROTO.headerVariableMember = nil
+
+--- Module for PROTO_address struct
+local PROTOHeader = initHeader()
 PROTOHeader.__index = PROTOHeader
 
 --[[ for all members of the header: set, get, getString 
@@ -120,23 +124,12 @@ function PROTOHeader:setDefaultNamedArgs(pre, namedArgs, nextHeader, accumulated
 	return namedArgs
 end
 
-----------------------------------------------------------------------------------
----- Packets
-----------------------------------------------------------------------------------
-
---[[ define how a packet with this header looks like
--- e.g. 'ip4' will add a member ip4 of type struct ip4_header to the packet
--- e.g. {'ip4', 'innerIP'} will add a member innerIP of type struct ip4_header to the packet
---]]
---- Cast the packet to a PROTO (IP4) packet 
-pkt.getPROTOPacket = packetCreate('eth', 'ip4', 'PROTO')
-
 
 ------------------------------------------------------------------------
 ---- Metatypes
 ------------------------------------------------------------------------
 
-ffi.metatype("struct PROTO_header", PROTOHeader)
+PROTO.metatype = PROTOHeader
 
 
 return PROTO

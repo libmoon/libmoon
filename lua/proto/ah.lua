@@ -2,7 +2,6 @@
 --- @file ah.lua
 --- @brief AH utility.
 --- Utility functions for the ah_header structs 
---- defined in \ref headers.lua . \n
 --- Includes:
 --- - AH constants
 --- - IPsec ICV
@@ -11,9 +10,8 @@
 ------------------------------------------------------------------------
 
 local ffi = require "ffi"
-local pkt = require "packet"
-
-require "headers"
+require "proto.template"
+local initHeader = initHeader
 
 ---------------------------------------------------------------------------
 ---- ah constants 
@@ -28,6 +26,12 @@ local ah = {}
 -------------------------------------------------------------------------------------
 ---- IPsec ICV
 -------------------------------------------------------------------------------------
+
+ffi.cdef[[
+	union ipsec_icv {
+		uint32_t	uint32[4];
+	};
+]]
 
 local ipsecICV = {}
 ipsecICV.__index = ipsecICV
@@ -76,7 +80,21 @@ end
 ---- ah header
 ---------------------------------------------------------------------------
 
-local ahHeader = {}
+-- definition of the header format
+ah.headerFormat = [[
+	uint8_t		nextHeader;
+	uint8_t		len;
+	uint16_t	reserved;
+	uint32_t	spi;
+	uint32_t	sqn;
+	union ipsec_iv	iv;
+	union ipsec_icv	icv;
+]]
+
+--- Variable sized member
+ah.headerVariableMember = nil
+
+local ahHeader = initHeader()
 ahHeader.__index = ahHeader
 
 --- Set the SPI.
@@ -248,36 +266,12 @@ function ahHeader:resolveNextHeader()
 	--TODO: return self:getNextHeader()
 end	
 
---- Change the default values for namedArguments (for fill/get)
---- This can be used to for instance calculate a length value based on the total packet length
---- See proto/ip4.setDefaultNamedArgs as an example
---- This function must exist and is only used by packet.fill
---- @param pre The prefix used for the namedArgs, e.g. 'ah'
---- @param namedArgs Table of named arguments (see See more)
---- @param nextHeader The header following after this header in a packet
---- @param accumulatedLength The so far accumulated length for previous headers in a packet
---- @return Table of namedArgs
---- @see ahHeader:fill
-function ahHeader:setDefaultNamedArgs(pre, namedArgs, nextHeader, accumulatedLength)
-	return namedArgs
-end
-
-----------------------------------------------------------------------------------
----- Packets
-----------------------------------------------------------------------------------
-
--- Ah4 packets should not be shorter than 70 bytes (cf. x540 datasheet page 308: SECP field)
-pkt.getAh4Packet = packetCreate("eth", "ip4", "ah")
--- Ah6 packets should not be shorter than 94 bytes (cf. x540 datasheet page 308: SECP field)
-pkt.getAh6Packet = nil --packetCreate("eth", "ip6", "ah6") --TODO: AH6 needs to be implemented
-pkt.getAhPacket = function(self, ip4) ip4 = ip4 == nil or ip4 if ip4 then return pkt.getAh4Packet(self) else return pkt.getAh6Packet(self) end end
 
 ------------------------------------------------------------------------
 ---- Metatypes
 ------------------------------------------------------------------------
 
---ffi.metatype("union ipsec_iv", ipsecIV)
 ffi.metatype("union ipsec_icv", ipsecICV)
-ffi.metatype("struct ah_header", ahHeader)
+ah.metatype = ahHeader
 
 return ah
