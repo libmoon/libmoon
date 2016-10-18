@@ -574,14 +574,14 @@ local function arpTask(qs)
 			value.timestamp = ts
 			arpTable[ip] = value
 			ip = tonumber(ip)
-			txBufs:alloc(60)
-			local pkt = txBufs[1]:getArpPacket()
-			pkt.eth:setDstString(eth.BROADCAST)
-			pkt.arp:setOperation(arp.OP_REQUEST)
-			pkt.arp:setHardwareDstString(eth.BROADCAST)
-			pkt.arp:setProtoDst(ip)
-			-- TODO: do not send requests on all devices, but only the relevant
-			for _, nic in pairs(qs) do
+			for _, nic in ipairs(qs) do
+				-- TODO: do not send requests on all devices, but only the relevant
+				txBufs:alloc(60)
+				local pkt = txBufs[1]:getArpPacket()
+				pkt.eth:setDstString(eth.BROADCAST)
+				pkt.arp:setOperation(arp.OP_REQUEST)
+				pkt.arp:setHardwareDstString(eth.BROADCAST)
+				pkt.arp:setProtoDst(ip)
 				local mac = nic.txQueue.dev:getMacString()
 				pkt.eth:setSrcString(mac)
 				pkt.arp:setProtoSrc(parseIPAddress(nic.ips[1]))
