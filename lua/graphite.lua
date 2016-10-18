@@ -66,7 +66,7 @@ end
 -- TODO: check if socket died and try to reconnect
 function writer:write(metric, value)
 	local str = self.prefix and self.prefix .. "." or ""
-	str = str .. ("%s %.18f %d\n"):format(metric, value, time())
+	str = str .. ("%s %.18f %d\n"):format(metric, tonumber(value) or 0, time())
 	self.socket:write(str)
 end
 
