@@ -39,7 +39,7 @@ function resolveNextHeader(self)
 	return nil
 end
 
-function setDefaultNamedArgs(pre, namedArgs, nextHeader, accumulatedLength, headerLength)
+function setDefaultNamedArgs(self, pre, namedArgs, nextHeader, accumulatedLength, headerLength)
 	return namedArgs
 end
 
@@ -49,8 +49,4 @@ end
 
 function getSubType(self)
 	return nil
-end
-
-function testing(self)
-	print("template testing")
 end

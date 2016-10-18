@@ -3,7 +3,7 @@
 -- set up logger before doing anything else
 local log = require "log"
 -- set log level
-log:setLevel("DEBUG")
+log:setLevel("INFO")
 -- enable logging to file
 --log:fileEnable()
 

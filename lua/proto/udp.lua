@@ -30,11 +30,10 @@ local udp = {}
 
 -- TODO move well-known ports somewhere else, those are not only Udp
 
---- Well known port for Ptp event message
+udp.PORT_DNS = 53
 udp.PORT_PTP_EVENTS = 319
---- Well known port for Ptp general message
 udp.PORT_PTP_GENERAL_MESSAGES = 320
---- Well known port for VXLAN (RFC7348)
+udp.PORT_IPFIX = 4739
 udp.PORT_VXLAN = 4789
 udp.PORT_SFLOW = 6343
 
@@ -186,7 +185,9 @@ end
 local mapNamePort = {
 	ptp = { udp.PORT_PTP_EVENTS, udp.PORT_PTP_GENERAL_MESSAGES },
 	vxlan = udp.PORT_VXLAN,
-	sflow = udp.PORT_SFLOW
+	sflow = udp.PORT_SFLOW,
+	dns = udp.PORT_DNS,
+	ipfix = udp.PORT_IPFIX,
 }
 
 --- Resolve which header comes after this one (in a packet).

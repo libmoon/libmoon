@@ -140,6 +140,8 @@ eth.vlan.headerFormat = [[
 --- Variable sized member
 eth.vlan.headerVariableMember = nil
 
+eth.defaultType = "default"
+
 --- Module for ethernet_header struct
 local etherHeader = initHeader()
 local etherVlanHeader = initHeader()

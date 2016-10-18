@@ -18,6 +18,7 @@ local colors = require "colors"
 local bor, band, bnot, rshift, lshift= bit.bor, bit.band, bit.bnot, bit.rshift, bit.lshift
 local istype = ffi.istype
 local write = io.write
+local strSplit = strSplit
 
 --- Payload type, required by some protocols, defined before loading them
 ffi.cdef[[
@@ -121,11 +122,7 @@ end
 --- Starting with ethernet header.
 --- @return packet data as cdata of best fitting packet
 function pkt:get()
-	local pkt = self:getEthernetPacket()
-	if pkt.eth:getType() == proto.eth.TYPE_8021Q then
-		--pkt = self:getEthernetVlanPacket()
-	end
-	return pkt:resolveLastHeader()
+	return self:getEthernetPacket():resolveLastHeader()
 end
 
 --- Dumps the packet data cast to the best fitting packet struct.
@@ -359,22 +356,34 @@ end
 --- @return Name of the header
 --- @return Name of the member
 function getHeaderData(v)
-	if type(v) == "table" then
+	if not v then
+		return
+	elseif type(v) == "table" then
 		local header = v[1]
+		local member = v[2]
+		local subType
 		-- special alias for ethernet
-		if v[1] == "eth" then 
+		if v[1] == "eth" or v[1] == "ethernet" then 
 			header = "ethernet"
-			v['subType'] = v['subType'] or "default"
+			member = member or "eth"
 		end
-		return header, (v[2] or header), v['length'], v['subType']
+		member = member or header
+		if proto[header].defaultType then
+			subType = subType or proto[header].defaultType
+		end
+		return header, member, v['length'], v['subType'] or subType
 	else
 		-- only the header name is given -> member has same name, no variable length
 		-- special alias for ethernet
 		if v == "ethernet" or v == "eth" then
 			return "ethernet", "eth", nil, "default"
 		end
+		local subType
+		if proto[v].defaultType then
+			subType = subType or proto[v].defaultType
+		end
 		-- otherwise header name = member name
-		return v, v, nil, nil
+		return v, v, nil, subType
 	end
 end
 
@@ -480,26 +489,6 @@ function packetGet(self)
 	return namedArgs 
 end
 
--- from http://lua-users.org/wiki/SplitJoin
-local function split(str, pat)
-	local t = {}  -- NOTE: use {n = 0} in Lua-5.0
-	local fpat = "(.-)" .. pat
-	local last_end = 1
-	local s, e, cap = str:find(fpat, 1)
-	while s do
-		if s ~= 1 or cap ~= "" then
-			table.insert(t,cap)
-		end
-		last_end = e+1
-		s, e, cap = str:find(fpat, last_end)
-	end
-	if last_end <= #str then
-		cap = str:sub(last_end)
-		table.insert(t, cap)
-	end
-	return t
-end
-
 --- Try to find out what the next header in the payload of this packet is.
 --- This function is only used for buf:get/buf:dump
 --- TODO support variable sized headers
@@ -510,15 +499,12 @@ function packetResolveLastHeader(self)
 
 	-- do we have struct with correct sub-type?
 	local subType = headers[#headers]:getSubType()
-	log:debug(tostring(subType))
 	if subType then
-		local sub = split(name, "_")
+		local sub = strSplit(name, "_")
 		if sub[#sub] ~= subType then
 			sub[#sub] = subType
-			log:debug(name)
 			
 			local newName = table.concat(sub, "_")
-			log:debug(newName)
 			return ffi.cast(newName .. "*", self):resolveLastHeader()
 		end
 	end
@@ -526,7 +512,7 @@ function packetResolveLastHeader(self)
 	-- do we have struct with correct header length?
 	local len = headers[#headers]:getVariableLength() 
 	if len and len > 0 then	
-		local sub = split(name, "_")
+		local sub = strSplit(name, "_")
 		local l = sub[#sub - 1]
 		if len ~= l then
 			local newArgs = self:getArgs()
@@ -552,16 +538,14 @@ function packetResolveLastHeader(self)
 	if not nextHeader then
 		return self
 	else
-		local newName
-		-- TODO first check how long the current header is in case of variable sized (maybe its a tcp_10)
-
-		nextHeader, _, _ = getHeaderData(nextHeader)	
+		local newName, nextMember
+		nextHeader, nextMember, _, subType = getHeaderData(nextHeader)	
 		-- we know the next header, append it
 		name = name .. "__" .. nextHeader
 
 		-- if simple struct (headername = membername) already exists we can directly cast
-		nextMember = nextHeader
-		newName = name .. nextMember .. "_x_x"
+		--nextMember = nextHeader
+		newName = name .. nextMember .. "_x_" .. (subType or "x")
 
 		if not pkt.packetStructs[newName] then
 			-- check if a similar struct with this header order exists
@@ -590,21 +574,20 @@ function packetResolveLastHeader(self)
 					if member == newMember then
 						-- found duplicate, increase counter for newMember and keep checking for this one now
 						counter = counter + 1
-						newMember = nextMember .. "_" .. counter .. "_x_x"
-						-- TODO this assumes that there never will be a <member_X+1> before a <member_X>
+						newMember = nextMember .. "" .. counter
 					end
 					newArgs[i] = v
 				end
 
 				-- add new header and member
-				newArgs[#newArgs + 1] = { nextHeader, newMember }
+				newArgs[#newArgs + 1] = { nextHeader, newMember, subType = subType }
 
 				-- create new packet. It is unlikely that exactly this packet type with this made up naming scheme will be used
 				-- Therefore, we don't really want to "safe" the cast function
 				pkt.TMP_PACKET = packetCreate(unpack(newArgs))
 				
 				-- name of the new packet type
-				newName = newName .. newMember
+				newName = newName .. '_' .. newMember .. '_x_' .. (subType or 'x')
 			end
 		end
 
@@ -699,6 +682,9 @@ local function defineHeaderStruct(p, subType, size)
 
 	-- build struct from template and proto header format
 	local str = headerStructTemplate
+	if proto[p].defaultType then
+		subType = subType or proto[p].defaultType
+	end
 	str = string.gsub(str, "MEMBER", (subType and proto[p][subType].headerFormat or proto[p].headerFormat))
 
 	-- set size of variable sized member
@@ -711,7 +697,6 @@ local function defineHeaderStruct(p, subType, size)
 	str = string.gsub(str, "NAME", name)
 
 	-- define and add header related functions
-	log:debug(str)
 	ffi.cdef(str)
 	ffi.metatype("struct " .. name, (subType and proto[p][subType].metatype or proto[p].metatype))
 	log:debug("Created " .. name)
@@ -757,9 +742,17 @@ function packetMakeStruct(args, noPayload)
 	local name = ""
 	local str = ""
 
+	local members = {}
+
 	-- add the specified headers and build the name
 	for _, v in ipairs(args) do
 		local header, member, length, subType = getHeaderData(v)
+
+		-- check for duplicate member names as ffi does not crash (it is mostly ignored)
+		if members[member] then
+			log:fatal("Member within this struct has same name: %s", member)
+		end
+		members[member] = true
 
 		local headerStruct = defineHeaderStruct(header, subType, length)
 
@@ -801,6 +794,7 @@ function packetMakeStruct(args, noPayload)
 		pkt.packetStructs[name] = {args}
 
 		log:debug("Created struct %s", name)
+		log:debug("%s", str)
 		
 		-- add struct definition
 		ffi.cdef(str)
@@ -850,8 +844,8 @@ pkt.getArpPacket = packetCreate("eth", "arp")
 
 pkt.getIcmp4Packet = packetCreate("eth", "ip4", "icmp")
 pkt.getIcmp6Packet = packetCreate("eth", "ip6", "icmp")
-
 pkt.getIcmpPacket = function(self, ip4) ip4 = ip4 == nil or ip4 if ip4 then return pkt.getIcmp4Packet(self) else return pkt.getIcmp6Packet(self) end end   
+
 pkt.getUdp4Packet = packetCreate("eth", "ip4", "udp")
 pkt.getUdp6Packet = packetCreate("eth", "ip6", "udp") 
 pkt.getUdpPacket = function(self, ip4) 
@@ -904,5 +898,8 @@ pkt.getSFlowPacket = packetCreate("eth", "ip4", "udp", {"sflow", subType = "ip4"
 pkt.getIpfixPacket = packetCreate("eth", "ip4", "udp", "ipfix")
 
 pkt.getLacpPacket = packetCreate('eth', 'lacp')
+
+pkt.getLongTestPacket = packetCreate({ "eth", subType="vlan"}, "ip6", "udp", "vxlan", { "eth", "innerEth" }, { "ip4", length = 20 }, {"udp", "innerUdp"},  {"sflow", subType = "ip4"}, "noPayload")
+
 
 return pkt

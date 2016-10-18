@@ -102,6 +102,8 @@ sflow.ip4.headerFormat = [[
 --- Variable sized member
 sflow.ip4.headerVariableMember = "payload"
 
+sflow.defaultType = "ip4"
+
 local sflowHeader = initHeader()
 sflowHeader.__index = sflowHeader
 
