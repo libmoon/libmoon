@@ -9,7 +9,7 @@
 ------------------------------------------------------------------------
 
 local ffi = require "ffi"
-require"proto/template"
+require "proto.template"
 local initHeader = initHeader
 
 local bor, band, bnot, rshift, lshift= bit.bor, bit.band, bit.bnot, bit.rshift, bit.lshift

@@ -335,7 +335,7 @@ function packetCreate(...)
 	packet.calculateChecksums = packetCalculateChecksums(args)
 	
 	for _, v in ipairs(args) do
-		local header, member, _ = getHeaderData(v)
+		local header, member = getHeaderData(v)
 		-- if the header has a checksum, add a function to calculate it
 		if header == "ip4" or header == "icmp" then -- FIXME NYI or header == "udp" or header == "tcp" then
 			local key = 'calculate' .. member:gsub("^.", string.upper) .. 'Checksum'
@@ -403,7 +403,7 @@ end
 --- @param h header to be returned
 --- @return The member of the packet
 function packetGetHeader(self, h)
-	local _, member, _ = getHeaderData(h)
+	local _, member = getHeaderData(h)
 	return self[member]
 end
 
@@ -465,8 +465,8 @@ function packetFill(self, namedArgs)
 	local args = self:getArgs()
 	local accumulatedLength = 0
 	for i, v in ipairs(headers) do
-		local _, curMember, _ = getHeaderData(args[i])
-		local nextHeader, _, _ = getHeaderData(args[i + 1])
+		local _, curMember = getHeaderData(args[i])
+		local nextHeader = getHeaderData(args[i + 1])
 		
 		namedArgs = v:setDefaultNamedArgs(curMember, namedArgs, nextHeader, accumulatedLength, ffi.sizeof(v))
 		v:fill(namedArgs, curMember) 
@@ -483,7 +483,7 @@ function packetGet(self)
 	local namedArgs = {} 
 	local args = self:getArgs()
 	for i, v in ipairs(self:getHeaders()) do 
-		local _, member, _ = getHeaderData(args[i])
+		local _, member = getHeaderData(args[i])
 		namedArgs = mergeTables(namedArgs, v:get(member)) 
 	end 
 	return namedArgs 
@@ -491,7 +491,6 @@ end
 
 --- Try to find out what the next header in the payload of this packet is.
 --- This function is only used for buf:get/buf:dump
---- TODO support variable sized headers
 --- @param self The packet
 function packetResolveLastHeader(self)
 	local name = self:getName()
@@ -570,7 +569,7 @@ function packetResolveLastHeader(self)
 			
 				-- build new args information and in the meantime check for duplicates
 				for i, v in ipairs(args) do
-					local header, member, _ = getHeaderData(v)
+					local header, member = getHeaderData(v)
 					if member == newMember then
 						-- found duplicate, increase counter for newMember and keep checking for this one now
 						counter = counter + 1
@@ -639,7 +638,7 @@ end
 function packetCalculateChecksums(args)
 	local str = ""
 	for _, v in ipairs(args) do
-		local header, member, _ = getHeaderData(v)
+		local header, member = getHeaderData(v)
 		
 		-- if the header has a checksum, call the function
 		if header == "ip4" or header == "icmp" then -- FIXME NYI or header == "udp"
@@ -826,7 +825,7 @@ pkt.getRawPacket = packetCreate()
 
 pkt.getEthernetPacket = packetCreate("eth")
 pkt.getEthPacket = pkt.getEthernetPacket
-pkt.getEthernetVlanPacket = packetCreate({"eth", "eth", subType = "vlan"})
+pkt.getEthernetVlanPacket = packetCreate({"eth", subType = "vlan"})
 pkt.getEthVlanPacket = pkt.getEthernetVlanPacket
 
 pkt.getIP4Packet = packetCreate("eth", "ip4") 
@@ -844,7 +843,14 @@ pkt.getArpPacket = packetCreate("eth", "arp")
 
 pkt.getIcmp4Packet = packetCreate("eth", "ip4", "icmp")
 pkt.getIcmp6Packet = packetCreate("eth", "ip6", "icmp")
-pkt.getIcmpPacket = function(self, ip4) ip4 = ip4 == nil or ip4 if ip4 then return pkt.getIcmp4Packet(self) else return pkt.getIcmp6Packet(self) end end   
+pkt.getIcmpPacket = function(self, ip4)
+	ip4 = ip4 == nil or ip4 
+	if ip4 then 
+		return pkt.getIcmp4Packet(self) 
+	else 
+		return pkt.getIcmp6Packet(self) 
+	end 
+end   
 
 pkt.getUdp4Packet = packetCreate("eth", "ip4", "udp")
 pkt.getUdp6Packet = packetCreate("eth", "ip6", "udp") 
@@ -876,11 +882,25 @@ pkt.getVxlanEthernetPacket = packetCreate("eth", "ip4", "udp", "vxlan", { "eth",
 
 pkt.getEsp4Packet = packetCreate("eth", "ip4", "esp")
 pkt.getEsp6Packet = packetCreate("eth", "ip6", "esp") 
-pkt.getEspPacket = function(self, ip4) ip4 = ip4 == nil or ip4 if ip4 then return pkt.getEsp4Packet(self) else return pkt.getEsp6Packet(self) end end
+pkt.getEspPacket = function(self, ip4) 
+	ip4 = ip4 == nil or ip4 
+	if ip4 then 
+		return pkt.getEsp4Packet(self) 
+	else 
+		return pkt.getEsp6Packet(self) 
+	end 
+end
 
 pkt.getAH4Packet = packetCreate("eth", "ip4", "ah")
 pkt.getAH6Packet = nil --packetCreate("eth", "ip6", "ah6") --TODO: AH6 needs to be implemented
-pkt.getAHPacket = function(self, ip4) ip4 = ip4 == nil or ip4 if ip4 then return pkt.getAH4Packet(self) else return pkt.getAH6Packet(self) end end
+pkt.getAHPacket = function(self, ip4) 
+	ip4 = ip4 == nil or ip4 
+	if ip4 then 
+		return pkt.getAH4Packet(self) 
+	else 
+		return pkt.getAH6Packet(self) 
+	end 
+end
 
 pkt.getDns4Packet = packetCreate('eth', 'ip4', 'udp', 'dns')
 pkt.getDns6Packet = packetCreate('eth', 'ip6', 'udp', 'dns')
@@ -898,8 +918,6 @@ pkt.getSFlowPacket = packetCreate("eth", "ip4", "udp", {"sflow", subType = "ip4"
 pkt.getIpfixPacket = packetCreate("eth", "ip4", "udp", "ipfix")
 
 pkt.getLacpPacket = packetCreate('eth', 'lacp')
-
-pkt.getLongTestPacket = packetCreate({ "eth", subType="vlan"}, "ip6", "udp", "vxlan", { "eth", "innerEth" }, { "ip4", length = 20 }, {"udp", "innerUdp"},  {"sflow", subType = "ip4"}, "noPayload")
 
 
 return pkt

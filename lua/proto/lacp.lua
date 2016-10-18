@@ -17,7 +17,7 @@ local filter = require "filter"
 local ns     = require "namespaces"
 local eth    = require "proto.ethernet"
 local libmoon = require "libmoon"
-require"proto/template"
+require "proto.template"
 local initHeader = initHeader
 
 

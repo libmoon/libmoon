@@ -12,7 +12,7 @@ local ffi = require "ffi"
 local dpdkc = require "dpdkc"
 
 require "utils"
-require"proto/template"
+require "proto.template"
 local initHeader = initHeader
 
 local ntoh, hton = ntoh, hton
@@ -494,21 +494,16 @@ end
 ---- TCP options
 ------------------------------------------------------------------------------------
 
-do 
-	function createOptionsDict()
-		mod.option = {
-			err = -1,
-			eol = 0,
-			nop = 1,
-			mss = 2,
-			ws = 3,
-			ts = 8,
-		}
-		for k, v in pairs(mod.option) do
-			mod.option[v] = k
-		end
-	end
-	createOptionsDict()
+mod.option = {
+	err = -1,
+	eol = 0,
+	nop = 1,
+	mss = 2,
+	ws = 3,
+	ts = 8,
+}
+for k, v in pairs(mod.option) do
+	mod.option[v] = k
 end
 
 function tcpHeader:getOptions(offset, len)
@@ -520,7 +515,6 @@ function tcpHeader:getOptions(offset, len)
 	local starting_offset = offset
 	while offset < starting_offset + len do -- this is to prevent an infinite loop
 		local code = self.options[offset]
-		local opt = mod.option[code]
 		options[num] = { type = code, offset = offset }
 		if code == mod.option['eol'] then
 			-- if there are still options missing, add error option with number of missing bytes

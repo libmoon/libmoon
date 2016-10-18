@@ -1,7 +1,7 @@
 --- sFlowv5 implementation
 
 local ffi = require "ffi"
-require"proto/template"
+require "proto.template"
 local initHeader = initHeader
 
 local ntoh, hton = ntoh, hton

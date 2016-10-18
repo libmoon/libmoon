@@ -18,7 +18,7 @@
 -- - proto/proto.lua: add PROTO.lua to the list so it gets loaded
 --]]
 local ffi = require "ffi"
-require"proto/template"
+require "proto.template"
 local initHeader = initHeader
 
 

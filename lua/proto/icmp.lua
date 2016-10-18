@@ -19,7 +19,7 @@ local eth     = require "proto.ethernet"
 local ip      = require "proto.ip4"
 
 require "utils"
-require"proto/template"
+require "proto.template"
 local initHeader = initHeader
 
 local ntoh, hton = ntoh, hton
