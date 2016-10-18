@@ -11,6 +11,8 @@
 
 
 local ffi = require "ffi"
+require"proto/template"
+local initHeader = initHeader
 
 local ntoh, hton = ntoh, hton
 local bor, band, bnot, rshift, lshift= bit.bor, bit.band, bit.bnot, bit.rshift, bit.lshift
@@ -158,7 +160,7 @@ dns.headerFormat = [[
 --- Variable sized member
 dns.headerVariableMember = body
 
-local dnsHeader = {}
+local dnsHeader = initHeader()
 dnsHeader.__index = dnsHeader
 
 --- Set the query id.
@@ -593,30 +595,6 @@ function dnsHeader:getString()
 		.. " NSCount: " .. self:getNSCountString()
 		.. " ARCount: " .. self:getARCountString()
 		.. " MessageContent: " .. self:getMessageContentString()
-end
-
---- Resolve which header comes after this one (in a packet)
---- For instance: in tcp/udp based on the ports
---- This function must exist and is only used when get/dump is executed on 
---- an unknown (mbuf not yet casted to e.g. tcpv6 packet) packet (mbuf)
---- @return String next header (e.g. 'eth', 'ip4', nil)
-function dnsHeader:resolveNextHeader()
-	return nil
-end	
-
---- Change the default values for namedArguments (for fill/get)
---- This can be used to for instance calculate a length value based on the total packet length
---- See proto/ip4.setDefaultNamedArgs as an example
---- This function must exist and is only used by packet.fill
---- @param pre The prefix used for the namedArgs, e.g. 'dns'
---- @param namedArgs Table of named arguments (see See more)
---- @param nextHeader The header following after this header in a packet
---- @param accumulatedLength The so far accumulated length for previous headers in a packet
---- @return Table of namedArgs
---- @see dnsHeader:fill
-function dnsHeader:setDefaultNamedArgs(pre, namedArgs, nextHeader, accumulatedLength)
-	return namedArgs
-
 end
 
 

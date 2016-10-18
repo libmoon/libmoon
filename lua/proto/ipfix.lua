@@ -12,6 +12,8 @@
 local ffi = require "ffi"
 
 require "utils"
+require"proto/template"
+local initHeader = initHeader
 
 local ntoh, hton = ntoh, hton
 local ntoh16, hton16 = ntoh16, hton16
@@ -121,7 +123,7 @@ ipfix.headerFormat = [[
 ipfix.headerVariableMember = nil
 
 --- Module for ipfix struct
-local ipfixHeader = {}
+local ipfixHeader = initHeader()
 ipfixHeader.__index = ipfixHeader
 
 --- Set the version.
@@ -267,15 +269,6 @@ function ipfixHeader:getString()
 		.. " sequence number "		.. self:getSeqString()
 		.. " observation domain id "	.. self:getObservationDomainString()
 end
-
---- Resolve which header comes after this one (in a packet)
---- For instance: in tcp/udp based on the ports
---- This function must exist and is only used when get/dump is executed on
---- an unknown (mbuf not yet casted to e.g. tcpv6 packet) packet (mbuf)
---- @return String next header (e.g. 'eth', 'ip4', nil)
-function ipfixHeader:resolveNextHeader()
-	return nil
-end	
 
 --- Change the default values for namedArguments (for fill/get)
 --- This can be used to for instance calculate a length value based on the total packet length

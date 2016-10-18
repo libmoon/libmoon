@@ -12,13 +12,14 @@
 local ffi = require "ffi"
 
 require "utils"
+require"proto/template"
+local initHeader = initHeader
 
 local ntoh, hton = ntoh, hton
 local ntoh16, hton16 = ntoh16, hton16
 local bor, band, bnot, rshift, lshift= bit.bor, bit.band, bit.bnot, bit.rshift, bit.lshift
 local istype = ffi.istype
 local format = string.format
-
 
 ------------------------------------------------------------------------
 ---- Ethernet constants
@@ -140,8 +141,8 @@ eth.vlan.headerFormat = [[
 eth.vlan.headerVariableMember = nil
 
 --- Module for ethernet_header struct
-local etherHeader = {}
-local etherVlanHeader = {}
+local etherHeader = initHeader()
+local etherVlanHeader = initHeader()
 etherHeader.__index = etherHeader
 etherVlanHeader.__index = etherVlanHeader
 
@@ -391,8 +392,20 @@ end
 
 etherVlanHeader.setDefaultNamedArgs = etherHeader.setDefaultNamedArgs
 
-function etherHeader:getVariableLength()
-	return
+function etherHeader:getSubType()
+	if self:getType() == eth.TYPE_8021Q then
+		return "vlan"
+	else
+		return "default"
+	end
+end
+
+function etherVlanHeader:getSubType()
+	return "vlan"
+end
+
+function etherVlanHeader:testing()
+	print("eth vlan testing")
 end
 
 ----------------------------------------------------------------------------------

@@ -17,6 +17,8 @@ local filter = require "filter"
 local ns     = require "namespaces"
 local eth    = require "proto.ethernet"
 local libmoon = require "libmoon"
+require"proto/template"
+local initHeader = initHeader
 
 
 ---------------------------------------------------------------------------
@@ -86,7 +88,7 @@ lacp.headerFormat = [[
 lacp.headerVariableMember = nil
 
 --- Module for lacp_address struct
-local lacpHeader, lacpInfo = {}, {}
+local lacpHeader, lacpInfo = initHeader(), {}
 lacpHeader.__index = lacpHeader
 lacpInfo.__index = lacpInfo
 
@@ -266,29 +268,6 @@ function lacpHeader:getString()
 		.. "    " .. self.partner:getString()
 		.. "\n  Collector Information\n"
 		.. "    Max Delay " .. ntoh16(self.collector_delay)
-end
-
---- Resolve which header comes after this one (in a packet)
---- For instance: in tcp/udp based on the ports
---- This function must exist and is only used when get/dump is executed on 
---- an unknown (mbuf not yet casted to e.g. tcpv6 packet) packet (mbuf)
---- @return String next header (e.g. 'eth', 'ip4', nil)
-function lacpHeader:resolveNextHeader()
-	return nil
-end	
-
---- Change the default values for namedArguments (for fill/get)
---- This can be used to for instance calculate a length value based on the total packet length
---- See proto/ip4.setDefaultNamedArgs as an example
---- This function must exist and is only used by packet.fill
---- @param pre The prefix used for the namedArgs, e.g. 'lacp'
---- @param namedArgs Table of named arguments (see See more)
---- @param nextHeader The header following after this header in a packet
---- @param accumulatedLength The so far accumulated length for previous headers in a packet
---- @return Table of namedArgs
---- @see lacpHeader:fill
-function lacpHeader:setDefaultNamedArgs(pre, namedArgs, nextHeader, accumulatedLength)
-	return namedArgs
 end
 
 

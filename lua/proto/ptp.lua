@@ -11,6 +11,8 @@
 local ffi = require "ffi"
 
 require "utils"
+require"proto/template"
+local initHeader = initHeader
 
 local ntoh, hton = ntoh, hton
 local ntoh16, hton16 = ntoh16, hton16
@@ -71,7 +73,7 @@ ptp.headerFormat = [[
 ptp.headerVariableMember = nil
 
 --- Module for ptp_header struct
-local ptpHeader = {}
+local ptpHeader = initHeader()
 ptpHeader.__index = ptpHeader
 
 --- Set the message type.
@@ -462,15 +464,6 @@ function ptpHeader:getString()
 		.. " seq " .. self:getSequenceIDString()
 		.. " ctrl " .. self:getControlString()
 		.. " log " .. self:getLogMessageIntervalString()
-end
-
---- Resolve which header comes after this one (in a packet).
---- For instance: in tcp/udp based on the ports.
---- This function must exist and is only used when get/dump is executed on
---- an unknown (mbuf not yet casted to e.g. tcpv6 packet) packet (mbuf)
---- @return String next header (e.g. 'udp', 'icmp', nil)
-function ptpHeader:resolveNextHeader()
-	return nil
 end
 
 --- Change the default values for namedArguments (for fill/get).

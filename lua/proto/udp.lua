@@ -11,6 +11,8 @@
 local ffi = require "ffi"
 
 require "utils"
+require"proto/template"
+local initHeader = initHeader
 
 local ntoh, hton = ntoh, hton
 local ntoh16, hton16 = ntoh16, hton16
@@ -53,7 +55,7 @@ udp.headerFormat = [[
 udp.headerVariableMember = nil
 
 --- Module for udp_header struct
-local udpHeader = {}
+local udpHeader = initHeader()
 udpHeader.__index = udpHeader
 
 --- Set the source port.
@@ -197,7 +199,7 @@ function udpHeader:resolveNextHeader()
 	for name, _port in pairs(mapNamePort) do
 		if type(_port) == "table" then
 			for _, p in pairs(_port) do
-				if port== p then
+				if port == p then
 					return name
 				end
 			end

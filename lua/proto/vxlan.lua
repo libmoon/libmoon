@@ -9,6 +9,8 @@
 ------------------------------------------------------------------------
 
 local ffi = require "ffi"
+require"proto/template"
+local initHeader = initHeader
 
 local bor, band, bnot, rshift, lshift= bit.bor, bit.band, bit.bnot, bit.rshift, bit.lshift
 local format = string.format
@@ -36,7 +38,7 @@ vxlan.headerFormat = [[
 vxlan.headerVariableMember = nil
 
 --- Module for vxlan_header struct
-local vxlanHeader = {}
+local vxlanHeader = initHeader()
 vxlanHeader.__index = vxlanHeader
 
 --- Set the flags.
@@ -175,20 +177,6 @@ end
 function vxlanHeader:resolveNextHeader()
 	return 'eth'
 end	
-
---- Change the default values for namedArguments (for fill/get).
---- This can be used to for instance calculate a length value based on the total packet length.
---- See proto/ip4.setDefaultNamedArgs as an example.
---- This function must exist and is only used by packet.fill.
---- @param pre The prefix used for the namedArgs, e.g. 'ip4'
---- @param namedArgs Table of named arguments (see See Also)
---- @param nextHeader The header following after this header in a packet
---- @param accumulatedLength The so far accumulated length for previous headers in a packet
---- @return Table of namedArgs
---- @see ip4Header:fill
-function vxlanHeader:setDefaultNamedArgs(pre, namedArgs, nextHeader, accumulatedLength)
-	return namedArgs
-end
 
 
 ------------------------------------------------------------------------

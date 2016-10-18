@@ -19,6 +19,8 @@ local eth     = require "proto.ethernet"
 local ip      = require "proto.ip4"
 
 require "utils"
+require"proto/template"
+local initHeader = initHeader
 
 local ntoh, hton = ntoh, hton
 local ntoh16, hton16 = ntoh16, hton16
@@ -81,7 +83,7 @@ icmp.headerFormat = [[
 icmp.headerVariableMember = "body"
 
 --- Module for icmp_header struct
-local icmpHeader = {}
+local icmpHeader = initHeader()
 icmpHeader.__index = icmpHeader
 
 --- Set the type.
@@ -248,29 +250,6 @@ function icmpHeader:getString()
 			.. " code "		.. self:getCodeString() 
 			.. " cksum "	.. self:getChecksumString()
 			.. " body "		.. self:getMessageBodyString() .. " "
-end
-
---- Resolve which header comes after this one (in a packet).
---- For instance: in tcp/udp based on the ports.
---- This function must exist and is only used when get/dump is executed on
---- an unknown (mbuf not yet casted to e.g. tcpv6 packet) packet (mbuf)
---- @return String next header (e.g. 'udp', 'icmp', nil)
-function icmpHeader:resolveNextHeader()
-	return nil
-end
-
---- Change the default values for namedArguments (for fill/get).
---- This can be used to for instance calculate a length value based on the total packet length.
---- See proto/ip4.setDefaultNamedArgs as an example.
---- This function must exist and is only used by packet.fill.
---- @param pre The prefix used for the namedArgs, e.g. 'icmp'
---- @param namedArgs Table of named arguments (see See Also)
---- @param nextHeader The header following after this header in a packet
---- @param accumulatedLength The so far accumulated length for previous headers in a packet
---- @return Table of namedArgs
---- @see icmpHeader:fill
-function icmpHeader:setDefaultNamedArgs(pre, namedArgs, nextHeader, accumulatedLength)
-	return namedArgs
 end
 
 

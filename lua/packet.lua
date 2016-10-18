@@ -123,7 +123,7 @@ end
 function pkt:get()
 	local pkt = self:getEthernetPacket()
 	if pkt.eth:getType() == proto.eth.TYPE_8021Q then
-		pkt = self:getEthernetVlanPacket()
+		--pkt = self:getEthernetVlanPacket()
 	end
 	return pkt:resolveLastHeader()
 end
@@ -507,7 +507,23 @@ end
 function packetResolveLastHeader(self)
 	local name = self:getName()
 	local headers = self:getHeaders()
-	
+
+	-- do we have struct with correct sub-type?
+	local subType = headers[#headers]:getSubType()
+	log:debug(tostring(subType))
+	if subType then
+		local sub = split(name, "_")
+		if sub[#sub] ~= subType then
+			sub[#sub] = subType
+			log:debug(name)
+			
+			local newName = table.concat(sub, "_")
+			log:debug(newName)
+			return ffi.cast(newName .. "*", self):resolveLastHeader()
+		end
+	end
+
+	-- do we have struct with correct header length?
 	local len = headers[#headers]:getVariableLength() 
 	if len and len > 0 then	
 		local sub = split(name, "_")
@@ -816,7 +832,7 @@ pkt.getRawPacket = packetCreate()
 
 pkt.getEthernetPacket = packetCreate("eth")
 pkt.getEthPacket = pkt.getEthernetPacket
-pkt.getEthernetVlanPacket = packetCreate({"eth", subType = "vlan"})
+pkt.getEthernetVlanPacket = packetCreate({"eth", "eth", subType = "vlan"})
 pkt.getEthVlanPacket = pkt.getEthernetVlanPacket
 
 pkt.getIP4Packet = packetCreate("eth", "ip4") 

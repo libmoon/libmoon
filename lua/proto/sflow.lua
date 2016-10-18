@@ -1,6 +1,8 @@
 --- sFlowv5 implementation
 
 local ffi = require "ffi"
+require"proto/template"
+local initHeader = initHeader
 
 local ntoh, hton = ntoh, hton
 local ntoh16, hton16 = ntoh16, hton16
@@ -100,7 +102,7 @@ sflow.ip4.headerFormat = [[
 --- Variable sized member
 sflow.ip4.headerVariableMember = "payload"
 
-local sflowHeader = {}
+local sflowHeader = initHeader()
 sflowHeader.__index = sflowHeader
 
 local sflowUnknownEntry = {}
@@ -313,17 +315,6 @@ function sflowRawPacket:getString()
 	)
 	return str
 end
-
---- Resolve which header comes after this one (in a packet), nil in this case
-function sflowHeader:resolveNextHeader()
-	return nil
-end	
-
---- Change the default values for namedArguments (for fill/get)
-function sflowHeader:setDefaultNamedArgs(pre, namedArgs, nextHeader, accumulatedLength)
-	return namedArgs
-end
-
 
 function sflowHeader:iterateSamples()
 	local numSamples = self:getNumSamples()

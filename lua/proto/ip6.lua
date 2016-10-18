@@ -12,6 +12,8 @@
 local ffi = require "ffi"
 
 require "utils"
+require"proto/template"
+local initHeader = initHeader
 
 local ntoh, hton = ntoh, hton
 local ntoh16, hton16 = ntoh16, hton16
@@ -183,7 +185,7 @@ ip6.headerFormat = [[
 ip6.headerVariableMember = nil
 
 --- Module for ip6_header struct
-local ip6Header = {}
+local ip6Header = initHeader()
 ip6Header.__index = ip6Header
 
 --- Set the version. 

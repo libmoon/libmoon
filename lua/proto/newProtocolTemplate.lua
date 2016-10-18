@@ -18,6 +18,8 @@
 -- - proto/proto.lua: add PROTO.lua to the list so it gets loaded
 --]]
 local ffi = require "ffi"
+require"proto/template"
+local initHeader = initHeader
 
 
 ---------------------------------------------------------------------------
@@ -32,8 +34,15 @@ local PROTO = {}
 ---- PROTO header
 ---------------------------------------------------------------------------
 
+PROTO.headerFormat = [[
+	uint8_t		xyz;
+]]
+
+--- Variable sized member
+PROTO.headerVariableMember = nil
+
 --- Module for PROTO_address struct
-local PROTOHeader = {}
+local PROTOHeader = initHeader()
 PROTOHeader.__index = PROTOHeader
 
 --[[ for all members of the header: set, get, getString 
@@ -115,23 +124,12 @@ function PROTOHeader:setDefaultNamedArgs(pre, namedArgs, nextHeader, accumulated
 	return namedArgs
 end
 
-----------------------------------------------------------------------------------
----- Packets
-----------------------------------------------------------------------------------
-
---[[ define how a packet with this header looks like
--- e.g. 'ip4' will add a member ip4 of type struct ip4_header to the packet
--- e.g. {'ip4', 'innerIP'} will add a member innerIP of type struct ip4_header to the packet
---]]
---- Cast the packet to a PROTO (IP4) packet 
-pkt.getPROTOPacket = packetCreate('eth', 'ip4', 'PROTO')
-
 
 ------------------------------------------------------------------------
 ---- Metatypes
 ------------------------------------------------------------------------
 
-ffi.metatype("struct PROTO_header", PROTOHeader)
+PROTO.metatype = PROTOHeader
 
 
 return PROTO

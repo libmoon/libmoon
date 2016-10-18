@@ -12,6 +12,8 @@
 local ffi = require "ffi"
 
 require "utils"
+require"proto/template"
+local initHeader = initHeader
 
 local ntoh, hton = ntoh, hton
 local ntoh16, hton16 = ntoh16, hton16
@@ -148,7 +150,7 @@ ip.headerFormat = [[
 ip.headerVariableMember = "options"
 
 --- Module for ip4_header struct
-local ip4Header = {}
+local ip4Header = initHeader()
 
 ip4Header.__index = ip4Header
 
@@ -591,7 +593,6 @@ end
 function ip4Header:getVariableLength()
 	return (self:getHeaderLength() - 5) * 4
 end
-
 
 ------------------------------------------------------------------------
 ---- Metatypes

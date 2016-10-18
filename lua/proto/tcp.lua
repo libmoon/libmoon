@@ -12,6 +12,8 @@ local ffi = require "ffi"
 local dpdkc = require "dpdkc"
 
 require "utils"
+require"proto/template"
+local initHeader = initHeader
 
 local ntoh, hton = ntoh, hton
 local ntoh16, hton16 = ntoh16, hton16
@@ -50,7 +52,7 @@ mod.headerFormat = [[
 mod.headerVariableMember = "options"
 
 --- Module for tcp_header struct
-local tcpHeader = {}
+local tcpHeader = initHeader()
 tcpHeader.__index = tcpHeader
 
 --- Set the source port.
@@ -764,15 +766,6 @@ function tcpHeader:getString()
 		.. " cksum " 	.. self:getChecksumString() 
 		.. " urg " 	.. self:getUrgentPointerString() 
 		.. " ["		.. self:getOptionsString() .. "]"
-end
-
---- Resolve which header comes after this one (in a packet).
---- For instance: in tcp/udp based on the ports.
---- This function must exist and is only used when get/dump is executed on
---- an unknown (mbuf not yet casted to e.g. tcpv6 packet) packet (mbuf)
---- @return String next header (e.g. 'udp', 'icmp', nil)
-function tcpHeader:resolveNextHeader()
-	return nil
 end
 
 --- Change the default values for namedArguments (for fill/get).
