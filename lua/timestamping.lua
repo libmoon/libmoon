@@ -84,6 +84,7 @@ function timestamper:measureLatency(pktSize, packetModifier, maxWait)
 	if self.udp then
 		-- change timestamped UDP port as each packet may be on a different port
 		self.rxQueue:enableTimestamps(buf:getUdpPacket().udp:getDstPort())
+		buf:getUdpPtpPacket():setLength(pktSize)
 		self.txBufs:offloadUdpChecksums()
 		if self.rxQueue.dev.reconfigureUdpTimestampFilter and not skipReconfigure then
 			-- i40e driver fdir filters are broken
@@ -91,7 +92,6 @@ function timestamper:measureLatency(pktSize, packetModifier, maxWait)
 			-- so we have to look at that packet and reconfigure the filters
 			self.rxQueue.dev:reconfigureUdpTimestampFilter(self.rxQueue, buf:getUdpPacket())
 		end
-	else
 	end
 	mod.syncClocks(self.txDev, self.rxDev)
 	-- clear any "leftover" timestamps
