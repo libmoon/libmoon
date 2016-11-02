@@ -402,6 +402,10 @@ local ARP_AGING_TIME = 30
 --- the current implementation does not handle large tables efficiently \n
 arp.arpTask = "__MG_ARP_TASK"
 
+-- Arp table
+local arpTable = ns:get()
+local pipes = ns:get()
+
 --- Start the ARP task on a shared core
 --- @param queues array of queue pairs and options, each array entry has the following format
 ---   {rxQueue = rxQueue, txQueue = txQueue, ips = "ip" | {"ip", ...}}
@@ -410,12 +414,13 @@ arp.arpTask = "__MG_ARP_TASK"
 ---   gratArpInterval, interval in seconds in which the gratuitous is repeated.
 ---      this can be useful in poorly configured networks (switch MAC timeout vs router ARP timeout) on ports that never send out packets except for ARP
 function arp.startArpTask(queues)
+	arpTable.stopTask = nil
 	libmoon.startSharedTask(arp.arpTask, queues)
 end
 
--- Arp table
-local arpTable = ns:get()
-local pipes = ns:get()
+function arp.stopArpTask()
+	arpTable.stopTask = true
+end
 
 local function handleArpPacket(rxBufs, txBufs, nic, ipToMac)
 	local rxPkt = rxBufs[1]:getArpPacket()
@@ -490,7 +495,7 @@ local function arpTask(qs)
 	arpTable.taskRunning = true
 
 	local gratArpTimer = timer:new(0)
-	while libmoon.running() do
+	while libmoon.running() and not arpTable.stopTask do
 		-- send out gratuitous arp
 		if gratArpTimer:expired() then
 			gratArpTimer:reset(qs.gratArpInterval or math.huge)
@@ -579,6 +584,7 @@ local function arpTask(qs)
 		end
 		libmoon.sleepMillisIdle(1)
 	end
+	arpTable.taskRunning = nil
 end
 
 --- Send a buf containing an ARP packet to the ARP task.
@@ -610,6 +616,7 @@ function arp.lookup(ip)
 		local waitForArpTask = 0
 		while not arpTable.taskRunning and waitForArpTask < 10 do
 			libmoon.sleepMillis(100)
+			waitForArpTask = waitForArpTask + 1
 		end
 		if not arpTable.taskRunning then
 			error("ARP task is not running")
