@@ -1,11 +1,12 @@
 --- Inter-task communication via pipes
 local mod = {}
 
-local memory   = require "memory"
-local ffi      = require "ffi"
-local serpent  = require "Serpent"
-local libmoon   = require "libmoon"
-local log      = require "log"
+local memory  = require "memory"
+local ffi     = require "ffi"
+local serpent = require "Serpent"
+local libmoon = require "libmoon"
+local log     = require "log"
+local S       = require "syscall"
 
 ffi.cdef [[
 	// dummy
@@ -51,17 +52,21 @@ function mod:newPacketRingFromRing(ring)
 	}, packetRing)
 end
 
+local ENOBUFS = S.c.E.NOBUFS
+
 -- FIXME: this is work-around for some bug with the serialization of nested objects
 function mod:sendToPacketRing(ring, bufs)
-	C.ring_enqueue(ring, bufs.array, bufs.size);
+	return C.ring_enqueue(ring, bufs.array, bufs.size) ~= -ENOBUFS
 end
 
+-- try to enqueue packets in a ring, returns true on success
 function packetRing:send(bufs)
-	C.ring_enqueue(self.ring, bufs.array, bufs.size);
+	return C.ring_enqueue(self.ring, bufs.array, bufs.size) ~= -ENOBUFS
 end
 
+-- try to enqueue packets in a ring, returns true on success
 function packetRing:sendN(bufs, n)
-	C.ring_enqueue(self.ring, bufs.array, n);
+	return C.ring_enqueue(self.ring, bufs.array, n) ~= -ENOBUFS
 end
 
 function packetRing:recv(bufs)
