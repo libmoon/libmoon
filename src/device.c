@@ -168,7 +168,11 @@ int dpdk_configure_device(struct libmoon_device_config* cfg) {
 	}
 	rc = rte_eth_dev_start(cfg->port);
 	// save memory address of the register file
-	registers[cfg->port] = (uint8_t*) dev_info.pci_dev->mem_resource[0].addr;
+	if (dev_info.pci_dev) {
+		registers[cfg->port] = (uint8_t*) dev_info.pci_dev->mem_resource[0].addr;
+	} else {
+		registers[cfg->port] = NULL; // TODO: provide dummy memory area here? check for null on access?
+	}
 	return rc;
 }
 
@@ -179,7 +183,11 @@ void* dpdk_get_eth_dev(int port) {
 int dpdk_get_pci_function(int port) {
 	struct rte_eth_dev_info dev_info;
 	rte_eth_dev_info_get(port, &dev_info);
-	return dev_info.pci_dev->addr.function;
+	if (dev_info.pci_dev) {
+		return dev_info.pci_dev->addr.function;
+	} else {
+		return 0;
+	}
 }
 
 const char* dpdk_get_driver_name(int port) {
@@ -200,12 +208,18 @@ uint64_t dpdk_get_mac_addr(int port, char* buf) {
 uint32_t dpdk_get_pci_id(uint8_t port) {
 	struct rte_eth_dev_info dev_info;
 	rte_eth_dev_info_get(port, &dev_info);
+	if (!dev_info.pci_dev) {
+		return 0;
+	}
 	return dev_info.pci_dev->id.vendor_id << 16 | dev_info.pci_dev->id.device_id;
 }
 
 uint8_t dpdk_get_socket(uint8_t port) {
 	struct rte_eth_dev_info dev_info;
 	rte_eth_dev_info_get(port, &dev_info);
+	if (!dev_info.pci_dev) {
+		return 0;
+	}
 	int node = dev_info.pci_dev->numa_node;
 	if (node == -1) {
 		node = 0;
