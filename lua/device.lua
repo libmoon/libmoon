@@ -2,7 +2,7 @@
 
 local mod = {}
 
-local libmoon     = require "libmoon"
+local libmoon    = require "libmoon"
 local ffi        = require "ffi"
 local dpdkc      = require "dpdkc"
 local dpdk       = require "dpdk"
@@ -107,6 +107,7 @@ function mod.config(args)
 		return mod.get(args.port)
 	end
 	local info = dev.getInfo{id = args.port}
+	local driverInfo = drivers.getDriverInfo(ffi.string(info.driver_name))
 	args.rxQueues = args.rxQueues or 1
 	args.txQueues = args.txQueues or 1
 	args.rxDescs = args.rxDescs or 512
@@ -131,7 +132,7 @@ function mod.config(args)
 	end
 	args.rssQueues = args.rssQueues or 0
 	if args.disableOffloads == nil then
-		args.disableOffloads = drivers.getDriverInfo(ffi.string(info.driver_name)).disableOffloads
+		args.disableOffloads = driverInfo.disableOffloads
 	end
 	args.rssFunctions = args.rssFunctions or {
 		dpdk.ETH_RSS_IPV4,
