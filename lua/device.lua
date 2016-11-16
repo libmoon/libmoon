@@ -545,6 +545,12 @@ function dev:clearRxStats()
 	return
 end
 
+function dev:stop()
+	self.initialized = false
+	self:store()
+	dpdkc.rte_eth_dev_stop(self.id)
+end
+
 --- Enable tx timestamps.
 --- @see dev.enableTxTimestamps()
 function txQueue:enableTimestamps()

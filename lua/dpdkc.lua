@@ -278,6 +278,7 @@ ffi.cdef[[
 	void rte_eth_macaddr_get(uint8_t port_id, struct ether_addr* mac_addr);
 	int rte_eth_set_queue_rate_limit(uint8_t port_id, uint16_t queue_idx, uint16_t tx_rate);
 	void rte_eth_dev_info_get(uint8_t port_id, struct rte_eth_dev_info* info);
+	void rte_eth_dev_stop(uint8_t port_id);
 
 	// rx & tx
 	uint16_t rte_eth_rx_burst_export(uint8_t port_id, uint16_t queue_id, struct rte_mbuf** rx_pkts, uint16_t nb_pkts);
