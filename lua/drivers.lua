@@ -21,6 +21,7 @@ function mod.initDriver(dev)
 		end
 		setmetatable(dev, driver)
 	end
+	dev.driverInfo = dev.driverInfo or {}
 end
 
 -- retrieve driver-specific information

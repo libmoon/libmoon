@@ -778,6 +778,21 @@ function mod.reclaimTxBuffers()
 	LIBMOON_IGNORE_BAD_NUMA_MAPPING = old
 end
 
+-- cleanup devices if necessary
+function mod.cleanupDevices()
+	local old = LIBMOON_IGNORE_BAD_NUMA_MAPPING
+	LIBMOON_IGNORE_BAD_NUMA_MAPPING = true
+	devices:forEach(function(_, dev)
+		-- only call stop if the driver requires it
+		-- otherwise it will slow down the program termination
+		-- as a few drivers/NICs require some time to stop the devs (e.g. ixgbe/x540 takes about a second)
+		if dev.initialized and dev.driverInfo.stopOnShutdown then
+			dev:stop()
+		end
+	end)
+	LIBMOON_IGNORE_BAD_NUMA_MAPPING = old
+end
+
 --- Receive packets from a rx queue.
 --- Returns as soon as at least one packet is available.
 function rxQueue:recv(bufArray, numpkts)

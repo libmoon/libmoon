@@ -1,7 +1,8 @@
 local dev = {}
 
 dev.driverInfo = {
-	disableOffloads = true
+	disableOffloads = true,
+	stopOnShutdown = true
 }
 
 return dev
