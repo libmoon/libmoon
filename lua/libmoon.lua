@@ -106,12 +106,12 @@ end
 
 function task:isRunning()
 	checkCore()
-	if not tasks[self.core] or task[self.core].id ~= self.id then
+	if not tasks[self.core] or tasks[self.core].id ~= self.id then
 		-- something else or nothing is running on this core
 		return false
 	end
 	-- this task is still on this core, but is it still running?
-	return dpdkc.rte_eal_get_lcore_state(core) == dpdkc.RUNNING
+	return dpdkc.rte_eal_get_lcore_state(self.core) == dpdkc.RUNNING
 end
 
 local function findDevices(result, ...)
