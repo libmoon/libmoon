@@ -114,7 +114,7 @@ local function getCsvFinal(direction)
 	return function(stats, file)
 		file:write(("%d,%s,%s,%s,%s,%s,%s,%s\n"):format(
 			time(), stats.name, direction,
-			0, 0, 0,
+			stats.mpps.avg,stats.mbit.avg, stats.wireMbit.avg,
 			stats.total, stats.totalBytes
 		))
 		file:flush()
