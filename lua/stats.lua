@@ -526,10 +526,11 @@ end
 local function removeDuplicates(tbl)
 	local seen = {}
 	for i = #tbl, 1, -1 do
-		if seen[tbl[i].id] then
+		local id = tbl[i].id or tbl[i].dev.id
+		if seen[id] then
 			table.remove(tbl, i)
 		end
-		seen[tbl[i].id] = true
+		seen[id] = true
 	end
 end
 
@@ -542,10 +543,24 @@ local function statsTask(args)
 	removeDuplicates(args.rxDevices)
 	removeDuplicates(args.txDevices)
 	for i, dev in ipairs(args.rxDevices) do
-		table.insert(counters, mod:newDevRxCounter(dev, args.format, args.file))
+		local format = args.format
+		local file = args.file
+		if not dev.id then
+			format = dev.format
+			file = dev.file
+			dev = dev.dev
+		end
+		table.insert(counters, mod:newDevRxCounter(dev, format, file))
 	end
 	for i, dev in ipairs(args.txDevices) do
-		table.insert(counters, mod:newDevTxCounter(dev, args.format, args.file))
+		local format = args.format
+		local file = args.file
+		if not dev.id then
+			format = dev.format
+			file = dev.file
+			dev = dev.dev
+		end
+		table.insert(counters, mod:newDevTxCounter(dev, format, file))
 	end
 	while libmoon.running(200) do
 		for i, ctr in ipairs(counters) do
