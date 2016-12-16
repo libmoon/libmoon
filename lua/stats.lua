@@ -155,6 +155,8 @@ formatters["nil"] = {
 }
 
 
+local openFiles = {}
+
 --- base constructor for rx and tx counters
 local function newCounter(ctrType, name, dev, format, file)
 	name = tostring(name)
@@ -165,8 +167,15 @@ local function newCounter(ctrType, name, dev, format, file)
 	file = file or io.stdout
 	local closeFile = false
 	if type(file) == "string" then
-		file = io.open(file, "w+")
-		closeFile = true
+		local fileName = file
+		closeFile = file
+		if openFiles[file] then
+			openFiles[fileName].refCount = openFiles[fileName].refCount + 1
+			file = openFiles[fileName].file
+		else
+			file = io.open(file, "w+")
+			openFiles[fileName] = {refCount = 1, file = file}
+		end
 	end
 	if not formatters[format] then
 		log:fatal("Unsupported output format " .. format)
@@ -240,7 +249,12 @@ local function finalizeCounter(self, sleep)
 	mod.addStats(self.wireMbit, true)
 	self:print("Final")
 	if self.closeFile then
-		self.file:close()
+		local file = openFiles[self.closeFile]
+		if file.refCount == 1 then
+			file.file:close()
+		else
+			file.refCount = file.refCount - 1
+		end
 	end
 end
 
