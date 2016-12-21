@@ -510,6 +510,7 @@ end
 ---    txDevices: list of devices to track tx stats
 ---    format: output format, cf. stats tracking documentation, default: plain
 ---    file: file to write to, default: stdout
+--- A device is either a normal device object or an table with the fields dev, format, and file.
 --- Alternative mode: just the devices as an array if you only want rx and tx stats with default settings
 function mod.startStatsTask(args)
 	args.devices = args.devices or {}
