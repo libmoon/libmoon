@@ -213,7 +213,7 @@ local function updateCounter(self, time, pkts, bytes, dontPrint)
 		self.total, self.totalBytes = pkts, bytes
 		self.lastUpdate = time
 		self:print("Init")
-		return
+		return false
 	end
 	local elapsed = time - self.lastUpdate
 	self.lastUpdate = time
@@ -228,6 +228,7 @@ local function updateCounter(self, time, pkts, bytes, dontPrint)
 	table.insert(self.mpps, mpps)
 	table.insert(self.mbit, mbit)
 	table.insert(self.wireMbit, wireRate)
+	return true
 end
 
 local function getStats(self)
@@ -320,16 +321,20 @@ end
 function rxCounter:update()
 	local time = libmoon.getTime()
 	if self.lastUpdate and time <= self.lastUpdate + 1 then
-		return
+		return false
 	end
 	local pkts, bytes = self:getThroughput()
-	updateCounter(self, time, pkts, bytes)
+	return updateCounter(self, time, pkts, bytes)
 end
 
-function rxCounter:getStats()
-	-- force an update
-	local pkts, bytes = self:getThroughput()
-	updateCounter(self, libmoon.getTime(), pkts, bytes, true)
+--- Get accumulated statistics.
+--- Calculate the average throughput.
+function rxCounter:getStats(forceUpdate)
+	if forceUpdate then
+		-- force an update
+		local pkts, bytes = self:getThroughput()
+		updateCounter(self, libmoon.getTime(), pkts, bytes, true)
+	end
 	return getStats(self)
 end
 
@@ -360,10 +365,10 @@ function manualRxCounter:update(pkts, bytes)
 	self.currentBytes = self.currentBytes + bytes
 	local time = libmoon.getTime()
 	if self.lastUpdate and time <= self.lastUpdate + 1 then
-		return
+		return false
 	end
 	local pkts, bytes = self:getThroughput()
-	updateCounter(self, time, pkts, bytes)
+	return updateCounter(self, time, pkts, bytes)
 end
 
 function manualRxCounter:getThroughput()
@@ -376,10 +381,10 @@ function manualRxCounter:updateWithSize(pkts, size)
 	self.currentBytes = self.currentBytes + pkts * (size + 4)
 	local time = libmoon.getTime()
 	if self.lastUpdate and time <= self.lastUpdate + 1 then
-		return
+		return false
 	end
 	local pkts, bytes = self:getThroughput()
-	updateCounter(self, time, pkts, bytes)
+	return updateCounter(self, time, pkts, bytes)
 end
 
 
@@ -445,18 +450,20 @@ end
 function txCounter:update()
 	local time = libmoon.getTime()
 	if self.lastUpdate and time <= self.lastUpdate + 1 then
-		return
+		return false
 	end
 	local pkts, bytes = self:getThroughput()
-	updateCounter(self, time, pkts, bytes)
+	return updateCounter(self, time, pkts, bytes)
 end
 
 --- Get accumulated statistics.
 --- Calculate the average throughput.
-function txCounter:getStats()
-	-- force an update
-	local pkts, bytes = self:getThroughput()
-	updateCounter(self, libmoon.getTime(), pkts, bytes, true)
+function txCounter:getStats(forceUpdate)
+	if forceUpdate then
+		-- force an update
+		local pkts, bytes = self:getThroughput()
+		updateCounter(self, libmoon.getTime(), pkts, bytes, true)
+	end
 	return getStats(self)
 end
 
@@ -481,10 +488,10 @@ function manualTxCounter:update(pkts, bytes)
 	self.currentBytes = self.currentBytes + bytes
 	local time = libmoon.getTime()
 	if self.lastUpdate and time <= self.lastUpdate + 1 then
-		return
+		return false
 	end
 	local pkts, bytes = self:getThroughput()
-	updateCounter(self, time, pkts, bytes)
+	return updateCounter(self, time, pkts, bytes)
 end
 
 function manualTxCounter:updateWithSize(pkts, size)
@@ -492,10 +499,10 @@ function manualTxCounter:updateWithSize(pkts, size)
 	self.currentBytes = self.currentBytes + pkts * (size + 4)
 	local time = libmoon.getTime()
 	if self.lastUpdate and time <= self.lastUpdate + 1 then
-		return
+		return false
 	end
 	local pkts, bytes = self:getThroughput()
-	updateCounter(self, time, pkts, bytes)
+	return updateCounter(self, time, pkts, bytes)
 end
 
 function manualTxCounter:getThroughput()
