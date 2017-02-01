@@ -254,6 +254,8 @@ function etherHeader:getTypeString()
 		cleartext = "(PTP)"
 	elseif type == eth.TYPE_LACP then
 		cleartext = "(LACP)"
+	elseif type == eth.TYPE_8021Q then
+		cleartext = "(VLAN)"
 	else
 		cleartext = "(unknown)"
 	end
@@ -404,10 +406,6 @@ end
 
 function etherVlanHeader:getSubType()
 	return "vlan"
-end
-
-function etherVlanHeader:testing()
-	print("eth vlan testing")
 end
 
 ----------------------------------------------------------------------------------
