@@ -248,6 +248,8 @@ void devinitfn_pmd_igb_drv();
 void devinitfn_pmd_igbvf_drv();
 void devinitfn_em_pmd_drv();
 void devinitfn_bond_drv();
+void devinitfn_bnxt_pmd_drv();
+
 void register_pmd_drivers() {
 	devinitfn_bond_drv();
 	devinitfn_rte_vmxnet3_driver();
@@ -260,6 +262,7 @@ void register_pmd_drivers() {
 	devinitfn_pmd_igb_drv();
 	devinitfn_pmd_igbvf_drv();
 	devinitfn_em_pmd_drv();
+	devinitfn_bnxt_pmd_drv();
 }
 
 // the following functions are static inline function in header files
