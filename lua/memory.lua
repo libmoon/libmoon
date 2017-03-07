@@ -19,6 +19,10 @@ local function loadAllocator()
 	if ok then
 		return jemalloc, "jemalloc"
 	end
+	local ok, jemalloc = pcall(ffi.load, "libjemalloc.so.2")
+	if ok then
+		return jemalloc, "jemalloc"
+	end
 	return ffi.C, "system malloc"
 end
 
