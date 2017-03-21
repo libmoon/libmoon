@@ -953,4 +953,30 @@ pkt.getGrePacket = function(self, ip4)
   end
 end
 
+pkt.getQinQPacket = createStack('qinq')
+
+pkt.getGre4QinQPacket = createStack("eth", "ip4", "gre", "qinq", {"ip4", "nestedIp4"})
+pkt.getGre6QinQPacket = createStack("eth", "ip6", "gre", "qinq", {"ip6", "nestedIp6"})
+pkt.getGreQinQPacket = function(self, ip4)
+  ip4 = ip4 == nil or ip4
+  if ip4 then
+    return pkt.getGre4QinQPacket(self)
+  else
+    return pkt.getGre6QinQPacket(self)
+  end
+end
+
+pkt.getGreQinQArpPacket = createStack("eth", "ip4", "gre", "qinq", "arp")
+
+pkt.getGre4QinQUdpPacket = createStack("eth", "ip4", "gre", "qinq", {"ip4", "nestedIp4"}, "udp")
+pkt.getGre6QinQUdpPacket = createStack("eth", "ip6", "gre", "qinq", {"ip6", "nestedIp6"}, "udp")
+pkt.getGreQinQUdpPacket = function(self, ip4)
+  ip4 = ip4 == nil or ip4
+  if ip4 then
+    return pkt.getGre4QinQUdpPacket(self)
+  else
+    return pkt.getGre6QinQUdpPacket(self)
+  end
+end
+
 return pkt
