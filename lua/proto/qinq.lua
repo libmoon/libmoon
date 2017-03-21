@@ -54,7 +54,7 @@ qinqHeader.__index = qinqHeader
 --- @param int type of the QINQ header as 16 bit integer.
 function qinqHeader:setType(int)
 	int = int or 0x0800
-        self.type = hton16(int)
+  self.type = hton16(int)
 end
 
 --- Retrieve the type.
@@ -72,73 +72,73 @@ end
 --- Set the destination MAC address.
 --- @param addr Address as number
 function qinqHeader:setDst(addr)
-        self.dst:set(addr)
+  self.dst:set(addr)
 end
 
 --- Retrieve the destination MAC address.
 --- @return Address as number
 function qinqHeader:getDst(addr)
-        return self.dst:get()
+  return self.dst:get()
 end
 
 --- Set the source MAC address.
 --- @param addr Address as number
 function qinqHeader:setSrc(addr)
-        self.src:set(addr)
+  self.src:set(addr)
 end
 
 --- Retrieve the source MAC address.
 --- @return Address as number
 function qinqHeader:getSrc(addr)
-        return self.src:get()
+  return self.src:get()
 end
 
 --- Set the destination MAC address.
 --- @param str Address in string format.
 function qinqHeader:setDstString(str)
-        self.dst:setString(str)
+  self.dst:setString(str)
 end
 
 --- Retrieve the destination MAC address.
 --- @return Address in string format.
 function qinqHeader:getDstString()
-        return self.dst:getString()
+  return self.dst:getString()
 end
 
 --- Set the source MAC address.
 --- @param addr Address as number
 function qinqHeader:setSrc(addr)
-        self.src:set(addr)
+  self.src:set(addr)
 end
 
 --- Retrieve the source MAC address.
 --- @return Address as number
 function qinqHeader:getSrc(addr)
-        return self.src:get()
+  return self.src:get()
 end
 
 --- Set the destination MAC address.
 --- @param str Address in string format.
 function qinqHeader:setDstString(str)
-        self.dst:setString(str)
+  self.dst:setString(str)
 end
 
 --- Retrieve the destination MAC address.
 --- @return Address in string format.
 function qinqHeader:getDstString()
-        return self.dst:getString()
+  return self.dst:getString()
 end
 
 --- Set the source MAC address.
 --- @param str Address in string format.
 function qinqHeader:setSrcString(str)
-        self.src:setString(str)
+  self.src:setString(str)
 end
 
 --- Retrieve the source MAC address.
 --- @return Address in string format.
 function qinqHeader:getSrcString()
-        return self.src:getString()
+  return self.src:getString()
 end
 
 --- Set the outer VLAN tag
@@ -180,36 +180,36 @@ function qinqHeader:fill(args, pre)
 	args = args or {}
 	pre = pre or "qinq"
 
-        local src = pre .. "Src"
-        local dst = pre .. "Dst"
-        args[src] = args[src] or "01:02:03:04:05:06"
-        args[dst] = args[dst] or "07:08:09:0a:0b:0c"
+  local src = pre .. "Src"
+  local dst = pre .. "Dst"
+  args[src] = args[src] or "01:02:03:04:05:06"
+  args[dst] = args[dst] or "07:08:09:0a:0b:0c"
 
-        -- addresses can be either a string, a mac_address ctype or a device/queue object
-        if type(args[src]) == "string" then
-                self:setSrcString(args[src])
-        elseif istype(macAddrType, args[src]) then
-                self:setSrc(args[src])
-        elseif type(args[src]) == "table" and args[src].id then
-                self:setSrcString((args[src].dev or args[src]):getMacString())
-        end
-        if type(args[dst]) == "string" then
-                self:setDstString(args[dst])
-        elseif istype(macAddrType, args[dst]) then
-                self:setDst(args[dst])
-        elseif type(args[dst]) == "table" and args[dst].id then
-                self:setDstString((args[dst].dev or args[dst]):getMacString())
-        end
+  -- addresses can be either a string, a mac_address ctype or a device/queue object
+  if type(args[src]) == "string" then
+    self:setSrcString(args[src])
+  elseif istype(macAddrType, args[src]) then
+    self:setSrc(args[src])
+  elseif type(args[src]) == "table" and args[src].id then
+    self:setSrcString((args[src].dev or args[src]):getMacString())
+  end
+  if type(args[dst]) == "string" then
+    self:setDstString(args[dst])
+  elseif istype(macAddrType, args[dst]) then
+    self:setDst(args[dst])
+  elseif type(args[dst]) == "table" and args[dst].id then
+    self:setDstString((args[dst].dev or args[dst]):getMacString())
+  end
 
 	self:setType(args[pre .. "Type"])
 
-        self.inner_vlan_id = hton16(0x8100)
-        self.outer_vlan_id = hton16(0x8100)
+  self.inner_vlan_id = hton16(0x8100)
+  self.outer_vlan_id = hton16(0x8100)
 
-        local outertag = pre .. "OuterTag"
-        local innertag = pre .. "InnerTag"
-        self:setOuterTag(args[outertag])
-        self:setInnerTag(args[innertag])
+  local outertag = pre .. "OuterTag"
+  local innertag = pre .. "InnerTag"
+  self:setOuterTag(args[outertag])
+  self:setInnerTag(args[innertag])
 
 end
 
@@ -221,11 +221,11 @@ function qinqHeader:get(pre)
 	pre = pre or "qinq"
 
 	local args = {}
-        args[pre .. "Src"] = self:getSrcString()
-        args[pre .. "Dst"] = self:getDstString()
-	      args[pre .. "Type"] = self:getType() 
-        args[pre .. "OuterTag"] = self:getOuterTag()
-        args[pre .. "InnerTag"] = self:getInnerTag()
+  args[pre .. "Src"] = self:getSrcString()
+  args[pre .. "Dst"] = self:getDstString()
+	args[pre .. "Type"] = self:getType() 
+  args[pre .. "OuterTag"] = self:getOuterTag()
+  args[pre .. "InnerTag"] = self:getInnerTag()
 
 	return args
 end

@@ -60,7 +60,6 @@ function greHeader:getProtoType()
   return hton16(self.protocol_type)
 end
 
-
 --- Set all members of the gre header.
 --- Per default, all members are set to default values specified in the respective set function.
 --- Optional named arguments can be used to set a member to a user-provided value.
