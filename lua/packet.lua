@@ -942,5 +942,15 @@ pkt.getIpfixPacket = createStack("eth", "ip4", "udp", "ipfix")
 
 pkt.getLacpPacket = createStack('eth', 'lacp')
 
+pkt.getGre4Packet = createStack("eth", "ip4", "gre")
+pkt.getGre6Packet = createStack("eth", "ip6", "gre")
+pkt.getGrePacket = function(self, ip4)
+	ip4 = ip4 == nil or ip4 
+	if ip4 then 
+    return pkt.getGre4Packet(self)
+  else
+    return pkt.getGre6Packet(self)
+  end
+end
 
 return pkt
