@@ -30,8 +30,6 @@ local format = string.format
 --- Gre protocol constants
 local gre = {}
 
-gre.FAV   = 0x0000
-
 gre.PROTO_TEB   = 0x6558
 
 ---------------------------------------------------------------------------
@@ -67,7 +65,7 @@ end
 --- Set the gre header flag and version fields.
 --- @param int protocol type as 16 bit integer.
 function greHeader:setFlagsAndVersion(int)
-  int = int or gre.FAV
+  int = int or 0x0000
   self.flags_and_version = hton16(int)
 end
 
