@@ -115,6 +115,7 @@ function mod.config(args)
 	args.rxDescs = args.rxDescs or 512
 	args.txDescs = args.txDescs or 1024
 	args.numBufs = args.numBufs or math.max(2047, args.rxDescs * 2 - 1)
+  args.bufSize = args.bufSize or 2048
 	if args.rxQueues > info.max_rx_queues then
 		log:fatal("device supports only %d rx queues, requested %d", info.max_rx_queues, args.rxQueues)
 	end
