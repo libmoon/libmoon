@@ -19,7 +19,6 @@ local format = string.format
 local macAddrType = ffi.typeof("union mac_address")
 
 
-
 ---------------------------------------------------------------------------
 ---- QINQ constants 
 ---------------------------------------------------------------------------
@@ -27,6 +26,25 @@ local macAddrType = ffi.typeof("union mac_address")
 --- QINQ protocol constants
 local qinq = {}
 
+--- EtherType for IP4
+qinq.TYPE_IP = 0x0800
+--- EtherType for Arp
+qinq.TYPE_ARP = 0x0806
+--- EtherType for IP6
+qinq.TYPE_IP6 = 0x86dd
+--- EtherType for Ptp
+qinq.TYPE_PTP = 0x88f7
+
+qinq.TYPE_8021Q = 0x8100
+
+--- EtherType for LACP (Actually, 'Slow Protocols')
+qinq.TYPE_LACP = 0x8809
+
+--- Special addresses
+--- Ethernet broadcast address
+qinq.BROADCAST	= "ff:ff:ff:ff:ff:ff"
+--- Invalid null address
+qinq.NULL	= "00:00:00:00:00:00"
 
 ---------------------------------------------------------------------------
 ---- QINQ header
@@ -66,7 +84,26 @@ end
 --- Retrieve the type as string.
 --- @return type as string.
 function qinqHeader:getTypeString()
-	return self:getType()
+  local type = self:getType()
+  local cleartext = ""
+
+	if type == qinq.TYPE_IP then
+		cleartext = "(IP4)"
+	elseif type == qinq.TYPE_IP6 then
+		cleartext = "(IP6)"
+	elseif type == qinq.TYPE_ARP then
+		cleartext = "(ARP)"
+	elseif type == qinq.TYPE_PTP then
+		cleartext = "(PTP)"
+	elseif type == qinq.TYPE_LACP then
+		cleartext = "(LACP)"
+	elseif type == qinq.TYPE_8021Q then
+		cleartext = "(VLAN)"
+	else
+		cleartext = "(unknown)"
+	end
+
+	return format("0x%04x %s", type, cleartext)
 end
 
 --- Set the destination MAC address.
@@ -79,30 +116,6 @@ end
 --- @return Address as number
 function qinqHeader:getDst(addr)
   return self.dst:get()
-end
-
---- Set the source MAC address.
---- @param addr Address as number
-function qinqHeader:setSrc(addr)
-  self.src:set(addr)
-end
-
---- Retrieve the source MAC address.
---- @return Address as number
-function qinqHeader:getSrc(addr)
-  return self.src:get()
-end
-
---- Set the destination MAC address.
---- @param str Address in string format.
-function qinqHeader:setDstString(str)
-  self.dst:setString(str)
-end
-
---- Retrieve the destination MAC address.
---- @return Address in string format.
-function qinqHeader:getDstString()
-  return self.dst:getString()
 end
 
 --- Set the source MAC address.
@@ -233,8 +246,18 @@ end
 --- Retrieve the values of all members.
 --- @return Values in string format.
 function qinqHeader:getString()
-	return "qinq " .. self:getTypeString()
+	return "ETH " .. self:getSrcString() .. " > " .. self:getDstString() .. " outer_vlan " .. self:getOuterTag() .. " inner_vlan " .. self:getInnerTag() .. " type " .. self:getTypeString()
 end
+
+-- Maps headers to respective types.
+-- This list should be extended whenever a new type is added to 'Ethernet constants'. 
+local mapNameType = {
+	ip4 = qinq.TYPE_IP,
+	ip6 = qinq.TYPE_IP6,
+	arp = qinq.TYPE_ARP,
+	ptp = qinq.TYPE_PTP, 
+	lacp = qinq.TYPE_LACP,
+}
 
 --- Resolve which header comes after this one (in a packet)
 --- For instance: in tcp/udp based on the ports
@@ -242,6 +265,12 @@ end
 --- an unknown (mbuf not yet casted to e.g. tcpv6 packet) packet (mbuf)
 --- @return String next header (e.g. 'eth', 'ip4', nil)
 function qinqHeader:resolveNextHeader()
+  local type = self:getType()
+  for name, _type in pairs(mapNameType) do
+    if type == _type then
+      return name
+    end
+  end
 	return nil
 end	
 

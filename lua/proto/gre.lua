@@ -1,6 +1,8 @@
 ------------------------------------------------------------------------
 --- @file gre.lua
 --- @brief Generic Routing Encapsulation protocol (GRE) utility.
+--- This implementation includes only the basic GRE header fields, none 
+--- of the optional fields
 --- Utility functions for gre_header struct
 --- Includes:
 --- - Gre constants
@@ -28,6 +30,8 @@ local format = string.format
 --- Gre protocol constants
 local gre = {}
 
+gre.FAV   = 0x0000
+
 gre.PROTO_TEB   = 0x6558
 
 ---------------------------------------------------------------------------
@@ -47,17 +51,30 @@ gre.headerVariableMember = nil
 local greHeader = initHeader()
 greHeader.__index = greHeader
 
---- Set the encapsulated protocol type.
+--- Set the encapsulated ether protocol type.
 --- @param int protocol type as 16 bit integer.
 function greHeader:setProtoType(int)
   int = int or gre.PROTO_TEB
   self.protocol_type = hton16(int)
 end
 
---- Retrieve the encapsulated protocol type.
+--- Retrieve the encapsulated ether protocol type.
 --- @return Protocol type as a 16 bit integer.
 function greHeader:getProtoType()
   return hton16(self.protocol_type)
+end
+
+--- Set the gre header flag and version fields.
+--- @param int protocol type as 16 bit integer.
+function greHeader:setFlagsAndVersion(int)
+  int = int or gre.FAV
+  self.flags_and_version = hton16(int)
+end
+
+--- Retrieve the gre header flag and version fields.
+--- @return Protocol type as a 16 bit integer.
+function greHeader:getFlagsAndVersion()
+  return hton16(self.flags_and_version)
 end
 
 --- Set all members of the gre header.
@@ -73,6 +90,7 @@ function greHeader:fill(args, pre)
 	args = args or {}
 	pre = pre or "gre"
   self:setProtoType(args[pre .. "Proto"])
+  self:setFlagsAndVersion(args[pre .. "Flags"])
 end
 
 --- Retrieve the values of all members.
@@ -81,14 +99,36 @@ end
 --- @see greHeader:fill
 function greHeader:get(pre)
 	pre = pre or "gre"
+
 	local args = {}
+  args[pre .. "Proto"] = self:getProtoType()
+  args[pre .. "Flags"] = self:getFlagsAndVersion()
+
 	return args
 end
 
 --- Retrieve the values of all members.
 --- @return Values in string format.
 function greHeader:getString()
-	return "GRE" 
+  local retStr = "GRE "
+  retStr = retStr .. "Flags " .. self:getFlagsAndVersionString()
+  retStr = retStr .. "Proto " .. self:getProtoTypeString()
+
+  return retStr
+end
+
+--- Resolve which header comes after this one (in a packet).
+--- This function must exist and is only used when get/dump is executed on
+--- an unknown (mbuf not yet casted to e.g. tcpv6 packet) packet (mbuf)
+--- @return String next header (e.g. 'udp', 'icmp', nil)
+function greHeader:resolveNextHeader()
+	local proto = self:getNextHeader()
+	for name, _proto in pairs(mapNameProto) do
+		if proto == _proto then
+			return name
+		end
+	end
+	return nil
 end
 
 --- Change the default values for namedArguments (for fill/get)
