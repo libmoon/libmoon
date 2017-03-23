@@ -34,11 +34,11 @@ local ip6 = {}
 ip6.PROTO_TCP 	= 0x06
 --- NextHeader field value for Udp
 ip6.PROTO_UDP 	= 0x11
+ip6.PROTO_GRE = 0x2f
 --- NextHeader field value for Icmp
 ip6.PROTO_ICMP	= 0x3a -- 58
 ip6.PROTO_ESP	= 0x32
 ip6.PROTO_AH	= 0x33
-ip6.PROTO_GRE = 0x2f
 
 
 -------------------------------------------------------------------------------------
