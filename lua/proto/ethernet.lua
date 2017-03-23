@@ -400,6 +400,7 @@ function etherQinQHeader:get(pre)
 	args[pre .. "outerVlanTag"] = self:getOuterVlanTag()
 	args[pre .. "innerVlanTag"] = self:getInnerVlanTag()
 	return args
+end
 
 --- Retrieve the values of all members.
 --- @return Values in string format.
