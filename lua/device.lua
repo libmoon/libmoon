@@ -738,6 +738,13 @@ function txQueue:sendSingle(buf)
 	return 1
 end
 
+-- Try to transmit a single packet.
+-- Returns be 1 if sent, 0 if not
+function txQueue:trySendSingle(buf)
+	self.used = true
+	return dpdkc.dpdk_try_send_single_packet(self.id, self.qid, buf)
+end
+
 function txQueue:sendN(bufs, n)
 	self.used = true
 	dpdkc.dpdk_send_all_packets(self.id, self.qid, bufs.array, n)
