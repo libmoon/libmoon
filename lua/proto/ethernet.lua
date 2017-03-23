@@ -39,6 +39,9 @@ eth.TYPE_PTP = 0x88f7
 
 eth.TYPE_8021Q = 0x8100
 
+--- Cisco QinQ. Don't know why it's not as specified in IEEE 802.1ad
+eth.TYPE_QINQ = 0x6558
+
 --- EtherType for LACP (Actually, 'Slow Protocols')
 eth.TYPE_LACP = 0x8809
 
@@ -140,13 +143,30 @@ eth.vlan.headerFormat = [[
 --- Variable sized member
 eth.vlan.headerVariableMember = nil
 
+eth.qinq = {}
+-- definition of the header format
+eth.qinq.headerFormat = [[
+	union mac_address	dst;
+	union mac_address	src;
+	uint16_t		outer_vlan_id;
+	uint16_t		outer_vlan_tag;
+	uint16_t		inner_vlan_id;
+	uint16_t		inner_vlan_tag;
+	uint16_t		type;
+]]
+
+--- Variable sized member
+eth.qinq.headerVariableMember = nil
+
 eth.defaultType = "default"
 
 --- Module for ethernet_header struct
 local etherHeader = initHeader()
 local etherVlanHeader = initHeader()
+local etherQinQHeader = initHeader()
 etherHeader.__index = etherHeader
 etherVlanHeader.__index = etherVlanHeader
+etherQinQHeader.__index = etherQinQHeader
 
 --- Set the destination MAC address.
 --- @param addr Address as number
@@ -155,6 +175,7 @@ function etherHeader:setDst(addr)
 end
 
 etherVlanHeader.setDst = etherHeader.setDst
+etherQinQHeader.setDst = etherHeader.setDst
 
 --- Retrieve the destination MAC address.
 --- @return Address as number
@@ -163,6 +184,7 @@ function etherHeader:getDst(addr)
 end
 
 etherVlanHeader.getDst = etherHeader.getDst
+etherQinQHeader.getDst = etherHeader.getDst
 
 --- Set the source MAC address.
 --- @param addr Address as number
@@ -171,6 +193,7 @@ function etherHeader:setSrc(addr)
 end
 
 etherVlanHeader.setSrc = etherHeader.setSrc
+etherQinQHeader.setSrc = etherHeader.setSrc
 
 --- Retrieve the source MAC address.
 --- @return Address as number
@@ -179,6 +202,7 @@ function etherHeader:getSrc(addr)
 end
 
 etherVlanHeader.getSrc = etherHeader.getSrc
+etherQinQHeader.getSrc = etherHeader.getSrc
 
 --- Set the destination MAC address.
 --- @param str Address in string format.
@@ -187,6 +211,7 @@ function etherHeader:setDstString(str)
 end
 
 etherVlanHeader.setDstString = etherHeader.setDstString
+etherQinQHeader.setDstString = etherHeader.setDstString
 
 --- Retrieve the destination MAC address.
 --- @return Address in string format.
@@ -195,6 +220,7 @@ function etherHeader:getDstString()
 end
 
 etherVlanHeader.getDstString = etherHeader.getDstString
+etherQinQHeader.getDstString = etherHeader.getDstString
 
 --- Set the source MAC address.
 --- @param str Address in string format.
@@ -203,6 +229,7 @@ function etherHeader:setSrcString(str)
 end
 
 etherVlanHeader.setSrcString = etherHeader.setSrcString
+etherQinQHeader.setSrcString = etherHeader.setSrcString
 
 --- Retrieve the source MAC address.
 --- @return Address in string format.
@@ -211,6 +238,7 @@ function etherHeader:getSrcString()
 end
 
 etherVlanHeader.getSrcString = etherHeader.getSrcString
+etherQinQHeader.getSrcString = etherHeader.getSrcString
 
 --- Set the EtherType.
 --- @param int EtherType as 16 bit integer.
@@ -220,6 +248,7 @@ function etherHeader:setType(int)
 end
 
 etherVlanHeader.setType = etherHeader.setType
+etherQinQHeader.setType = etherHeader.setType
 
 --- Retrieve the EtherType.
 --- @return EtherType as 16 bit integer.
@@ -228,6 +257,7 @@ function etherHeader:getType()
 end
 
 etherVlanHeader.getType = etherHeader.getType
+etherQinQHeader.getType = etherHeader.getType
 
 function etherVlanHeader:getVlanTag()
 	return bit.band(hton16(self.vlan_tag), 0xFFF)
@@ -236,6 +266,26 @@ end
 --- Set the full vlan tag, including the PCP and DEI bits (upper 4 bits)
 function etherVlanHeader:setVlanTag(int)
 	self.vlan_tag = hton16(int)
+end
+
+function etherQinQHeader:getInnerVlanTag()
+	return bit.band(hton16(self.inner_vlan_tag), 0xFFF)
+end
+
+--- Set the full inner vlan tag, including the PCP and DEI bits (upper 4 bits)
+function etherQinQHeader:setInnerVlanTag(int)
+	int = int or 0
+	self.inner_vlan_tag = hton16(int)
+end
+
+function etherQinQHeader:getOuterVlanTag()
+	return bit.band(hton16(self.outer_vlan_tag), 0xFFF)
+end
+
+--- Set the full outer vlan tag, including the PCP and DEI bits (upper 4 bits)
+function etherQinQHeader:setOuterVlanTag(int)
+	int = int or 0
+	self.outer_vlan_tag = hton16(int)
 end
 
 --- Retrieve the ether type.
@@ -256,6 +306,8 @@ function etherHeader:getTypeString()
 		cleartext = "(LACP)"
 	elseif type == eth.TYPE_8021Q then
 		cleartext = "(VLAN)"
+	elseif type == eth.TYPE_QINQ then
+		cleartext = "(QINQ)"
 	else
 		cleartext = "(unknown)"
 	end
@@ -264,6 +316,7 @@ function etherHeader:getTypeString()
 end
 
 etherVlanHeader.getTypeString = etherHeader.getTypeString
+etherQinQHeader.getTypeString = etherHeader.getTypeString
 
 --- Set all members of the ethernet header.
 --- Per default, all members are set to default values specified in the respective set function.
@@ -309,6 +362,16 @@ function etherVlanHeader:fill(args, pre)
 	etherHeader.fill(self, args, pre)
 end
 
+function etherQinQHeader:fill(args, pre)
+	self.inner_vlan_id = hton16(0x8100)
+	self.outer_vlan_id = hton16(0x8100)
+	local innerVlanTag = args[pre .. "innerVlan"] or 0
+	local outerVlanTag = args[pre .. "outerVlan"] or 0
+	self:setInnerVlanTag(innerVlanTag)
+	self:setOuterVlanTag(outerVlanTag)
+	etherHeader.fill(self, args, pre)
+end
+
 --- Retrieve the values of all members.
 --- @param pre Prefix for namedArgs. Default 'eth'.
 --- @return Table of named arguments. For a list of arguments see "See Also".
@@ -331,6 +394,13 @@ function etherVlanHeader:get(pre)
 	return args
 end
 
+function etherQinQHeader:get(pre)
+	pre = pre or "eth"
+	local args = etherHeader.get(self, pre)
+	args[pre .. "outerVlanTag"] = self:getOuterVlanTag()
+	args[pre .. "innerVlanTag"] = self:getInnerVlanTag()
+	return args
+
 --- Retrieve the values of all members.
 --- @return Values in string format.
 function etherHeader:getString()
@@ -339,6 +409,10 @@ end
 
 function etherVlanHeader:getString()
 	return "ETH " .. self:getSrcString() .. " > " .. self:getDstString() .. " vlan " .. self:getVlanTag() .. " type " .. self:getTypeString()
+end
+
+function etherQinQHeader:getString()
+	return "ETH " .. self:getSrcString() .. " > " .. self:getDstString() .. " outerVlan " .. self:getOuterVlanTag() .. " innerVlan " .. self:getInnerVlanTag() .. " type " .. self:getTypeString()
 end
 
 -- Maps headers to respective types.
@@ -367,6 +441,7 @@ function etherHeader:resolveNextHeader()
 end
 
 etherVlanHeader.resolveNextHeader = etherHeader.resolveNextHeader
+etherQinQHeader.resolveNextHeader = etherHeader.resolveNextHeader
 
 --- Change the default values for namedArguments (for fill/get).
 --- This can be used to for instance calculate a length value based on the total packet length.
@@ -395,10 +470,13 @@ function etherHeader:setDefaultNamedArgs(pre, namedArgs, nextHeader, accumulated
 end
 
 etherVlanHeader.setDefaultNamedArgs = etherHeader.setDefaultNamedArgs
+etherQinQHeader.setDefaultNamedArgs = etherHeader.setDefaultNamedArgs
 
 function etherHeader:getSubType()
 	if self:getType() == eth.TYPE_8021Q then
 		return "vlan"
+	elseif self:getType() == eth.TYPE_QINQ then
+		return "qinq"
 	else
 		return "default"
 	end
@@ -408,6 +486,10 @@ function etherVlanHeader:getSubType()
 	return "vlan"
 end
 
+function etherQinQHeader:getSubType()
+	return "qinq"
+end
+
 ----------------------------------------------------------------------------------
 ---- Metatypes
 ----------------------------------------------------------------------------------
@@ -415,5 +497,6 @@ end
 ffi.metatype("union mac_address", macAddr)
 eth.default.metatype = etherHeader
 eth.vlan.metatype = etherVlanHeader
+eth.qinq.metatype = etherQinQHeader
 
 return eth
