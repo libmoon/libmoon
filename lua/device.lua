@@ -84,6 +84,8 @@ local devices = namespaces:get()
 ---   txQueues optional (default = 1) Number of TX queues to configure 
 ---   rxDescs optional (default = 512)
 ---   txDescs optional (default = 1024)
+---   numBufs optional (default max(2047, rxDescs * 2 -1))
+---   bufSize optional (default = 2048)
 ---   speed optional (default = 0/max) Speed in Mbit to negotiate (currently disabled due to DPDK changes)
 ---   dropEnable optional (default = true) Drop rx packets directly if no rx descriptors are available
 ---   rssQueues optional (default = 0) Number of queues to use for RSS
@@ -112,6 +114,7 @@ function mod.config(args)
 	args.txQueues = args.txQueues or 1
 	args.rxDescs = args.rxDescs or 512
 	args.txDescs = args.txDescs or 1024
+	args.numBufs = args.numBufs or math.max(2047, args.rxDescs * 2 - 1)
 	if args.rxQueues > info.max_rx_queues then
 		log:fatal("device supports only %d rx queues, requested %d", info.max_rx_queues, args.rxQueues)
 	end
@@ -166,7 +169,7 @@ function mod.config(args)
 	if not args.mempools then
 		args.mempools = {}
 		for i = 1, args.rxQueues do
-			table.insert(args.mempools, memory.createMemPool{n = math.max(2047, args.rxDescs * 2 - 1), socket = dpdkc.dpdk_get_socket(args.port)})
+			table.insert(args.mempools, memory.createMemPool{n = args.numBufs, socket = dpdkc.dpdk_get_socket(args.port), bufSize = args.bufSize})
 		end
 	elseif #args.mempools ~= args.rxQueues then
 		log:fatal("number of mempools must equal number of rx queues")
