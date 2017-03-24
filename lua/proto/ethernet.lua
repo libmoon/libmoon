@@ -39,9 +39,6 @@ eth.TYPE_PTP = 0x88f7
 
 eth.TYPE_8021Q = 0x8100
 
---- Cisco QinQ. Don't know why it's not as specified in IEEE 802.1ad
-eth.TYPE_QINQ = 0x6558
-
 --- EtherType for LACP (Actually, 'Slow Protocols')
 eth.TYPE_LACP = 0x8809
 
@@ -278,6 +275,16 @@ function etherQinQHeader:setInnerVlanTag(int)
 	self.inner_vlan_tag = hton16(int)
 end
 
+function etherQinQHeader:getInnerVlanId()
+	return hton16(self.inner_vlan_tag)
+end
+
+--- Set the inner vlan id
+function etherQinQHeader:setInnerVlanId(int)
+	int = int or 0x8100
+	self.inner_vlan_id = hton16(int)
+end
+
 function etherQinQHeader:getOuterVlanTag()
 	return bit.band(hton16(self.outer_vlan_tag), 0xFFF)
 end
@@ -286,6 +293,16 @@ end
 function etherQinQHeader:setOuterVlanTag(int)
 	int = int or 0
 	self.outer_vlan_tag = hton16(int)
+end
+
+function etherQinQHeader:getOuterVlanId()
+	return hton16(self.outer_vlan_tag)
+end
+
+--- Set the outer vlan id
+function etherQinQHeader:setOuterVlanId(int)
+	int = int or 0x8100
+	self.outer_vlan_id = hton16(int)
 end
 
 --- Retrieve the ether type.
@@ -306,8 +323,6 @@ function etherHeader:getTypeString()
 		cleartext = "(LACP)"
 	elseif type == eth.TYPE_8021Q then
 		cleartext = "(VLAN)"
-	elseif type == eth.TYPE_QINQ then
-		cleartext = "(QINQ)"
 	else
 		cleartext = "(unknown)"
 	end
@@ -363,11 +378,13 @@ function etherVlanHeader:fill(args, pre)
 end
 
 function etherQinQHeader:fill(args, pre)
-	self.inner_vlan_id = hton16(0x8100)
-	self.outer_vlan_id = hton16(0x8100)
-	local innerVlanTag = args[pre .. "innerVlan"] or 0
-	local outerVlanTag = args[pre .. "outerVlan"] or 0
+	local innerVlanId = args[pre .. "inerVlanId"] or 0x8100
+	local innerVlanTag = args[pre .. "innerVlanTag"] or 0
+	local outerVlanId = args[pre .. "outerVlanId"] or 0x8100
+	local outerVlanTag = args[pre .. "outerVlanTag"] or 0
+	self:setInnerVlanId(innerVlanId)
 	self:setInnerVlanTag(innerVlanTag)
+	self:setOuterVlanId(outerVlanId)
 	self:setOuterVlanTag(outerVlanTag)
 	etherHeader.fill(self, args, pre)
 end
@@ -476,8 +493,6 @@ etherQinQHeader.setDefaultNamedArgs = etherHeader.setDefaultNamedArgs
 function etherHeader:getSubType()
 	if self:getType() == eth.TYPE_8021Q then
 		return "vlan"
-	elseif self:getType() == eth.TYPE_QINQ then
-		return "qinq"
 	else
 		return "default"
 	end
