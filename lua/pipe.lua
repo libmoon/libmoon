@@ -95,6 +95,14 @@ function mod:newSlowPipe()
 	}, slowPipe)
 end
 
+-- This is work-around for some bug with the serialization of nested objects
+function mod:sendToSlowPipe(slowPipe, ...)
+	local vals = serpent.dump({...})
+	local buf = memory.alloc("char*", #vals + 1)
+	ffi.copy(buf, vals)
+	C.pipe_mpmc_enqueue(slowPipe.pipe, buf)
+end
+
 function slowPipe:send(...)
 	local vals = serpent.dump({ ... })
 	local buf = memory.alloc("char*", #vals + 1)
@@ -131,6 +139,13 @@ end
 
 function slowPipe:count()
 	return tonumber(C.pipe_mpmc_count(self.pipe))
+end
+
+-- Dequeue and discard all objects from pipe
+function slowPipe:empty()
+	while self:count() > 0 do
+		self:recv()
+	end
 end
 
 function slowPipe:__serialize()
