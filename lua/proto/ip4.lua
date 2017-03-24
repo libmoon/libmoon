@@ -542,7 +542,7 @@ local mapNameProto = {
 	tcp = ip.PROTO_TCP, 
 	esp = ip.PROTO_ESP,
 	ah = ip.PROTO_AH,
-  gre = ip.PROTO_GRE,
+	gre = ip.PROTO_GRE,
 }
 
 --- Resolve which header comes after this one (in a packet).
