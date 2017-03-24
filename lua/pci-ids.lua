@@ -3,15 +3,16 @@ local mod = {}
 local log    = require "log"
 local libmoon = require "libmoon"
 
-local fileLocations = {
-	"deps/pciids/pci.ids",
-}
 
 
 local function getFile()
+	local fileLocations = {
+		libmoon.config.basePath .. "deps/pciids/pci.ids",
+		"/usr/share/hwdata/pci.ids",
+	}
 	local file
 	for i, v in ipairs(fileLocations) do
-		file = io.open(libmoon.config.basePath .. v)
+		file = io.open(v)
 		if file then
 			break
 		end
