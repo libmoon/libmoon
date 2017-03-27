@@ -275,16 +275,6 @@ function etherQinQHeader:setInnerVlanTag(int)
 	self.inner_vlan_tag = hton16(int)
 end
 
-function etherQinQHeader:getInnerVlanId()
-	return hton16(self.inner_vlan_tag)
-end
-
---- Set the inner vlan id
-function etherQinQHeader:setInnerVlanId(int)
-	int = int or 0x8100
-	self.inner_vlan_id = hton16(int)
-end
-
 function etherQinQHeader:getOuterVlanTag()
 	return bit.band(hton16(self.outer_vlan_tag), 0xFFF)
 end
@@ -378,11 +368,10 @@ function etherVlanHeader:fill(args, pre)
 end
 
 function etherQinQHeader:fill(args, pre)
-	local innerVlanId = args[pre .. "inerVlanId"] or 0x8100
 	local innerVlanTag = args[pre .. "innerVlanTag"] or 0
 	local outerVlanId = args[pre .. "outerVlanId"] or 0x8100
 	local outerVlanTag = args[pre .. "outerVlanTag"] or 0
-	self:setInnerVlanId(innerVlanId)
+	self.inner_vlan_id = hton16(0x8100)
 	self:setInnerVlanTag(innerVlanTag)
 	self:setOuterVlanId(outerVlanId)
 	self:setOuterVlanTag(outerVlanTag)
@@ -414,6 +403,7 @@ end
 function etherQinQHeader:get(pre)
 	pre = pre or "eth"
 	local args = etherHeader.get(self, pre)
+	args[pre .. "outerVlanId"] = self:getOuterVlanId()
 	args[pre .. "outerVlanTag"] = self:getOuterVlanTag()
 	args[pre .. "innerVlanTag"] = self:getInnerVlanTag()
 	return args
