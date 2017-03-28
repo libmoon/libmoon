@@ -33,6 +33,7 @@ local ip = {}
 ip.PROTO_ICMP = 0x01
 ip.PROTO_TCP  = 0x06
 ip.PROTO_UDP  = 0x11
+ip.PROTO_GRE  = 0x2f
 ip.PROTO_ESP  = 0x32
 ip.PROTO_AH   = 0x33
 ip.PROTO_SCTP = 0x84
@@ -358,6 +359,8 @@ function ip4Header:getProtocolString()
 		cleartext = "(ESP)"
 	elseif proto == ip.PROTO_AH then
 		cleartext = "(AH)"
+	elseif proto == ip.PROTO_GRE then
+		cleartext = "(GRE)"
 	else
 		cleartext = "(unknown)"
 	end
@@ -539,6 +542,7 @@ local mapNameProto = {
 	tcp = ip.PROTO_TCP, 
 	esp = ip.PROTO_ESP,
 	ah = ip.PROTO_AH,
+	gre = ip.PROTO_GRE,
 }
 
 --- Resolve which header comes after this one (in a packet).

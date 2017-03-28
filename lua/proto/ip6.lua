@@ -34,6 +34,7 @@ local ip6 = {}
 ip6.PROTO_TCP 	= 0x06
 --- NextHeader field value for Udp
 ip6.PROTO_UDP 	= 0x11
+ip6.PROTO_GRE = 0x2f
 --- NextHeader field value for Icmp
 ip6.PROTO_ICMP	= 0x3a -- 58
 ip6.PROTO_ESP	= 0x32
@@ -308,6 +309,8 @@ function ip6Header:getNextHeaderString()
 		cleartext = "(ESP)"
 	elseif proto == ip6.PROTO_AH then
 		cleartext = "(AH)"
+	elseif proto == ip6.PROTO_GRE then
+		cleartext = "(GRE)"
 	else
 		cleartext = "(unknown)"
 	end
@@ -456,6 +459,7 @@ local mapNameProto = {
 	tcp = ip6.PROTO_TCP, 
 	esp = ip6.PROTO_ESP,
 	ah = ip6.PROTO_AH,
+	gre = ip6.PROTO_GRE,
 }
 
 --- Resolve which header comes after this one (in a packet).

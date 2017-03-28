@@ -850,6 +850,8 @@ pkt.getEthernetPacket = createStack("eth")
 pkt.getEthPacket = pkt.getEthernetPacket
 pkt.getEthernetVlanPacket = createStack({"eth", subType = "vlan"})
 pkt.getEthVlanPacket = pkt.getEthernetVlanPacket
+pkt.getEthernetQinQPacket = createStack({"eth", subType = "qinq"})
+pkt.getEthQinQPacket = pkt.getEthernetQinQPacket
 
 pkt.getIP4Packet = createStack("eth", "ip4") 
 pkt.getIP6Packet = createStack("eth", "ip6")
@@ -942,5 +944,39 @@ pkt.getIpfixPacket = createStack("eth", "ip4", "udp", "ipfix")
 
 pkt.getLacpPacket = createStack('eth', 'lacp')
 
+pkt.getGre4Packet = createStack("eth", "ip4", "gre")
+pkt.getGre6Packet = createStack("eth", "ip6", "gre")
+pkt.getGrePacket = function(self, ip4)
+	ip4 = ip4 == nil or ip4 
+	if ip4 then 
+		return pkt.getGre4Packet(self)
+	else
+		return pkt.getGre6Packet(self)
+	end
+end
+
+pkt.getGre4QinQPacket = createStack("eth", "ip4", "gre", {"eth", subType = "qinq", name = "etherQinQ"}, {"ip4", name = "nestedIp4"})
+pkt.getGre6QinQPacket = createStack("eth", "ip6", "gre", {"eth", subType = "qinq", name = "etherQinQ"}, {"ip6", name = "nestedIp6"})
+pkt.getGreQinQPacket = function(self, ip4)
+	ip4 = ip4 == nil or ip4
+	if ip4 then
+		return pkt.getGre4QinQPacket(self)
+	else
+		return pkt.getGre6QinQPacket(self)
+	end
+end
+
+pkt.getGreQinQArpPacket = createStack("eth", "ip4", "gre", {"eth", subType = "qinq", name = "etherQinQ"}, "arp")
+
+pkt.getGre4QinQUdpPacket = createStack("eth", "ip4", "gre", {"eth", subType = "qinq", name = "etherQinQ"}, {"ip4", name = "nestedIp4"}, "udp")
+pkt.getGre6QinQUdpPacket = createStack("eth", "ip6", "gre", {"eth", subType = "qinq", name = "etherQinQ"}, {"ip6", name = "nestedIp6"}, "udp")
+pkt.getGreQinQUdpPacket = function(self, ip4)
+	ip4 = ip4 == nil or ip4
+	if ip4 then
+		return pkt.getGre4QinQUdpPacket(self)
+	else
+		return pkt.getGre6QinQUdpPacket(self)
+	end
+end
 
 return pkt
