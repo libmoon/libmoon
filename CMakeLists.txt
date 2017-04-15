@@ -40,9 +40,11 @@ SET(LUAJIT_LIBS
 )
 
 SET(ALL_LIBS
+	-Wl,--whole-archive
 	${LUAJIT_LIBS}
 	-Wl,--start-group ${DPDK_LIBS} -Wl,--end-group
 	pthread dl rt
+	-Wl,--no-whole-archive
 )
 
 INCLUDE_DIRECTORIES(
