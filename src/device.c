@@ -220,7 +220,7 @@ uint8_t dpdk_get_socket(uint8_t port) {
 	if (!dev_info.pci_dev) {
 		return 0;
 	}
-	int node = dev_info.pci_dev->numa_node;
+	int node = dev_info.pci_dev->device.numa_node;
 	if (node == -1) {
 		node = 0;
 	}
