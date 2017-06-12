@@ -18,7 +18,7 @@ local E          = require "syscall".c.E
 
 function mod.init()
 	dpdkc.rte_pmd_init_all_export();
-	dpdkc.rte_eal_pci_probe();
+	dpdkc.rte_pci_probe();
 end
 
 function mod.numDevices()
