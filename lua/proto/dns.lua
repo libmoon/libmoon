@@ -498,7 +498,7 @@ end
 --- @return QueryBody as bit integer array?.
 function dnsHeader:getMessageContent()
 	-- TODO implement!
-	return self.body[0] 
+	return self.body
 end
 
 --- Retrieve the QueryBody as string.
