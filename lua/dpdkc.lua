@@ -251,10 +251,8 @@ ffi.cdef[[
 	void rte_pktmbuf_free_export(struct rte_mbuf* m);
 	uint16_t rte_mbuf_refcnt_read_export(struct rte_mbuf* m);
 	uint16_t rte_mbuf_refcnt_update_export(struct rte_mbuf* m, int16_t value);
-	void init_mempool_ops();
 
 	// devices
-	void register_pmd_drivers();
 	int rte_pci_probe();
 	int rte_eth_dev_count();
 	uint64_t dpdk_get_mac_addr(int port, char* buf);
