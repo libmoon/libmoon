@@ -52,7 +52,7 @@ local function writeHeader(ptr)
 	hdr.version_minor = 4
 	hdr.thiszone = 0
 	hdr.sigfigs = 0
-	hdr.snaplen = 0x7FFFFFFF
+	hdr.snaplen = 0x40000
 	hdr.network = 1
 	return ffi.sizeof(headerType)
 end
