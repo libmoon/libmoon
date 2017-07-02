@@ -220,7 +220,7 @@ uint8_t dpdk_get_socket(uint8_t port) {
 	if (!dev_info.pci_dev) {
 		return 0;
 	}
-	int node = dev_info.pci_dev->numa_node;
+	int node = dev_info.pci_dev->device.numa_node;
 	if (node == -1) {
 		node = 0;
 	}
@@ -229,40 +229,6 @@ uint8_t dpdk_get_socket(uint8_t port) {
 
 uint32_t dpdk_get_rte_queue_stat_cntrs_num() {
 	return RTE_ETHDEV_QUEUE_STAT_CNTRS;
-}
-
-
-// registers all libraries
-// this should be done on startup via a __attribute__((__constructor__)) function
-// however, there seems to be a bug: the init functions don't seem to work if called in the wrong order (note that the order depends on the linker)
-// calling devinitfn_bond_drv() last causes problems
-// so we just add them here again in an order that actually works independent from the link order
-void devinitfn_rte_vmxnet3_driver();
-void devinitfn_rte_virtio_driver();
-void devinitfn_pmd_ring_drv();
-void devinitfn_rte_ixgbe_driver();
-void devinitfn_rte_ixgbevf_driver();
-void devinitfn_rte_i40evf_driver();
-void devinitfn_rte_i40e_driver();
-void devinitfn_pmd_igb_drv();
-void devinitfn_pmd_igbvf_drv();
-void devinitfn_em_pmd_drv();
-void devinitfn_bond_drv();
-void devinitfn_bnxt_pmd_drv();
-
-void register_pmd_drivers() {
-	devinitfn_bond_drv();
-	devinitfn_rte_vmxnet3_driver();
-	devinitfn_rte_virtio_driver();
-	devinitfn_pmd_ring_drv();
-	devinitfn_rte_ixgbevf_driver();
-	devinitfn_rte_ixgbe_driver();
-	devinitfn_rte_i40evf_driver();
-	devinitfn_rte_i40e_driver();
-	devinitfn_pmd_igb_drv();
-	devinitfn_pmd_igbvf_drv();
-	devinitfn_em_pmd_drv();
-	devinitfn_bnxt_pmd_drv();
 }
 
 // the following functions are static inline function in header files

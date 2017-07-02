@@ -165,7 +165,9 @@ ffi.cdef[[
 	struct rte_eth_desc_lim {
 		uint16_t nb_max;   
 		uint16_t nb_min;   
-		uint16_t nb_align; 
+		uint16_t nb_align;
+		uint16_t nb_seg_max;
+		uint16_t nb_mtu_seg_max; 
 	};
 	struct rte_eth_thresh {
 		uint8_t pthresh; 
@@ -249,11 +251,9 @@ ffi.cdef[[
 	void rte_pktmbuf_free_export(struct rte_mbuf* m);
 	uint16_t rte_mbuf_refcnt_read_export(struct rte_mbuf* m);
 	uint16_t rte_mbuf_refcnt_update_export(struct rte_mbuf* m, int16_t value);
-	void init_mempool_ops();
 
 	// devices
-	void register_pmd_drivers();
-	int rte_eal_pci_probe();
+	int rte_pci_probe();
 	int rte_eth_dev_count();
 	uint64_t dpdk_get_mac_addr(int port, char* buf);
 	void rte_eth_link_get(uint8_t port, struct rte_eth_link* link);

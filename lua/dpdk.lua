@@ -100,10 +100,6 @@ end
 function mod.init()
 	local cfgFile = libmoon.config.dpdkConfig
 	log:info("Initializing DPDK. This will take a few seconds...")
-	-- register drivers
-	dpdkc.register_pmd_drivers()
-	-- fixup mempool ops
-	dpdkc.init_mempool_ops()
 	-- find config file
 	local cfgFileLocations
 	if cfgFile then

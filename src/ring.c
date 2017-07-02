@@ -13,10 +13,10 @@ struct rte_ring* create_ring(uint32_t count, int32_t socket) {
 }
 
 int ring_enqueue(struct rte_ring* r, void* const* obj, int n) {
-	return rte_ring_sp_enqueue_bulk(r, obj, n);
+	return rte_ring_sp_enqueue_bulk(r, obj, n, NULL);
 }
 
 int ring_dequeue(struct rte_ring* r, void** obj, int n) {
-	return rte_ring_sc_dequeue_bulk(r, obj, n);
+	return rte_ring_sc_dequeue_bulk(r, obj, n, NULL);
 }
 
