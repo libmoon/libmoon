@@ -44,15 +44,12 @@ ffi.cdef[[
 		void *buf_addr;           /**< Virtual address of segment buffer. */
 		void *buf_physaddr; /**< Physical address of segment buffer. */
 
-		uint16_t buf_len;         /**< Length of segment buffer. */
-
 		/* next 6 bytes are initialised on RX descriptor rearm */
 		MARKER8 rearm_data;
 		uint16_t data_off;
-
 		uint16_t refcnt;
-		uint8_t nb_segs;          /**< Number of segments. */
-		uint8_t port;             /**< Input port. */
+		uint16_t nb_segs;          /**< Number of segments. */
+		uint16_t port;             /**< Input port. */
 
 		uint64_t ol_flags;        /**< Offload features. */
 		/* remaining bytes are set on RX when pulling packet from descriptor */
@@ -89,10 +86,9 @@ ffi.cdef[[
 			} sched;          /**< Hierarchical scheduler */
 			uint32_t usr;	  /**< User defined tags. See rte_distributor_process() */
 		} hash;                   /**< hash information */
-
-		uint32_t seqn; /**< Sequence number. See also rte_reorder_insert() */
-
-		uint16_t vlan_tci_outer;  /**< Outer VLAN Tag Control Identifier (CPU order) */
+		uint16_t vlan_tci_outer;
+		uint16_t buf_len;
+		uint64_t timestamp;
 
 		/* second cache line - fields only used in slow path or on TX */
 		MARKER_CACHE_ALIGNED cacheline1;
@@ -111,9 +107,7 @@ ffi.cdef[[
 
 		/** Timesync flags for use with IEEE1588. */
 		uint16_t timesync;
-
-		/* Chain of off-load operations to perform on mbuf */
-		struct rte_mbuf_offload *offload_ops;
+		uint32_t seqn;
 	};
 
 	// device status/info
