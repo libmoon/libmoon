@@ -16,11 +16,6 @@ local drivers    = require "drivers"
 local eth        = require "proto.ethernet"
 local E          = require "syscall".c.E
 
-function mod.init()
-	dpdkc.rte_pmd_init_all_export();
-	dpdkc.rte_pci_probe();
-end
-
 function mod.numDevices()
 	return dpdkc.rte_eth_dev_count();
 end
