@@ -42,6 +42,12 @@ local voidPointer = ffi.typeof("void*")
 
 local INITIAL_FILE_SIZE = 512 * 1024 * 1024
 
+--- Set the file size for new pcap writers
+--- @param newSizeInBytes new file size in bytes
+function mod:setInitialFilesize(newSizeInBytes)
+	INITIAL_FILE_SIZE = newSizeInBytes
+end
+
 local writer = {}
 writer.__index = writer
 
