@@ -9,6 +9,7 @@ mod.net_ixgbevf = require "driver.ixgbevf"
 mod.net_igb = require "driver.igb"
 mod.net_virtio = require "driver.virtio"
 mod.net_vmxnet3 = require "driver.vmxnet3"
+mod.net_mlx5 = require "driver.mlx5"
 
 function mod.initDriver(dev)
 	local device = require "device"
