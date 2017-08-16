@@ -616,12 +616,20 @@ end
 
 ffi.cdef[[
 
-   struct rte_eth_xstat_name {
-           char name[64];
-   };
+struct rte_eth_xstat {
+        uint64_t id;
+        uint64_t value;
+};
+
+
+struct rte_eth_xstat_name {
+	char name[64];
+};
    
 int rte_eth_xstats_get_names(uint8_t port_id, struct rte_eth_xstat_name* names, uint32_t size);
-
+int rte_eth_xstats_get(uint8_t port_id, struct rte_eth_xstat * xstats, unsigned int n);
+int rte_eth_xstats_get_id_by_name(uint8_t port_id, const char * xstat_name, uint64_t * id);
+int rte_eth_xstats_get_by_id(uint8_t port_id, const uint64_t * ids, uint64_t * values, unsigned int n);
 
 ]]
 
