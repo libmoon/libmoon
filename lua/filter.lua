@@ -12,12 +12,12 @@ local ffi      = require "ffi"
 local dpdk     = require "dpdk"
 local mbitmask = require "bitmask"
 local log      = require "log"
+local generic  = require "filter_GenericFlowAPI"
 
 mod.DROP = -1
 
 
 local dev = device.__devicePrototype
-
 
 ffi.cdef[[
 
@@ -414,6 +414,7 @@ struct rte_eth_fdir_info {
 
 int rte_eth_dev_filter_ctrl(uint8_t port_id, enum rte_filter_type filter_type, enum rte_filter_op filter_op, void * arg);
 void fdir_get_infos(uint32_t port_id);
+
 ]]
 
 local RTE_ETHTYPE_FLAGS_MAC		= 1
@@ -421,21 +422,28 @@ local RTE_ETHTYPE_FLAGS_DROP	= 2
 
 local C = ffi.C
 
+
 function dev:l2Filter(etype, queue)
-	if type(queue) == "table" then
-		if queue.dev.id ~= self.id then
-			log:fatal("Queue must belong to the device being configured")
+	-- mlx5 based device do not support the ethertype filter
+	if self.USE_GENERIC_FILTER then 
+		self:l2GenericFilter(etype, queue)
+	else	
+		if type(queue) == "table" then
+			if queue.dev.id ~= self.id then
+				log:fatal("Queue must belong to the device being configured")
+			end
+			queue = queue.qid
 		end
-		queue = queue.qid
-	end
-	local flags = 0
-	if queue == self.DROP then
-		flags = RTE_ETHTYPE_FLAGS_DROP
-	end
-	local filter = ffi.new("struct rte_eth_ethertype_filter", { ether_type = etype, flags = 0, queue = queue })
-	local ok = C.rte_eth_dev_filter_ctrl(self.id, C.RTE_ETH_FILTER_ETHERTYPE, C.RTE_ETH_FILTER_ADD, filter)
-	if ok ~= 0 and ok ~= -38 then -- -38 means duplicate filter for some reason
-		log:warn("l2 filter error: " .. strError(ok))
+		local flags = 0
+		if queue == self.DROP then
+			flags = RTE_ETHTYPE_FLAGS_DROP
+			log:err("DROP")
+		end
+		local filter = ffi.new("struct rte_eth_ethertype_filter", { ether_type = etype, flags = 0, queue = queue })
+		local ok = C.rte_eth_dev_filter_ctrl(self.id, C.RTE_ETH_FILTER_ETHERTYPE, C.RTE_ETH_FILTER_ADD, filter)
+		if ok ~= 0 and ok ~= -38 then -- -38 means duplicate filter for some reason
+			log:warn("l2 filter error: " .. strError(ok))
+		end
 	end
 end
 
