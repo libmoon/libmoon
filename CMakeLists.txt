@@ -1,6 +1,9 @@
 CMAKE_MINIMUM_REQUIRED(VERSION 2.8)
 PROJECT(libmoon C CXX)
 
+option(USE_MLX5 "Compile with mlx5 driver" OFF)
+option(USE_MLX4 "Compile with mlx4 driver" OFF)
+
 SET(CMAKE_CXX_FLAGS "-fno-stack-protector -Wall -Wextra -Wno-unused-parameter -g -O3 -std=gnu++11 -march=native -msse4.2")
 SET(CMAKE_C_FLAGS "-fno-stack-protector -Wall -Wextra -Wno-unused-parameter -g -O3 -std=gnu11 -march=native -msse4.2")
 SET(CMAKE_EXE_LINKER_FLAGS "-rdynamic") # to access functions from luajit
@@ -34,6 +37,19 @@ SET(DPDK_LIBS
 	rte_cfgfile  rte_hash         rte_lpm      	 rte_meter     rte_pmd_i40e   	  rte_pmd_vmxnet3_uio  rte_sched        rte_timer
 	rte_cmdline  rte_ip_frag      rte_pipeline 	 rte_pmd_ixgbe rte_mempool_stack  rte_port             rte_table        rte_pmd_bnxt
 )
+
+#Add Mellanox libraries if options are specified
+if(USE_MLX5 OR USE_MLX4)
+	SET(DPDK_LIBS ${DPDK_LIBS} ibverbs)
+endif()
+
+if(USE_MLX5)
+	SET(DPDK_LIBS ${DPDK_LIBS} rte_pmd_mlx5)
+endif()
+
+if(USE_MLX4)
+	SET(DPDK_LIBS ${DPDK_LIBS} rte_pmd_mlx4)
+endif()
 
 SET(LUAJIT_LIBS
 	luajit-5.1

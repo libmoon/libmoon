@@ -32,7 +32,7 @@ Hence, [MoonGen's examples](https://github.com/emmericp/MoonGen/blob/master/exam
 
 # Installation
 
-Just run `build.sh`, `bind-interfaces.sh`, and `setup-hugetlbfs.sh`
+Just run `build.sh`, `bind-interfaces.sh`, and `setup-hugetlbfs.sh`. When using Mellanox NICs [additional steps](install-mlx.md) are neccessary.
 
 ```
 # install dependencies and compile libmoon
