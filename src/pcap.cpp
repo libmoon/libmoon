@@ -34,6 +34,9 @@ extern "C" {
 		}
 		uint32_t zero_fill_len = std::min(mempool_buf_size - copy_len - 128, src->orig_len - src->incl_len);
 		rte_mbuf* res = rte_pktmbuf_alloc(mp);
+		if (!res) {
+			return res;
+		}
 		res->pkt_len = src->incl_len;
 		res->data_len = copy_len + zero_fill_len;
 		res->udata64 = src->ts_usec * 1000000ULL + src->ts_sec;
