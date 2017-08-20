@@ -41,7 +41,7 @@ Moreover, it can generate test traffic by replaying a pcap file on a different p
 The simplest test setup consists of two directly connected ports `0` and `1`:
 
 ```
-./build/libmoon examples/hs/filter_hyperscan.lua examples/hs/patterns.txt 0 0 -p 1 -f some-pcap-file.pcap 
+sudo ./build/libmoon examples/hyperscan/filter_hyperscan.lua examples/hyperscan/patterns.txt 0 0 -p 1 -f some-pcap-file.pcap 
 ```
 
 This sends out `some-pcap-file.pcap` on port 1.
