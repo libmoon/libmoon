@@ -76,7 +76,6 @@ hs.HS_MODE_VECTORED = 4
 
 local C = ffi.C
 
---often used datatypes, more performant use
 hs.scratch_ptr_ptr = ffi.typeof("hs_scratch_t*[1]")
 hs.database_ptr_ptr = ffi.typeof("hs_database_t*[1]")
 hs.err_ptr_ptr = ffi.typeof("hs_compile_error_t*[1]")
@@ -204,7 +203,7 @@ function hs.init(mode, pattern_table, flags_table, ids_table)
 	return db[0], scr[0]
 end
 
---Does scan in streaming mode using the dummyHandler
+-- Scans in streaming mode
 function hs.doscan_stream(input, input_length, stream_ptr, scratch_ptr, callback, context_ptr)
 	local res = hs.scan_stream(stream_ptr, input, input_length, 0, scratch_ptr, callback or hs.matchHandlerDummy_ptr, context_ptr)
 	
@@ -216,7 +215,7 @@ function hs.doscan_stream(input, input_length, stream_ptr, scratch_ptr, callback
 end
 jit.off(hs.doscan_stream)
 
---Does scan in block mode
+-- Scans in block mode
 function hs.doscan_block(input, input_length, database_ptr, scratch_ptr, callback, context_ptr)
 	local res = hs.scan(database_ptr, input, input_length, 0, scratch_ptr, callback or hs.matchHandlerDummy_ptr, context_ptr)
 	if res ~= hs.HS_SUCCESS then
@@ -227,7 +226,7 @@ function hs.doscan_block(input, input_length, database_ptr, scratch_ptr, callbac
 end
 jit.off(hs.doscan_block)
 
---Returns a single pointer to a new stream
+-- Returns a single pointer to a new stream
 function hs.new_stream(database_ptr)
 	local str_ptr_ptr = hs.stream_ptr_ptr()
 	local res = hs.open_stream(database_ptr, 0, str_ptr_ptr)
@@ -312,7 +311,7 @@ end
 
 
 
---Filter-class
+--Filter class
 
 local function callbackFilter(id, from, to, flags, context)
 		return 1 --end when match was found 
@@ -321,9 +320,9 @@ end
 local callbackFilter_ptr = ffi.cast("match_event_handler", callbackFilter)
 
 
---creates new filter
---@param pattern_file: path to file
---@param mode: HS_MODE_BLOCK or HS_MODE_STREAM
+--- Creates new filter
+--- @param pattern_file: path to file
+--- @param mode: HS_MODE_BLOCK or HS_MODE_STREAM
 function hs:create(pattern_file, mode)
         local filto = setmetatable({}, hs)
         local d, s = hs.init(mode or hs.HS_MODE_BLOCK, hs.parse_from_file(pattern_file))
@@ -350,9 +349,9 @@ function hs:__serialize()
 	return "require 'hs'; return " .. serpent.addMt(serpent.dumpRaw(self), "require 'hs'"), true
 end
 
---Filters a packet 
---@param packet_ptr: pointer to packet
---@param stream_ptr: pointer to stream of packet; optional, only needed in streaming-mode
+--- Filters a packet 
+--- @param packet_ptr: pointer to packet
+--- @param stream_ptr: pointer to stream of packet; optional, only needed in streaming-mode
 function hs:filter(packet_ptr, stream_ptr)
 	local res = nil 
 	
@@ -361,7 +360,7 @@ function hs:filter(packet_ptr, stream_ptr)
 	elseif self.mode == hs.HS_MODE_STREAM then
 		res = hs.scan_stream(stream_ptr, packet_ptr:getData(), packet_ptr:getSize(), 0, self.scratch_ptr, callbackFilter_ptr)
 	else
-		print("false mode", self.mode)
+		print("bad mode", self.mode)
 				return nil
 	end
 
@@ -369,12 +368,12 @@ function hs:filter(packet_ptr, stream_ptr)
 end
 jit.off(hs.filter) -- see luajit documentation
 
---Returns a newly opened stream
+-- Returns a newly opened stream
 function hs:newStream()
 		hs.open_stream(self.database_ptr, alloc_scratch())
 end
 
---Frees the filter
+-- Frees the filter
 function hs:free()
 	hs.free_database(self.database_ptr)
 	hs.free_scratch(self.scratch)
@@ -395,3 +394,4 @@ end
 
 
 return hs
+
