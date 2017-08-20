@@ -96,6 +96,14 @@ function mod.freeHuge(ptr, size)
 	end
 end
 
+ffi.cdef[[
+	void fence();
+]]
+
+function mod.fence()
+	ffi.C.fence()
+end
+
 local mempools = {}
 local mempoolCache = ns:get()
 

@@ -89,3 +89,8 @@ int free_huge(void* ptr, size_t size) {
 	return munmap(ptr, size);
 }
 
+// release/acquire semantics might also be useful, should be implemented in C++
+void fence() {
+	__sync_synchronize();
+}
+
