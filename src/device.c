@@ -60,7 +60,7 @@ struct libmoon_device_config {
 
 int dpdk_configure_device(struct libmoon_device_config* cfg) {
 	const char* driver = dpdk_get_driver_name(cfg->port);
-	bool is_i40e_device = strcmp("rte_i40e_pmd", driver) == 0;
+	bool is_i40e_device = strcmp("net_i40e", driver) == 0;
 	// TODO: make fdir configurable
 	struct rte_fdir_conf fdir_conf = {
 		.mode = RTE_FDIR_MODE_PERFECT,
