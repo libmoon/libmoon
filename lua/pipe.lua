@@ -39,7 +39,7 @@ local packetRing = mod.packetRing
 packetRing.__index = packetRing
 
 function mod:newPacketRing(size, socket)
-	size = size or 8192
+	size = size or 512
 	socket = socket or -1
 	return setmetatable({
 		ring = C.create_ring(size, socket)
