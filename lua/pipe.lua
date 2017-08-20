@@ -55,8 +55,8 @@ end
 local ENOBUFS = S.c.E.NOBUFS
 
 -- FIXME: this is work-around for some bug with the serialization of nested objects
-function mod:sendToPacketRing(ring, bufs)
-	return C.ring_enqueue(ring, bufs.array, bufs.size) > 0
+function mod:sendToPacketRing(ring, bufs, n)
+	return C.ring_enqueue(ring, bufs.array, n or bufs.size) > 0
 end
 
 -- try to enqueue packets in a ring, returns true on success
