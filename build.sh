@@ -19,13 +19,13 @@ while :; do
 			echo "Build with mlx5 driver selected"
 			OPTIONS="$OPTIONS""-DUSE_MLX5=ON "
 			MLX5=true
-			FLAGS="$FLAGS""--mlx5"
+			FLAGS="$FLAGS""--mlx5 "
 			;;
 		-n|--mlx4)
 			echo "Build with mlx4 driver selected"
 			OPTIONS="$OPTIONS""-DUSE_MLX4=ON "
 			MLX4=true
-			FLAGS="$FLAGS""--mlx4"
+			FLAGS="$FLAGS""--mlx4 "
 			;;
 		--moongen) #For internal use only
 			echo "Build libmoon with MoonGen"
