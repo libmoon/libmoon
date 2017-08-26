@@ -346,6 +346,8 @@ function etherHeader:fill(args, pre)
 	if type(args[src]) == "string" then
 		self:setSrcString(args[src])
 	elseif istype(macAddrType, args[src]) then
+		self.src = args[src]
+	elseif type(args[src]) == 'number' then
 		self:setSrc(args[src])
 	elseif type(args[src]) == "table" and args[src].id then
 		self:setSrcString((args[src].dev or args[src]):getMacString())
@@ -353,6 +355,8 @@ function etherHeader:fill(args, pre)
 	if type(args[dst]) == "string" then
 		self:setDstString(args[dst])
 	elseif istype(macAddrType, args[dst]) then
+		self.dst = args[dst]
+	elseif type(args[dst]) == 'number' then
 		self:setDst(args[dst])
 	elseif type(args[dst]) == "table" and args[dst].id then
 		self:setDstString((args[dst].dev or args[dst]):getMacString())
