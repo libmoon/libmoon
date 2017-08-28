@@ -557,7 +557,7 @@ function packetResolveLastHeader(self)
 
 		-- if simple struct (headername = membername) already exists we can directly cast
 		--nextMember = nextHeader
-		newName = name .. nextMember .. "_x_" .. (nextSubType or "x")
+		newName = name .. "_" .. nextMember .. "_x_" .. (nextSubType or "x")
 
 		if not pkt.packetStructs[newName] then
 			-- check if a similar struct with this header order exists
