@@ -607,7 +607,8 @@ function tcpHeader:getWSOption(offset)
 end
 
 function tcpHeader:getWSOptionString(offset)
-	return "WS " .. self:getWSOption(offset)
+	local val = self:getWSOption(offset)
+	return "WS " .. val .. ' (x' .. math.pow(2, val) .. ')'
 end
 
 function tcpHeader:setMssOption(offset, value)
