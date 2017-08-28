@@ -307,9 +307,11 @@ end
 --- @param bytes Number of bytes to dump.
 --- @param stream the stream to write to, defaults to io.stdout
 --- @param seps A table with the protocol offsets. Used to colorize the output
-function dumpHex(data, bytes, stream, seps)
+--- @param wireshark Dump in wireshark compatible format (Wireshark -> Import from Hex Dump)
+function dumpHex(data, bytes, stream, seps, wireshark)
 	local data = ffi.cast("uint8_t*", data)
 	stream = stream or io.stdout
+	wireshark = wireshark or false
 
 	local cSep = 1
 	local cColor = seps and getColorCode(cSep) or ''
@@ -325,16 +327,18 @@ function dumpHex(data, bytes, stream, seps)
 		-- new line
 		if i % 16 == 0 then
 			cColor = seps and getColorCode("white") or ''
-			stream:write(cColor .. string.format("  0x%04x:   ", i))
+			stream:write(cColor .. string.format(wireshark and "  %06x   " or "  0x%04x:   ", i))
 			cColor = seps and getColorCode(cSep) or ''
 		end
 
 		stream:write(cColor .. string.format("%02x", data[i]))
 		cColor = ''
-		
-		if i % 2  == 1 then -- group 2 bytes
+	
+		-- single bytes (wireshark) or groups of 2
+		if wireshark or i % 2 == 1 then
 			stream:write(" ")
 		end
+
 		if i % 16 == 15 then -- end of 16 byte line
 			stream:write("\n")
 		end
