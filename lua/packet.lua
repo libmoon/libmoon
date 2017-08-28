@@ -530,10 +530,13 @@ function packetResolveLastHeader(self)
 			else
 				newArgs[#newArgs]["length"] = len
 			end
-			pkt.TMP_PACKET = createStack(unpack(newArgs))
 			-- build name with len adjusted
 			sub[#sub - 1] = len
 			local newName = table.concat(sub, "_")
+			-- create stack if necessary
+			if not pkt.packetStructs[newName] then
+				pkt.TMP_PACKET = createStack(unpack(newArgs))
+			end
 			if name ~= newName then
 				return ffi.cast(newName .. "*", self):resolveLastHeader()
 			end
