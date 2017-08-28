@@ -723,7 +723,7 @@ local function defineHeaderStruct(p, subType, size)
 	-- define and add header related functions
 	ffi.cdef(str)
 	ffi.metatype("struct " .. name, (subType and proto[p][subType].metatype or proto[p].metatype))
-	log:debug("Created " .. name)
+	log:debug("Created " .. name .. str)
 
 	-- add to list of already created header structs
 	createdHeaderStructs[name] = true
