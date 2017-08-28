@@ -649,9 +649,12 @@ end
 
 function tcpHeader:getTSOption(offset)
 	local dat = {}
-	if type(offset) == number then
-		for i = 2, 10 do
-			dat[i] = self.option[offset + i]
+	if type(offset) == 'number' then
+		-- only interested in actual option, bytes [2:9]
+		for i = 2, 9 do
+			-- ugly shift to left as the computation below with 'bytes' 
+			-- assumes that we only have actual option here (= excluding type and length)
+			dat[i - 1] = self.options[offset + i]
 		end
 	else
 		dat = offset['byte']
