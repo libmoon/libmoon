@@ -607,7 +607,8 @@ function tcpHeader:getWSOption(offset)
 end
 
 function tcpHeader:getWSOptionString(offset)
-	return "WS " .. self:getWSOption(offset)
+	local val = self:getWSOption(offset)
+	return "WS " .. val .. ' (x' .. math.pow(2, val) .. ')'
 end
 
 function tcpHeader:setMssOption(offset, value)
@@ -648,9 +649,12 @@ end
 
 function tcpHeader:getTSOption(offset)
 	local dat = {}
-	if type(offset) == number then
-		for i = 2, 10 do
-			dat[i] = self.option[offset + i]
+	if type(offset) == 'number' then
+		-- only interested in actual option, bytes [2:9]
+		for i = 2, 9 do
+			-- ugly shift to left as the computation below with 'bytes' 
+			-- assumes that we only have actual option here (= excluding type and length)
+			dat[i - 1] = self.options[offset + i]
 		end
 	else
 		dat = offset['byte']
