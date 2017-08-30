@@ -7,6 +7,7 @@
 #include <ixgbe_type.h>
 #include <rte_mbuf.h>
 #include <rte_eth_ctrl.h>
+#include <rte_pci.h>
 
 #include "rdtsc.h"
 
