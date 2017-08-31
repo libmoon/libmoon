@@ -5,13 +5,10 @@ local turbo   = require "turbo"
 local libmoon = require "libmoon"
 local stats   = require "stats"
 local ffi     = require "ffi"
+local log     = require "log"
 
 local HTTPError = turbo.web.HTTPError
 
-local indexHandler = class("indexHandler", turbo.web.RequestHandler)
-function indexHandler:get()
-    self:write({hello = "world"})
-end
 
 local deviceHandler = class("deviceHandler", turbo.web.RequestHandler)
 
@@ -106,19 +103,27 @@ end
 
 function mod.webserverTask(options, ...)
 	options = options or {}
+	options.port = options.port or 8888
+	log:info("Starting REST API on port %d", options.port)
+	local extraHandlers = {}
 	if options.init then
-		_G[options.init](turbo, ...)
+		extraHandlers = _G[options.init](turbo, ...)
 	end
-	local application = turbo.web.Application:new({
-	    {"^/$",                  indexHandler},
-	    {"^/device/([^/]+)/?$",  deviceHandler},
-	    {"^/counter/([^/]+)/?$", counterHandler},
-	})
-	application:listen(options.port or 8888, nil, {
-	})
+	local handlers = {
+	    {"^/devices/([^/]+)/?$",  deviceHandler},
+	    {"^/counters/([^/]+)/?$", counterHandler},
+	}
+	for _, v in ipairs(extraHandlers) do
+		if type(v) ~= "table" then
+			log:fatal('Init function must return list of handlers, e.g., {{"url", handler}, {"url2", handler2}}')
+		end
+		table.insert(handlers, v)
+	end
+	local application = turbo.web.Application:new(handlers)
+	application:listen(options.port, options.bind, {})
 	local ioloop = turbo.ioloop.instance()
 	ioloop:set_interval(500, updateCounters)
-	ioloop:set_interval(100, function()
+	ioloop:set_interval(50, function()
 		if not libmoon.running() then
 			ioloop:close()
 		end
