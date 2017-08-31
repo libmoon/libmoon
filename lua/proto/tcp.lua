@@ -2,7 +2,6 @@
 --- @file tcp.lua
 --- @brief Transmission control protocol (TCP) utility.
 --- Utility functions for the tcp_header struct
---- defined in \ref headers.lua . \n
 --- Includes:
 --- - TCP constants
 --- - TCP header utility
@@ -10,17 +9,20 @@
 ------------------------------------------------------------------------
 
 local ffi = require "ffi"
-local pkt = require "packet"
 local dpdkc = require "dpdkc"
 
 require "utils"
-require "headers"
+require "proto.template"
+local initHeader = initHeader
 
 local ntoh, hton = ntoh, hton
 local ntoh16, hton16 = ntoh16, hton16
 local bor, band, bnot, rshift, lshift= bit.bor, bit.band, bit.bnot, bit.rshift, bit.lshift
 local istype = ffi.istype
 local format = string.format
+local log = require "log"
+
+local mod = {}
 
 
 ------------------------------------------------------------------------------
@@ -32,8 +34,25 @@ local format = string.format
 ---- TCP header
 ------------------------------------------------------------------------------
 
---- Module for tcp_header struct (see \ref headers.lua).
-local tcpHeader = {}
+-- definition of the header format
+mod.headerFormat = [[
+	uint16_t	src;
+	uint16_t	dst;
+	uint32_t	seq;
+	uint32_t	ack;
+	uint8_t		offset;
+	uint8_t		flags;
+	uint16_t	window;
+	uint16_t	cs;
+	uint16_t	urg;
+	uint8_t		options[];
+]]
+
+--- Variable sized member
+mod.headerVariableMember = "options"
+
+--- Module for tcp_header struct
+local tcpHeader = initHeader()
 tcpHeader.__index = tcpHeader
 
 --- Set the source port.
@@ -470,11 +489,190 @@ function tcpHeader:getUrgentPointerString()
 	return self:getUrgentPointer()
 end
 
--- TODO how do we want to handle options (problem is tcp header variable length array of uint8[] followed by payload variable length array (uint8[]))
---[[function tcpHeader:setOptions(int)
-	int = int or
-	self. = int
-end--]]
+
+------------------------------------------------------------------------------------
+---- TCP options
+------------------------------------------------------------------------------------
+
+mod.option = {
+	err = -1,
+	eol = 0,
+	nop = 1,
+	mss = 2,
+	ws = 3,
+	ts = 8,
+}
+for k, v in pairs(mod.option) do
+	mod.option[v] = k
+end
+
+function tcpHeader:getOptions(offset, len)
+	offset = offset or 0
+	len = len or self:getVariableLength()
+
+	local options = {}
+	local num = 1
+	local starting_offset = offset
+	while offset < starting_offset + len do -- this is to prevent an infinite loop
+		local code = self.options[offset]
+		options[num] = { type = code, offset = offset }
+		if code == mod.option['eol'] then
+			-- if there are still options missing, add error option with number of missing bytes
+			if offset < starting_offset + (len - 1) then
+				options[num + 1] = { type = -1, offset = offset, error = "missing " .. (starting_offset + (len - 1)) - offset .. "b" }
+			end
+			break
+		elseif code == mod.option['nop'] then
+			offset = offset + 1
+		else
+			local len = self.options[offset + 1]
+			if len < 1 then -- prevent infinite loop
+				len = 1
+			end
+			-- simply add the bytes to table
+			options[num]['byte'] = {}
+			for i = 1, len - 2 do
+				options[num]['byte'][i] = self.options[offset + 1 + i]
+			end
+			offset = offset + len
+		end
+		num = num + 1
+	end
+	return options
+end
+
+function tcpHeader:getOptionsString()
+	local opts = self:getOptions()
+	local str = ""
+	for k, v in pairs(opts) do
+		local t = v['type']
+		str = str .. ','
+		if t == mod.option['err'] then
+			str = str .. v['error']
+		elseif t == mod.option['eol'] or t == mod.option['nop'] then
+			str = str .. mod.option[t]
+		elseif t == mod.option['ws'] then
+			str = str .. self:getWSOptionString(v)
+		elseif t == mod.option['mss'] then
+			str = str .. self:getMssOptionString(v)
+		elseif t == mod.option['ts'] then
+			str = str .. self:getTSOptionString(v)
+		else
+			local opt = mod.option[t] and mod.option[t] or t
+			str = str .. opt .. " 0x"
+			for k, v in pairs(v['byte']) do
+				str = str .. string.format("%02x", v)
+			end
+		end
+	end
+	return string.sub(str, 2, -1)
+end
+
+function tcpHeader:setNopOption(offset)
+	self.options[offset] = 1
+	return offset + 1
+end
+
+function tcpHeader:setEolOption(offset)
+	self.options[offset] = 0
+	return offset + 1
+end
+
+function tcpHeader:fillOptions(offset)
+	offset = offset or 0
+	maxOffset = self:getVariableLength()
+	while offset < maxOffset - 1 do
+		offset = self:setNopOption(offset)
+	end
+	if offset == maxOffset - 1 then
+		offset = self:setEolOption(offset)
+	end
+		
+	return offset
+end
+
+function tcpHeader:setWSOption(offset, value)
+	self.options[offset] = mod.option['ws']
+	self.options[offset + 1] = 3
+	self.options[offset + 2] = value
+	return offset + 3
+end
+
+function tcpHeader:getWSOption(offset)
+	if type(offset) == number then
+		return self.options[offset + 2]
+	else
+		return offset['byte'][1]
+	end
+end
+
+function tcpHeader:getWSOptionString(offset)
+	local val = self:getWSOption(offset)
+	return "WS " .. val .. ' (x' .. math.pow(2, val) .. ')'
+end
+
+function tcpHeader:setMssOption(offset, value)
+	self.options[offset] = mod.option['mss']
+	self.options[offset + 1] = 4
+	self.options[offset + 2] = rshift(value, 8) 
+	self.options[offset + 3] = value
+	return offset + 4
+end
+
+function tcpHeader:getMssOption(offset)
+	local dat 
+	if type(offset) == number then
+		dat = { self.option[offset + 2], self.option[offset + 3] }
+	else
+		dat = offset['byte']
+	end
+	return lshift(dat[1], 8) + dat[2]
+end
+
+function tcpHeader:getMssOptionString(offset)
+	return "MSS " .. self:getMssOption(offset)
+end
+
+function tcpHeader:setTSOption(offset, tsval, tsecr)
+	self.options[offset] = mod.option['ts']
+	self.options[offset + 1] = 10
+	self.options[offset + 2] = rshift(tsval, 24) 
+	self.options[offset + 3] = rshift(tsval, 16) 
+	self.options[offset + 4] = rshift(tsval, 8) 
+	self.options[offset + 5] = tsval
+	self.options[offset + 6] = rshift(tsecr, 24) 
+	self.options[offset + 7] = rshift(tsecr, 16) 
+	self.options[offset + 8] = rshift(tsecr, 8) 
+	self.options[offset + 9] = tsecr
+	return offset + 10
+end
+
+function tcpHeader:getTSOption(offset)
+	local dat = {}
+	if type(offset) == 'number' then
+		-- only interested in actual option, bytes [2:9]
+		for i = 2, 9 do
+			-- ugly shift to left as the computation below with 'bytes' 
+			-- assumes that we only have actual option here (= excluding type and length)
+			dat[i - 1] = self.options[offset + i]
+		end
+	else
+		dat = offset['byte']
+	end
+	local tsval = lshift(dat[1], 24) + lshift(dat[2], 16) + lshift(dat[3], 8) + dat[4]
+	local tsecr = lshift(dat[5], 24) + lshift(dat[6], 16) + lshift(dat[7], 8) + dat[8]
+	return { tsval = tsval, tsecr = tsecr }
+end
+
+function tcpHeader:getTSOptionString(offset)
+	local r = self:getTSOption(offset)
+	return "TSval " .. r['tsval'] .. " TSecr " .. r['tsecr']
+end
+
+
+------------------------------------------------------------------------------------
+---- Functions for full header
+------------------------------------------------------------------------------------
 
 --- Set all members of the ip header.
 --- Per default, all members are set to default values specified in the respective set function.
@@ -565,15 +763,7 @@ function tcpHeader:getString()
 		.."] win " 	.. self:getWindowString() 
 		.. " cksum " 	.. self:getChecksumString() 
 		.. " urg " 	.. self:getUrgentPointerString() 
-end
-
---- Resolve which header comes after this one (in a packet).
---- For instance: in tcp/udp based on the ports.
---- This function must exist and is only used when get/dump is executed on
---- an unknown (mbuf not yet casted to e.g. tcpv6 packet) packet (mbuf)
---- @return String next header (e.g. 'udp', 'icmp', nil)
-function tcpHeader:resolveNextHeader()
-	return nil
+		.. " ["		.. self:getOptionsString() .. "]"
 end
 
 --- Change the default values for namedArguments (for fill/get).
@@ -586,31 +776,26 @@ end
 --- @param accumulatedLength The so far accumulated length for previous headers in a packet
 --- @return Table of namedArgs
 --- @see tcpHeader:fill
-function tcpHeader:setDefaultNamedArgs(pre, namedArgs, nextHeader, accumulatedLength)
+function tcpHeader:setDefaultNamedArgs(pre, namedArgs, nextHeader, accumulatedLength, headerLength)
+	if not namedArgs[pre .. "DataOffset"] then
+		namedArgs[pre .. "DataOffset"] = headerLength / 4
+	end
 	return namedArgs
 end
 
+function tcpHeader:getVariableLength()
+	local r = (self:getDataOffset() - 5) * 4
+	if r <= 0 then
+		return 0
+	end
+	return r
+end
 
-----------------------------------------------------------------------------------
----- Packets
-----------------------------------------------------------------------------------
-
---- Cast the packet to a Tcp (IP4) packet
-pkt.getTcp4Packet = packetCreate("eth", "ip4", "tcp")
---- Cast the packet to a Tcp (IP6) packet
-pkt.getTcp6Packet = packetCreate("eth", "ip6", "tcp")
---- Cast the packet to a Tcp packet, either using IP4 (nil/true) or IP6 (false), depending on the passed boolean.
-pkt.getTcpPacket = function(self, ip4) 
-	ip4 = ip4 == nil or ip4 
-	if ip4 then 
-		return pkt.getTcp4Packet(self) 
-	else 
-		return pkt.getTcp6Packet(self) 
-	end 
-end   
 
 ------------------------------------------------------------------------------------
 ---- Metatypes
 ------------------------------------------------------------------------------------
 
-ffi.metatype("struct tcp_header", tcpHeader)
+mod.metatype = tcpHeader
+
+return mod

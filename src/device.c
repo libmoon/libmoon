@@ -7,6 +7,7 @@
 #include <ixgbe_type.h>
 #include <rte_mbuf.h>
 #include <rte_eth_ctrl.h>
+#include <rte_pci.h>
 
 #include "rdtsc.h"
 
@@ -60,7 +61,7 @@ struct libmoon_device_config {
 
 int dpdk_configure_device(struct libmoon_device_config* cfg) {
 	const char* driver = dpdk_get_driver_name(cfg->port);
-	bool is_i40e_device = strcmp("rte_i40e_pmd", driver) == 0;
+	bool is_i40e_device = strcmp("net_i40e", driver) == 0;
 	// TODO: make fdir configurable
 	struct rte_fdir_conf fdir_conf = {
 		.mode = RTE_FDIR_MODE_PERFECT,
@@ -168,7 +169,11 @@ int dpdk_configure_device(struct libmoon_device_config* cfg) {
 	}
 	rc = rte_eth_dev_start(cfg->port);
 	// save memory address of the register file
-	registers[cfg->port] = (uint8_t*) dev_info.pci_dev->mem_resource[0].addr;
+	if (dev_info.pci_dev) {
+		registers[cfg->port] = (uint8_t*) dev_info.pci_dev->mem_resource[0].addr;
+	} else {
+		registers[cfg->port] = NULL; // TODO: provide dummy memory area here? check for null on access?
+	}
 	return rc;
 }
 
@@ -179,7 +184,11 @@ void* dpdk_get_eth_dev(int port) {
 int dpdk_get_pci_function(int port) {
 	struct rte_eth_dev_info dev_info;
 	rte_eth_dev_info_get(port, &dev_info);
-	return dev_info.pci_dev->addr.function;
+	if (dev_info.pci_dev) {
+		return dev_info.pci_dev->addr.function;
+	} else {
+		return 0;
+	}
 }
 
 const char* dpdk_get_driver_name(int port) {
@@ -200,13 +209,19 @@ uint64_t dpdk_get_mac_addr(int port, char* buf) {
 uint32_t dpdk_get_pci_id(uint8_t port) {
 	struct rte_eth_dev_info dev_info;
 	rte_eth_dev_info_get(port, &dev_info);
+	if (!dev_info.pci_dev) {
+		return 0;
+	}
 	return dev_info.pci_dev->id.vendor_id << 16 | dev_info.pci_dev->id.device_id;
 }
 
 uint8_t dpdk_get_socket(uint8_t port) {
 	struct rte_eth_dev_info dev_info;
 	rte_eth_dev_info_get(port, &dev_info);
-	int node = dev_info.pci_dev->numa_node;
+	if (!dev_info.pci_dev) {
+		return 0;
+	}
+	int node = dev_info.pci_dev->device.numa_node;
 	if (node == -1) {
 		node = 0;
 	}
@@ -215,37 +230,6 @@ uint8_t dpdk_get_socket(uint8_t port) {
 
 uint32_t dpdk_get_rte_queue_stat_cntrs_num() {
 	return RTE_ETHDEV_QUEUE_STAT_CNTRS;
-}
-
-
-// registers all libraries
-// this should be done on startup via a __attribute__((__constructor__)) function
-// however, there seems to be a bug: the init functions don't seem to work if called in the wrong order (note that the order depends on the linker)
-// calling devinitfn_bond_drv() last causes problems
-// so we just add them here again in an order that actually works independent from the link order
-void devinitfn_rte_vmxnet3_driver();
-void devinitfn_rte_virtio_driver();
-void devinitfn_pmd_ring_drv();
-void devinitfn_rte_ixgbe_driver();
-void devinitfn_rte_ixgbevf_driver();
-void devinitfn_rte_i40evf_driver();
-void devinitfn_rte_i40e_driver();
-void devinitfn_pmd_igb_drv();
-void devinitfn_pmd_igbvf_drv();
-void devinitfn_em_pmd_drv();
-void devinitfn_bond_drv();
-void register_pmd_drivers() {
-	devinitfn_bond_drv();
-	devinitfn_rte_vmxnet3_driver();
-	devinitfn_rte_virtio_driver();
-	devinitfn_pmd_ring_drv();
-	devinitfn_rte_ixgbevf_driver();
-	devinitfn_rte_ixgbe_driver();
-	devinitfn_rte_i40evf_driver();
-	devinitfn_rte_i40e_driver();
-	devinitfn_pmd_igb_drv();
-	devinitfn_pmd_igbvf_drv();
-	devinitfn_em_pmd_drv();
 }
 
 // the following functions are static inline function in header files
@@ -278,6 +262,13 @@ void dpdk_send_single_packet(uint8_t port_id, uint16_t queue_id, struct rte_mbuf
 		}
 	}
 	return;
+}
+
+
+uint16_t dpdk_try_send_single_packet(uint8_t port_id, uint16_t queue_id, struct rte_mbuf* pkt) {
+	uint16_t sent = 0;
+	sent = rte_eth_tx_burst(port_id, queue_id, &pkt, 1);
+	return sent;
 }
 
 // receive packets and save the tsc at the time of the rx call

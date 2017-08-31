@@ -28,20 +28,6 @@ struct rte_mempool* init_mem(uint32_t nb_mbuf, uint32_t socket, uint32_t mbuf_si
 	return pool;
 }
 
-// necessary due to retarded __attribute__((constructor)) stuff in mempool.c
-void mp_hdlr_init_ops_mp_mc();
-void mp_hdlr_init_ops_mp_sc();
-void mp_hdlr_init_ops_sp_mc();
-void mp_hdlr_init_ops_sp_sc();
-void mp_hdlr_init_ops_stack();
-void init_mempool_ops() {
-	mp_hdlr_init_ops_mp_mc();
-	mp_hdlr_init_ops_mp_sc();
-	mp_hdlr_init_ops_sp_mc();
-	mp_hdlr_init_ops_sp_sc();
-	mp_hdlr_init_ops_stack();
-}
-
 struct rte_mbuf* alloc_mbuf(struct rte_mempool* mp) {
 	struct rte_mbuf* res = rte_pktmbuf_alloc(mp);
 	return res;
@@ -101,5 +87,10 @@ void* alloc_huge(size_t size) {
 
 int free_huge(void* ptr, size_t size) {
 	return munmap(ptr, size);
+}
+
+// release/acquire semantics might also be useful, should be implemented in C++
+void fence() {
+	__sync_synchronize();
 }
 

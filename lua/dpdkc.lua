@@ -44,15 +44,12 @@ ffi.cdef[[
 		void *buf_addr;           /**< Virtual address of segment buffer. */
 		void *buf_physaddr; /**< Physical address of segment buffer. */
 
-		uint16_t buf_len;         /**< Length of segment buffer. */
-
 		/* next 6 bytes are initialised on RX descriptor rearm */
 		MARKER8 rearm_data;
 		uint16_t data_off;
-
 		uint16_t refcnt;
-		uint8_t nb_segs;          /**< Number of segments. */
-		uint8_t port;             /**< Input port. */
+		uint16_t nb_segs;          /**< Number of segments. */
+		uint16_t port;             /**< Input port. */
 
 		uint64_t ol_flags;        /**< Offload features. */
 		/* remaining bytes are set on RX when pulling packet from descriptor */
@@ -89,10 +86,9 @@ ffi.cdef[[
 			} sched;          /**< Hierarchical scheduler */
 			uint32_t usr;	  /**< User defined tags. See rte_distributor_process() */
 		} hash;                   /**< hash information */
-
-		uint32_t seqn; /**< Sequence number. See also rte_reorder_insert() */
-
-		uint16_t vlan_tci_outer;  /**< Outer VLAN Tag Control Identifier (CPU order) */
+		uint16_t vlan_tci_outer;
+		uint16_t buf_len;
+		uint64_t timestamp;
 
 		/* second cache line - fields only used in slow path or on TX */
 		MARKER_CACHE_ALIGNED cacheline1;
@@ -111,9 +107,7 @@ ffi.cdef[[
 
 		/** Timesync flags for use with IEEE1588. */
 		uint16_t timesync;
-
-		/* Chain of off-load operations to perform on mbuf */
-		struct rte_mbuf_offload *offload_ops;
+		uint32_t seqn;
 	};
 
 	// device status/info
@@ -165,7 +159,9 @@ ffi.cdef[[
 	struct rte_eth_desc_lim {
 		uint16_t nb_max;   
 		uint16_t nb_min;   
-		uint16_t nb_align; 
+		uint16_t nb_align;
+		uint16_t nb_seg_max;
+		uint16_t nb_mtu_seg_max; 
 	};
 	struct rte_eth_thresh {
 		uint8_t pthresh; 
@@ -249,11 +245,9 @@ ffi.cdef[[
 	void rte_pktmbuf_free_export(struct rte_mbuf* m);
 	uint16_t rte_mbuf_refcnt_read_export(struct rte_mbuf* m);
 	uint16_t rte_mbuf_refcnt_update_export(struct rte_mbuf* m, int16_t value);
-	void init_mempool_ops();
 
 	// devices
-	void register_pmd_drivers();
-	int rte_eal_pci_probe();
+	int rte_pci_probe();
 	int rte_eth_dev_count();
 	uint64_t dpdk_get_mac_addr(int port, char* buf);
 	void rte_eth_link_get(uint8_t port, struct rte_eth_link* link);
@@ -278,6 +272,7 @@ ffi.cdef[[
 	void rte_eth_macaddr_get(uint8_t port_id, struct ether_addr* mac_addr);
 	int rte_eth_set_queue_rate_limit(uint8_t port_id, uint16_t queue_idx, uint16_t tx_rate);
 	void rte_eth_dev_info_get(uint8_t port_id, struct rte_eth_dev_info* info);
+	void rte_eth_dev_stop(uint8_t port_id);
 
 	// rx & tx
 	uint16_t rte_eth_rx_burst_export(uint8_t port_id, uint16_t queue_id, struct rte_mbuf** rx_pkts, uint16_t nb_pkts);
@@ -286,6 +281,7 @@ ffi.cdef[[
 	int rte_eth_dev_tx_queue_stop(uint8_t port_id, uint16_t rx_queue_id);
 	void dpdk_send_all_packets(uint8_t port_id, uint16_t queue_id, struct rte_mbuf** pkts, uint16_t num_pkts);
 	void dpdk_send_single_packet(uint8_t port_id, uint16_t queue_id, struct rte_mbuf* pkt);
+	uint16_t dpdk_try_send_single_packet(uint8_t port_id, uint16_t queue_id, struct rte_mbuf* pkt);
 
 	// stats
 	uint32_t dpdk_get_rte_queue_stat_cntrs_num();

@@ -2,8 +2,6 @@
 --- @file dns.lua
 --- @brief (dns) utility.
 --- Utility functions for the dns_header structs 
---- defined in \ref headers.lua . \n
---- Includes:
 --- - dns constants
 --- - dns header utility
 --- - Definition of dns packets
@@ -11,17 +9,13 @@
 --- Copyright (c) Santiago R.R. <santiago.ruano-rincon@telecom-bretagne.eu>
 ------------------------------------------------------------------------
 
---[[
--- TODO: Does this DNS header need a length member?
--- check: - packet.lua: if the header has a length member, adapt packetSetLength; 
---]]
 
 local ffi = require "ffi"
-local pkt = require "packet"
+require "proto.template"
+local initHeader = initHeader
 
 local ntoh, hton = ntoh, hton
 local bor, band, bnot, rshift, lshift= bit.bor, bit.band, bit.bnot, bit.rshift, bit.lshift
-require "headers"
 
 require "math"
 
@@ -152,7 +146,21 @@ ARCOUNT         an unsigned 16 bit integer specifying the number of
                 resource records in the additional records section.
 ]]--
 
-local dnsHeader = {}
+-- definition of the header format
+dns.headerFormat = [[
+	uint16_t	id;
+	uint16_t	hdrflags;
+	uint16_t	qdcount;
+	uint16_t	ancount;
+	uint16_t	nscount;
+	uint16_t	arcount;
+	uint8_t		body[];
+]]
+
+--- Variable sized member
+dns.headerVariableMember = body
+
+local dnsHeader = initHeader()
 dnsHeader.__index = dnsHeader
 
 --- Set the query id.
@@ -490,7 +498,7 @@ end
 --- @return QueryBody as bit integer array?.
 function dnsHeader:getMessageContent()
 	-- TODO implement!
-	return self.body 
+	return self.body
 end
 
 --- Retrieve the QueryBody as string.
@@ -573,80 +581,27 @@ end
 --- Retrieve the values of all members.
 --- @return Values in string format.
 function dnsHeader:getString()
-	return "DNS "  
-		.. "Transation ID: " .. self:getIdString()
-		.. "Response/Query: " .. self:getQRString()
-		.. "Kind of query: " .. self:getOPCodeString()
-		.. "Authoritative Answer: " .. self:getAAString()
-		.. "Truncated message: " .. self:getTCString()
-		.. "Recursion desired: " .. self:getRDString()
-		.. "Recursion available: " .. self:getRAString()
-		.. "Response Code: " .. self:getRCodeString()
-		.. "QDCount: " .. self:getQDCountString()
-		.. "ANCount: " .. self:getANCountString()
-		.. "NSCount: " .. self:getNSCountString()
-		.. "ARCount: " .. self:getARCountString()
-		.. "MessageContent: " .. self:getMessageContentString()
+	return "DNS"  
+		.. " Transation ID: " .. self:getIdString()
+		.. " Response/Query: " .. self:getQRString()
+		.. " Kind of query: " .. self:getOPCodeString()
+		.. " Authoritative Answer: " .. self:getAAString()
+		.. " Truncated message: " .. self:getTCString()
+		.. " Recursion desired: " .. self:getRDString()
+		.. " Recursion available: " .. self:getRAString()
+		.. " Response Code: " .. self:getRCodeString()
+		.. " QDCount: " .. self:getQDCountString()
+		.. " ANCount: " .. self:getANCountString()
+		.. " NSCount: " .. self:getNSCountString()
+		.. " ARCount: " .. self:getARCountString()
+		.. " MessageContent: " .. self:getMessageContentString()
 end
 
---- Resolve which header comes after this one (in a packet)
---- For instance: in tcp/udp based on the ports
---- This function must exist and is only used when get/dump is executed on 
---- an unknown (mbuf not yet casted to e.g. tcpv6 packet) packet (mbuf)
---- @return String next header (e.g. 'eth', 'ip4', nil)
-function dnsHeader:resolveNextHeader()
-	return nil
-end	
-
---- Change the default values for namedArguments (for fill/get)
---- This can be used to for instance calculate a length value based on the total packet length
---- See proto/ip4.setDefaultNamedArgs as an example
---- This function must exist and is only used by packet.fill
---- @param pre The prefix used for the namedArgs, e.g. 'dns'
---- @param namedArgs Table of named arguments (see See more)
---- @param nextHeader The header following after this header in a packet
---- @param accumulatedLength The so far accumulated length for previous headers in a packet
---- @return Table of namedArgs
---- @see dnsHeader:fill
-function dnsHeader:setDefaultNamedArgs(pre, namedArgs, nextHeader, accumulatedLength)
-	--[[ Example from upd.lua ]]--
-	-- set length
-	if not namedArgs[pre .. "Length"] and namedArgs["pktLength"] then
-		namedArgs[pre .. "Length"] = namedArgs["pktLength"] - accumulatedLength
-	end
-
-	return namedArgs
-
-end
-
-----------------------------------------------------------------------------------
----- Packets
-----------------------------------------------------------------------------------
-
---[[ define how a packet with this header looks like
--- e.g. 'ip4' will add a member ip4 of type struct ip4_header to the packet
--- e.g. {'ip4', 'innerIP'} will add a member innerIP of type struct ip4_header to the packet
---]]
---- Cast the packet to a DNS (IP4) packet 
-pkt.getDns4Packet = packetCreate('eth', 'ip4', 'udp', 'dns')
-
---- Cast the packet to a DNS (IP6) packet
-pkt.getDns6Packet = packetCreate('eth', 'ip6', 'udp', 'dns')
-
---- Cast the packet to a DNS (IPv4) packet, either using IP4 (nil/true) or IP6 (false), depending on the passed boolean.
-pkt.getDnsPacket = function(self, ip4) 
-	ip4 = ip4 == nil or ip4 
-	if ip4 then 
-		return pkt.getDns4Packet(self) 
-	else 
-		return pkt.getDns6Packet(self) 
-	end 
-end
 
 ------------------------------------------------------------------------
 ---- Metatypes
 ------------------------------------------------------------------------
 
-ffi.metatype("struct dns_header", dnsHeader)
+dns.metatype = dnsHeader
 
 return dns

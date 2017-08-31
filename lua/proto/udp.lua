@@ -2,7 +2,6 @@
 --- @file udp.lua
 --- @brief User datagram protocol (UDP) utility.
 --- Utility functions for udp_header struct
---- defined in \ref headers.lua . \n
 --- Includes:
 --- - Udp constants
 --- - Udp header utility
@@ -10,10 +9,10 @@
 ------------------------------------------------------------------------
 
 local ffi = require "ffi"
-local pkt = require "packet"
 
 require "utils"
-require "headers"
+require "proto.template"
+local initHeader = initHeader
 
 local ntoh, hton = ntoh, hton
 local ntoh16, hton16 = ntoh16, hton16
@@ -31,11 +30,10 @@ local udp = {}
 
 -- TODO move well-known ports somewhere else, those are not only Udp
 
---- Well known port for Ptp event message
+udp.PORT_DNS = 53
 udp.PORT_PTP_EVENTS = 319
---- Well known port for Ptp general message
 udp.PORT_PTP_GENERAL_MESSAGES = 320
---- Well known port for VXLAN (RFC7348)
+udp.PORT_IPFIX = 4739
 udp.PORT_VXLAN = 4789
 udp.PORT_SFLOW = 6343
 
@@ -43,9 +41,20 @@ udp.PORT_SFLOW = 6343
 ---------------------------------------------------------------------------
 ---- UDP header
 ---------------------------------------------------------------------------
+	
+-- definition of the header format
+udp.headerFormat = [[
+	uint16_t	src;
+	uint16_t	dst;
+	uint16_t	len;
+	uint16_t	cs;
+]]
 
---- Module for udp_header struct (see \ref headers.lua).
-local udpHeader = {}
+--- Variable sized member
+udp.headerVariableMember = nil
+
+--- Module for udp_header struct
+local udpHeader = initHeader()
 udpHeader.__index = udpHeader
 
 --- Set the source port.
@@ -176,7 +185,9 @@ end
 local mapNamePort = {
 	ptp = { udp.PORT_PTP_EVENTS, udp.PORT_PTP_GENERAL_MESSAGES },
 	vxlan = udp.PORT_VXLAN,
-	sflow = udp.PORT_SFLOW
+	sflow = udp.PORT_SFLOW,
+	dns = udp.PORT_DNS,
+	ipfix = udp.PORT_IPFIX,
 }
 
 --- Resolve which header comes after this one (in a packet).
@@ -189,7 +200,7 @@ function udpHeader:resolveNextHeader()
 	for name, _port in pairs(mapNamePort) do
 		if type(_port) == "table" then
 			for _, p in pairs(_port) do
-				if port== p then
+				if port == p then
 					return name
 				end
 			end
@@ -210,7 +221,7 @@ end
 --- @param accumulatedLength The so far accumulated length for previous headers in a packet
 --- @return Table of namedArgs
 --- @see ip4Header:fill
-function udpHeader:setDefaultNamedArgs(pre, namedArgs, nextHeader, accumulatedLength)
+function udpHeader:setDefaultNamedArgs(pre, namedArgs, nextHeader, accumulatedLength, packetLength)
 	-- set length
 	if not namedArgs[pre .. "Length"] and namedArgs["pktLength"] then
 		namedArgs[pre .. "Length"] = namedArgs["pktLength"] - accumulatedLength
@@ -228,30 +239,12 @@ function udpHeader:setDefaultNamedArgs(pre, namedArgs, nextHeader, accumulatedLe
 	return namedArgs
 end
 
-----------------------------------------------------------------------------------
----- Packets
-----------------------------------------------------------------------------------
-
---- Cast the packet to an Udp (IP4) packet
-pkt.getUdp4Packet = packetCreate("eth", "ip4", "udp")
---- Cast the packet to an Udp (IP6) packet
-pkt.getUdp6Packet = packetCreate("eth", "ip6", "udp") 
---- Cast the packet to an Udp packet, either using IP4 (nil/true) or IP6 (false), depending on the passed boolean.
-pkt.getUdpPacket = function(self, ip4) 
-	ip4 = ip4 == nil or ip4 
-	if ip4 then 
-		return pkt.getUdp4Packet(self) 
-	else 
-		return pkt.getUdp6Packet(self)
-	end 
-end   
-
 
 ------------------------------------------------------------------------
 ---- Metatypes
 ------------------------------------------------------------------------
 
-ffi.metatype("struct udp_header", udpHeader)
+udp.metatype = udpHeader
 
 
 return udp

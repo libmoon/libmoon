@@ -20,8 +20,8 @@ local memory     = require "memory"
 local serpent    = require "Serpent"
 local argparse   = require "argparse"
 
--- all available headers, packets, ... and their utility functions
-require "proto.proto"
+-- loads all headers of the protocol stack
+require "packet"
 
 -- TODO: add command line switches for this and other luajit-debugging features
 --require("jit.v").on()
@@ -94,6 +94,8 @@ local function master(_, file, ...)
 		end
 	end
 	xpcall(_G.master, getStackTrace, unpack(concatArrays(parsedArgs, args)))
+	-- stop devices if necessary (seems to be a problem with virtio attached via vhost user
+	device.cleanupDevices()
 	-- exit program once the master task finishes
 	-- it is up to the user program to wait for slaves to finish, e.g. by calling dpdk.waitForSlaves()
 end

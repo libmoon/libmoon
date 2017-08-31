@@ -133,7 +133,7 @@ local function getCsvFinal(direction)
 	return function(stats, file)
 		file:write(("%d,%s,%s,%s,%s,%s,%s,%s\n"):format(
 			time(), stats.name, direction,
-			0, 0, 0,
+			stats.mpps.avg,stats.mbit.avg, stats.wireMbit.avg,
 			stats.total, stats.totalBytes
 		))
 		file:flush()
@@ -174,6 +174,8 @@ formatters["nil"] = {
 }
 
 
+local openFiles = {}
+
 --- base constructor for rx and tx counters
 local function newCounter(ctrType, name, dev, format, file, direction)
 	local id
@@ -189,8 +191,15 @@ local function newCounter(ctrType, name, dev, format, file, direction)
 	file = file or io.stdout
 	local closeFile = false
 	if type(file) == "string" then
-		file = io.open(file, "w+")
-		closeFile = true
+		local fileName = file
+		closeFile = file
+		if openFiles[file] then
+			openFiles[fileName].refCount = openFiles[fileName].refCount + 1
+			file = openFiles[fileName].file
+		else
+			file = io.open(file, "w+")
+			openFiles[fileName] = {refCount = 1, file = file}
+		end
 	end
 	if not formatters[format] then
 		log:fatal("Unsupported output format " .. format)
@@ -231,7 +240,7 @@ local function updateCounter(self, time, pkts, bytes, dontPrint)
 		self.total, self.totalBytes = pkts, bytes
 		self.lastUpdate = time
 		self:print("Init")
-		return
+		return false
 	end
 	local elapsed = time - self.lastUpdate
 	self.lastUpdate = time
@@ -257,6 +266,7 @@ local function updateCounter(self, time, pkts, bytes, dontPrint)
 	table.insert(self.mpps, mpps)
 	table.insert(self.mbit, mbit)
 	table.insert(self.wireMbit, wireRate)
+	return true
 end
 
 local function getStats(self)
@@ -278,7 +288,12 @@ local function finalizeCounter(self, sleep)
 	mod.addStats(self.wireMbit, true)
 	self:print("Final")
 	if self.closeFile then
-		self.file:close()
+		local file = openFiles[self.closeFile]
+		if file.refCount == 1 then
+			file.file:close()
+		else
+			file.refCount = file.refCount - 1
+		end
 	end
 end
 
@@ -344,16 +359,20 @@ end
 function rxCounter:update()
 	local time = libmoon.getTime()
 	if self.lastUpdate and time <= self.lastUpdate + 1 then
-		return
+		return false
 	end
 	local pkts, bytes = self:getThroughput()
-	updateCounter(self, time, pkts, bytes)
+	return updateCounter(self, time, pkts, bytes)
 end
 
-function rxCounter:getStats()
-	-- force an update
-	local pkts, bytes = self:getThroughput()
-	updateCounter(self, libmoon.getTime(), pkts, bytes, true)
+--- Get accumulated statistics.
+--- Calculate the average throughput.
+function rxCounter:getStats(forceUpdate)
+	if forceUpdate then
+		-- force an update
+		local pkts, bytes = self:getThroughput()
+		updateCounter(self, libmoon.getTime(), pkts, bytes, true)
+	end
 	return getStats(self)
 end
 
@@ -384,10 +403,10 @@ function manualRxCounter:update(pkts, bytes)
 	self.currentBytes = self.currentBytes + bytes
 	local time = libmoon.getTime()
 	if self.lastUpdate and time <= self.lastUpdate + 1 then
-		return
+		return false
 	end
 	local pkts, bytes = self:getThroughput()
-	updateCounter(self, time, pkts, bytes)
+	return updateCounter(self, time, pkts, bytes)
 end
 
 function manualRxCounter:getThroughput()
@@ -400,10 +419,10 @@ function manualRxCounter:updateWithSize(pkts, size)
 	self.currentBytes = self.currentBytes + pkts * (size + 4)
 	local time = libmoon.getTime()
 	if self.lastUpdate and time <= self.lastUpdate + 1 then
-		return
+		return false
 	end
 	local pkts, bytes = self:getThroughput()
-	updateCounter(self, time, pkts, bytes)
+	return updateCounter(self, time, pkts, bytes)
 end
 
 
@@ -469,18 +488,20 @@ end
 function txCounter:update()
 	local time = libmoon.getTime()
 	if self.lastUpdate and time <= self.lastUpdate + 1 then
-		return
+		return false
 	end
 	local pkts, bytes = self:getThroughput()
-	updateCounter(self, time, pkts, bytes)
+	return updateCounter(self, time, pkts, bytes)
 end
 
 --- Get accumulated statistics.
 --- Calculate the average throughput.
-function txCounter:getStats()
-	-- force an update
-	local pkts, bytes = self:getThroughput()
-	updateCounter(self, libmoon.getTime(), pkts, bytes, true)
+function txCounter:getStats(forceUpdate)
+	if forceUpdate then
+		-- force an update
+		local pkts, bytes = self:getThroughput()
+		updateCounter(self, libmoon.getTime(), pkts, bytes, true)
+	end
 	return getStats(self)
 end
 
@@ -505,10 +526,10 @@ function manualTxCounter:update(pkts, bytes)
 	self.currentBytes = self.currentBytes + bytes
 	local time = libmoon.getTime()
 	if self.lastUpdate and time <= self.lastUpdate + 1 then
-		return
+		return false
 	end
 	local pkts, bytes = self:getThroughput()
-	updateCounter(self, time, pkts, bytes)
+	return updateCounter(self, time, pkts, bytes)
 end
 
 function manualTxCounter:updateWithSize(pkts, size)
@@ -516,10 +537,10 @@ function manualTxCounter:updateWithSize(pkts, size)
 	self.currentBytes = self.currentBytes + pkts * (size + 4)
 	local time = libmoon.getTime()
 	if self.lastUpdate and time <= self.lastUpdate + 1 then
-		return
+		return false
 	end
 	local pkts, bytes = self:getThroughput()
-	updateCounter(self, time, pkts, bytes)
+	return updateCounter(self, time, pkts, bytes)
 end
 
 function manualTxCounter:getThroughput()
@@ -534,6 +555,7 @@ end
 ---    txDevices: list of devices to track tx stats
 ---    format: output format, cf. stats tracking documentation, default: plain
 ---    file: file to write to, default: stdout
+--- A device is either a normal device object or an table with the fields dev, format, and file.
 --- Alternative mode: just the devices as an array if you only want rx and tx stats with default settings
 function mod.startStatsTask(args)
 	args.devices = args.devices or {}
@@ -550,10 +572,11 @@ end
 local function removeDuplicates(tbl)
 	local seen = {}
 	for i = #tbl, 1, -1 do
-		if seen[tbl[i].id] then
+		local id = tbl[i].id or tbl[i].dev.id
+		if seen[id] then
 			table.remove(tbl, i)
 		end
-		seen[tbl[i].id] = true
+		seen[id] = true
 	end
 end
 
@@ -566,10 +589,24 @@ local function statsTask(args)
 	removeDuplicates(args.rxDevices)
 	removeDuplicates(args.txDevices)
 	for i, dev in ipairs(args.rxDevices) do
-		table.insert(counters, mod:newDevRxCounter(dev, args.format, args.file))
+		local format = args.format
+		local file = args.file
+		if not dev.id then
+			format = dev.format
+			file = dev.file
+			dev = dev.dev
+		end
+		table.insert(counters, mod:newDevRxCounter(dev, format, file))
 	end
 	for i, dev in ipairs(args.txDevices) do
-		table.insert(counters, mod:newDevTxCounter(dev, args.format, args.file))
+		local format = args.format
+		local file = args.file
+		if not dev.id then
+			format = dev.format
+			file = dev.file
+			dev = dev.dev
+		end
+		table.insert(counters, mod:newDevTxCounter(dev, format, file))
 	end
 	while libmoon.running(200) do
 		for i, ctr in ipairs(counters) do

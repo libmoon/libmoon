@@ -2,7 +2,6 @@
 --- @file ip6.lua
 --- @brief Internet protocol (v6) utility.
 --- Utility functions for the ip6_address and ip6_header structs 
---- defined in \ref headers.lua . \n
 --- Includes:
 --- - IP6 constants
 --- - IP6 address utility
@@ -11,10 +10,10 @@
 ------------------------------------------------------------------------
 
 local ffi = require "ffi"
-local pkt = require "packet"
 
 require "utils"
-require "headers"
+require "proto.template"
+local initHeader = initHeader
 
 local ntoh, hton = ntoh, hton
 local ntoh16, hton16 = ntoh16, hton16
@@ -35,6 +34,7 @@ local ip6 = {}
 ip6.PROTO_TCP 	= 0x06
 --- NextHeader field value for Udp
 ip6.PROTO_UDP 	= 0x11
+ip6.PROTO_GRE = 0x2f
 --- NextHeader field value for Icmp
 ip6.PROTO_ICMP	= 0x3a -- 58
 ip6.PROTO_ESP	= 0x32
@@ -45,7 +45,15 @@ ip6.PROTO_AH	= 0x33
 ---- IPv6 addresses
 -------------------------------------------------------------------------------------
 
---- Module for ip6_address struct (see \ref headers.lua).
+ffi.cdef[[
+	union ip6_address {
+		uint8_t 	uint8[16];
+		uint32_t	uint32[4];
+		uint64_t	uint64[2];
+	};
+]]
+
+--- Module for ip6_address struct
 local ip6Addr = {}
 ip6Addr.__index = ip6Addr
 local ip6AddrType = ffi.typeof("union ip6_address")
@@ -164,8 +172,21 @@ end
 ---- IPv6 header
 ------------------------------------------------------------------------------
 
---- Module for ip6_header struct (see \ref headers.lua).
-local ip6Header = {}
+-- definition of the header format
+ip6.headerFormat = [[
+	uint32_t 		vtf;
+	uint16_t  		len;
+	uint8_t   		nextHeader;
+	uint8_t   		ttl;
+	union ip6_address 	src;
+	union ip6_address	dst;
+]]
+
+--- Variable sized member
+ip6.headerVariableMember = nil
+
+--- Module for ip6_header struct
+local ip6Header = initHeader()
 ip6Header.__index = ip6Header
 
 --- Set the version. 
@@ -288,6 +309,8 @@ function ip6Header:getNextHeaderString()
 		cleartext = "(ESP)"
 	elseif proto == ip6.PROTO_AH then
 		cleartext = "(AH)"
+	elseif proto == ip6.PROTO_GRE then
+		cleartext = "(GRE)"
 	else
 		cleartext = "(unknown)"
 	end
@@ -436,6 +459,7 @@ local mapNameProto = {
 	tcp = ip6.PROTO_TCP, 
 	esp = ip6.PROTO_ESP,
 	ah = ip6.PROTO_AH,
+	gre = ip6.PROTO_GRE,
 }
 
 --- Resolve which header comes after this one (in a packet).
@@ -463,7 +487,7 @@ end
 --- @param accumulatedLength The so far accumulated length for previous headers in a packet
 --- @return Table of namedArgs
 --- @see ip6Header:fill
-function ip6Header:setDefaultNamedArgs(pre, namedArgs, nextHeader, accumulatedLength)
+function ip6Header:setDefaultNamedArgs(pre, namedArgs, nextHeader, accumulatedLength, headerLength)
 	-- set length
 	if not namedArgs[pre .. "Length"] and namedArgs["pktLength"] then
 		namedArgs[pre .. "Length"] = namedArgs["pktLength"] - (accumulatedLength + 40)
@@ -481,19 +505,12 @@ function ip6Header:setDefaultNamedArgs(pre, namedArgs, nextHeader, accumulatedLe
 	return namedArgs
 end
 
-----------------------------------------------------------------------------------
----- Packets
-----------------------------------------------------------------------------------
-
---- Cast the packet to an IP6 packet 
-pkt.getIP6Packet = packetCreate("eth", "ip6")
-
 
 ------------------------------------------------------------------------
 ---- Metatypes
 ------------------------------------------------------------------------
 
 ffi.metatype("union ip6_address", ip6Addr)
-ffi.metatype("struct ip6_header", ip6Header)
+ip6.metatype = ip6Header
 
 return ip6

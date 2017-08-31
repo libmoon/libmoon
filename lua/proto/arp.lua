@@ -2,7 +2,6 @@
 --- @file arp.lua
 --- @brief Address resolution protocol (ARP) utility.
 --- Utility functions for the arp_header struct
---- defined in \ref headers.lua . \n
 --- Includes:
 --- - Arp constants
 --- - Arp address utility
@@ -12,9 +11,9 @@
 ------------------------------------------------------------------------
 
 local ffi = require "ffi"
-local pkt = require "packet"
+require "proto.template"
+local initHeader = initHeader
 
-require "headers"
 local dpdkc = require "dpdkc"
 local dpdk = require "dpdk"
 local memory = require "memory"
@@ -23,6 +22,7 @@ local ns = require "namespaces"
 local libmoon = require "libmoon"
 local pipe = require "pipe"
 local log = require "log"
+local timer = require "timer"
 
 local eth = require "proto.ethernet"
 
@@ -56,8 +56,24 @@ arp.OP_REPLY = 2
 ---- ARP header
 --------------------------------------------------------------------------------------------------------
 
---- Module for arp_header struct (see \ref headers.lua).
-local arpHeader = {}
+-- definition of the header format
+arp.headerFormat = [[
+	uint16_t	hrd;
+	uint16_t	pro;
+	uint8_t		hln;
+	uint8_t		pln;
+	uint16_t	op;
+	union mac_address	sha;
+	union ip4_address	spa;
+	union mac_address	tha;
+	union ip4_address	tpa;
+]]
+
+--- Variable sized member
+arp.headerVariableMember = nil
+
+--- Module for arp_header struct
+local arpHeader = initHeader()
 arpHeader.__index = arpHeader
 
 --- Set the hardware address type.
@@ -373,36 +389,6 @@ function arpHeader:getString()
 	return str
 end
 
---- Resolve which header comes after this one (in a packet).
---- For instance: in tcp/udp based on the ports.
---- This function must exist and is only used when get/dump is executed on
---- an unknown (mbuf not yet casted to e.g. tcpv6 packet) packet (mbuf)
---- @return String next header (e.g. 'udp', 'icmp', nil)
-function arpHeader:resolveNextHeader()
-	return nil
-end
-
---- Change the default values for namedArguments (for fill/get).
---- This can be used to for instance calculate a length value based on the total packet length.
---- See proto/ip4.setDefaultNamedArgs as an example.
---- This function must exist and is only used by packet.fill.
---- @param pre The prefix used for the namedArgs, e.g. 'arp'
---- @param namedArgs Table of named arguments (see See Also)
---- @param nextHeader The header following after this header in a packet
---- @param accumulatedLength The so far accumulated length for previous headers in a packet
---- @return Table of namedArgs
---- @see arpHeader:fill
-function arpHeader:setDefaultNamedArgs(pre, namedArgs, nextHeader, accumulatedLength)
-	return namedArgs
-end
-	
----------------------------------------------------------------------------------
----- Packets
----------------------------------------------------------------------------------
-
---- Cast the packet to an Arp packet 
-pkt.getArpPacket = packetCreate("eth", "arp")
-
 
 ---------------------------------------------------------------------------------
 ---- ARP Handler Task
@@ -416,17 +402,25 @@ local ARP_AGING_TIME = 30
 --- the current implementation does not handle large tables efficiently \n
 arp.arpTask = "__MG_ARP_TASK"
 
---- Start the ARP task on a shared core
---- @param queues array of queue pairs to use, each entry has the following format
---- {rxQueue = rxQueue, txQueue = txQueue, ips = "ip" | {"ip", ...}}
---- rxQueue is optional, packets can alternatively be provided through the pipe API, see arp.handlePacket()
-function arp.startArpTask(queues)
-	libmoon.startSharedTask(arp.arpTask, queues)
-end
-
 -- Arp table
 local arpTable = ns:get()
 local pipes = ns:get()
+
+--- Start the ARP task on a shared core
+--- @param queues array of queue pairs and options, each array entry has the following format
+---   {rxQueue = rxQueue, txQueue = txQueue, ips = "ip" | {"ip", ...}}
+---   rxQueue is optional, packets can alternatively be provided through the pipe API, see arp.handlePacket()
+--- Options:
+---   gratArpInterval, interval in seconds in which the gratuitous is repeated.
+---      this can be useful in poorly configured networks (switch MAC timeout vs router ARP timeout) on ports that never send out packets except for ARP
+function arp.startArpTask(queues)
+	arpTable.stopTask = nil
+	libmoon.startSharedTask(arp.arpTask, queues)
+end
+
+function arp.stopArpTask()
+	arpTable.stopTask = true
+end
 
 local function handleArpPacket(rxBufs, txBufs, nic, ipToMac)
 	local rxPkt = rxBufs[1]:getArpPacket()
@@ -500,9 +494,26 @@ local function arpTask(qs)
 	
 	arpTable.taskRunning = true
 
-	while libmoon.running() do
-		
-		for _, nic in pairs(qs) do
+	local gratArpTimer = timer:new(0)
+	while libmoon.running() and not arpTable.stopTask do
+		-- send out gratuitous arp
+		if gratArpTimer:expired() then
+			gratArpTimer:reset(qs.gratArpInterval or math.huge)
+			for _, nic in ipairs(qs) do
+				txBufs:alloc(60)
+				local pkt = txBufs[1]:getArpPacket()
+				pkt.eth:setDstString(eth.BROADCAST)
+				local mac = nic.txQueue.dev:getMacString()
+				pkt.eth:setSrcString(mac)
+				pkt.arp:setOperation(arp.OP_REQUEST)
+				pkt.arp:setHardwareDstString(eth.BROADCAST)
+				pkt.arp:setProtoDst(parseIPAddress(nic.ips[1]))
+				pkt.arp:setProtoSrc(parseIPAddress(nic.ips[1]))
+				pkt.arp:setHardwareSrcString(mac)
+				nic.txQueue:send(txBufs)
+			end
+		end
+		for _, nic in ipairs(qs) do
 			if nic.rxQueue then
 				rx = nic.rxQueue:tryRecvIdle(rxBufs, 1000)
 				assert(rx <= 1)
@@ -553,14 +564,14 @@ local function arpTask(qs)
 			value.timestamp = ts
 			arpTable[ip] = value
 			ip = tonumber(ip)
-			txBufs:alloc(60)
-			local pkt = txBufs[1]:getArpPacket()
-			pkt.eth:setDstString(eth.BROADCAST)
-			pkt.arp:setOperation(arp.OP_REQUEST)
-			pkt.arp:setHardwareDstString(eth.BROADCAST)
-			pkt.arp:setProtoDst(ip)
-			-- TODO: do not send requests on all devices, but only the relevant
-			for _, nic in pairs(qs) do
+			for _, nic in ipairs(qs) do
+				-- TODO: do not send requests on all devices, but only the relevant
+				txBufs:alloc(60)
+				local pkt = txBufs[1]:getArpPacket()
+				pkt.eth:setDstString(eth.BROADCAST)
+				pkt.arp:setOperation(arp.OP_REQUEST)
+				pkt.arp:setHardwareDstString(eth.BROADCAST)
+				pkt.arp:setProtoDst(ip)
 				local mac = nic.txQueue.dev:getMacString()
 				pkt.eth:setSrcString(mac)
 				pkt.arp:setProtoSrc(parseIPAddress(nic.ips[1]))
@@ -573,6 +584,7 @@ local function arpTask(qs)
 		end
 		libmoon.sleepMillisIdle(1)
 	end
+	arpTable.taskRunning = nil
 end
 
 --- Send a buf containing an ARP packet to the ARP task.
@@ -604,6 +616,7 @@ function arp.lookup(ip)
 		local waitForArpTask = 0
 		while not arpTable.taskRunning and waitForArpTask < 10 do
 			libmoon.sleepMillis(100)
+			waitForArpTask = waitForArpTask + 1
 		end
 		if not arpTable.taskRunning then
 			error("ARP task is not running")
@@ -648,7 +661,7 @@ __MG_ARP_TASK = arpTask
 ---- Metatypes
 ---------------------------------------------------------------------------------
 
-ffi.metatype("struct arp_header", arpHeader)
+arp.metatype = arpHeader
 
 return arp
 

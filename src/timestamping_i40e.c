@@ -9,6 +9,7 @@
 
 // i40e_ethdev depends on i40e_type.h but doesn't include it
 #include <i40e_type.h>
+#include <virtchnl.h>
 // clashes with ixgbe_ethdev.h
 #include <i40e_ethdev.h>
 

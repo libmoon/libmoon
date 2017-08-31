@@ -19,6 +19,10 @@ local function loadAllocator()
 	if ok then
 		return jemalloc, "jemalloc"
 	end
+	local ok, jemalloc = pcall(ffi.load, "libjemalloc.so.2")
+	if ok then
+		return jemalloc, "jemalloc"
+	end
 	return ffi.C, "system malloc"
 end
 
@@ -92,6 +96,14 @@ function mod.freeHuge(ptr, size)
 	end
 end
 
+ffi.cdef[[
+	void fence();
+]]
+
+function mod.fence()
+	ffi.C.fence()
+end
+
 local mempools = {}
 local mempoolCache = ns:get()
 
@@ -160,16 +172,21 @@ end
 function mod.createMemPool(...)
 	local args = {...}
 	if type(args[1]) == "table" then
-	  args = args[1]
+		args = args[1]
 	else
-      if type(args[1]) == "function" then
-	    -- (func[, socket])
-	    args.socket = args[2]
-        args.func = args[1]
-      elseif type(args[2]) == "number" then
-        -- (n[, socket])
-        args.socket = args[2]
-	  end
+		if type(args[1]) == "function" then
+			-- (func[, socket])
+			args.socket = args[2]
+			args.func = args[1]
+		elseif type(args[2]) == "number" then
+			-- (n[, socket])
+			args.socket = args[2]
+		elseif type(args[1]) == "number" then
+			-- (n[, func])
+			args.n = args[1]
+			args.func = args[2]
+			args.socket = args[3]
+		end
 	end
 	-- DPDK recommends to use a value of n=2^k - 1 here
 	args.n = args.n or 2047

@@ -2,7 +2,7 @@
 
 local mod = {}
 
-local libmoon     = require "libmoon"
+local libmoon    = require "libmoon"
 local ffi        = require "ffi"
 local dpdkc      = require "dpdkc"
 local dpdk       = require "dpdk"
@@ -15,12 +15,6 @@ local pciIds     = require "pci-ids"
 local drivers    = require "drivers"
 local eth        = require "proto.ethernet"
 local E          = require "syscall".c.E
-require "headers"
-
-function mod.init()
-	dpdkc.rte_pmd_init_all_export();
-	dpdkc.rte_eal_pci_probe();
-end
 
 function mod.numDevices()
 	return dpdkc.rte_eth_dev_count();
@@ -85,6 +79,8 @@ local devices = namespaces:get()
 ---   txQueues optional (default = 1) Number of TX queues to configure 
 ---   rxDescs optional (default = 512)
 ---   txDescs optional (default = 1024)
+---   numBufs optional (default max(2047, rxDescs * 2 -1))
+---   bufSize optional (default = 2048)
 ---   speed optional (default = 0/max) Speed in Mbit to negotiate (currently disabled due to DPDK changes)
 ---   dropEnable optional (default = true) Drop rx packets directly if no rx descriptors are available
 ---   rssQueues optional (default = 0) Number of queues to use for RSS
@@ -108,10 +104,13 @@ function mod.config(args)
 		return mod.get(args.port)
 	end
 	local info = dev.getInfo{id = args.port}
+	local driverInfo = drivers.getDriverInfo(ffi.string(info.driver_name))
 	args.rxQueues = args.rxQueues or 1
 	args.txQueues = args.txQueues or 1
 	args.rxDescs = args.rxDescs or 512
 	args.txDescs = args.txDescs or 1024
+	args.numBufs = args.numBufs or math.max(2047, args.rxDescs * 2 - 1)
+	args.bufSize = args.bufSize or 2048
 	if args.rxQueues > info.max_rx_queues then
 		log:fatal("device supports only %d rx queues, requested %d", info.max_rx_queues, args.rxQueues)
 	end
@@ -132,7 +131,7 @@ function mod.config(args)
 	end
 	args.rssQueues = args.rssQueues or 0
 	if args.disableOffloads == nil then
-		args.disableOffloads = drivers.getDriverInfo(ffi.string(info.driver_name)).disableOffloads
+		args.disableOffloads = driverInfo.disableOffloads
 	end
 	args.rssFunctions = args.rssFunctions or {
 		dpdk.ETH_RSS_IPV4,
@@ -166,7 +165,7 @@ function mod.config(args)
 	if not args.mempools then
 		args.mempools = {}
 		for i = 1, args.rxQueues do
-			table.insert(args.mempools, memory.createMemPool{n = math.max(2047, args.rxDescs * 2 - 1), socket = dpdkc.dpdk_get_socket(args.port)})
+			table.insert(args.mempools, memory.createMemPool{n = args.numBufs, socket = dpdkc.dpdk_get_socket(args.port), bufSize = args.bufSize})
 		end
 	elseif #args.mempools ~= args.rxQueues then
 		log:fatal("number of mempools must equal number of rx queues")
@@ -545,6 +544,12 @@ function dev:clearRxStats()
 	return
 end
 
+function dev:stop()
+	self.initialized = false
+	self:store()
+	dpdkc.rte_eth_dev_stop(self.id)
+end
+
 --- Enable tx timestamps.
 --- @see dev.enableTxTimestamps()
 function txQueue:enableTimestamps()
@@ -606,12 +611,20 @@ end
 
 ffi.cdef[[
 
-   struct rte_eth_xstat_name {
-           char name[64];
-   };
+struct rte_eth_xstat {
+        uint64_t id;
+        uint64_t value;
+};
+
+
+struct rte_eth_xstat_name {
+	char name[64];
+};
    
 int rte_eth_xstats_get_names(uint8_t port_id, struct rte_eth_xstat_name* names, uint32_t size);
-
+int rte_eth_xstats_get(uint8_t port_id, struct rte_eth_xstat * xstats, unsigned int n);
+int rte_eth_xstats_get_id_by_name(uint8_t port_id, const char * xstat_name, uint64_t * id);
+int rte_eth_xstats_get_by_id(uint8_t port_id, const uint64_t * ids, uint64_t * values, unsigned int n);
 
 ]]
 
@@ -732,6 +745,13 @@ function txQueue:sendSingle(buf)
 	return 1
 end
 
+-- Try to transmit a single packet.
+-- Returns 1 if sent, 0 if not
+function txQueue:trySendSingle(buf)
+	self.used = true
+	return dpdkc.dpdk_try_send_single_packet(self.id, self.qid, buf)
+end
+
 function txQueue:sendN(bufs, n)
 	self.used = true
 	dpdkc.dpdk_send_all_packets(self.id, self.qid, bufs.array, n)
@@ -767,6 +787,21 @@ function mod.reclaimTxBuffers()
 				queue:stop()
 				queue:start()
 			end
+		end
+	end)
+	LIBMOON_IGNORE_BAD_NUMA_MAPPING = old
+end
+
+-- cleanup devices if necessary
+function mod.cleanupDevices()
+	local old = LIBMOON_IGNORE_BAD_NUMA_MAPPING
+	LIBMOON_IGNORE_BAD_NUMA_MAPPING = true
+	devices:forEach(function(_, dev)
+		-- only call stop if the driver requires it
+		-- otherwise it will slow down the program termination
+		-- as a few drivers/NICs require some time to stop the devs (e.g. ixgbe/x540 takes about a second)
+		if dev.initialized and dev.driverInfo.stopOnShutdown then
+			dev:stop()
 		end
 	end)
 	LIBMOON_IGNORE_BAD_NUMA_MAPPING = old

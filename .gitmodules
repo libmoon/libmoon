@@ -7,7 +7,7 @@
 	path = deps/dpdk
 	url = https://github.com/emmericp/dpdk
 	ignore = untracked
-	branch = v16.07
+	branch = v17.08
 [submodule "deps/pciids"]
 	path = deps/pciids
 	url = https://github.com/emmericp/pciids

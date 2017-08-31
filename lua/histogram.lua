@@ -81,6 +81,28 @@ function histogram:calc()
 	self.dirty = false
 end
 
+--- Calculate the nth percentile
+--- @param percentile (range 0 to 100)
+function histogram:percentile(percentile)
+	if self.dirty then self:calc() end
+
+	if percentile > 100 or percentile < 0 then 
+		error("invalid argument")
+	end
+
+	local targetSamples = self.numSamples * percentile / 100
+	local idx = 0
+	for _, p in ipairs(self.sortedHisto) do
+		-- TODO: inefficient
+		for _ = 1, p.v do
+			if idx >= self.numSamples * percentile / 100 then
+				return p.k
+			end
+			idx = idx + 1
+		end
+	end
+end
+
 function histogram:totals()
 	if self.dirty then self:calc() end
 

@@ -32,11 +32,11 @@ Hence, [MoonGen's examples](https://github.com/emmericp/MoonGen/blob/master/exam
 
 # Installation
 
-Just run `build.sh`, `bind-interfaces.sh`, and `setup-hugetlbfs.sh`
+Just run `build.sh`, `bind-interfaces.sh`, and `setup-hugetlbfs.sh`. When using Mellanox NICs [additional steps](install-mlx.md) are neccessary.
 
 ```
 # install dependencies and compile libmoon
-sudo apt-get install git build-essential cmake linux-headers-`uname -r` lshw
+sudo apt-get install git build-essential cmake linux-headers-`uname -r` lshw libnuma1
 git clone https://github.com/libmoon/libmoon
 cd libmoon
 ./build.sh
@@ -56,12 +56,13 @@ Note: Use `deps/dpdk/tools/dpdk-devbind.py` to manage NIC drivers manually to ge
 * cmake
 * kernel headers (for the DPDK igb-uio driver)
 * lspci (for dpdk-devbind.py)
+* libnuma
 
 # FAQ
 
 ### Which NICs do you support?
 libmoon supports all [NICs supported by DPDK](http://dpdk.org/doc/nics).
-Note that some NICs (e.g., Mellanox) require external components to work with DPDK.
+Note that some NICs (e.g., [Mellanox](install-mlx.md)) require external components to work with DPDK.
 Refer to the DPDK documentation for further information.
 We test and develop libmoon on various NICs of the ixgbe, i40e, and igb family.
 

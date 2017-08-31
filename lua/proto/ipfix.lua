@@ -2,7 +2,6 @@
 --- @file ipfix.lua
 --- @brief IPFIX packet generation.
 --- Utility functions for the ipfix_header structs
---- defined in \ref headers.lua . \n
 --- Includes:
 --- - IPFIX constants
 --- - IPFIX header utility
@@ -11,10 +10,10 @@
 ------------------------------------------------------------------------
 
 local ffi = require "ffi"
-local pkt = require "packet"
 
 require "utils"
-require "headers"
+require "proto.template"
+local initHeader = initHeader
 
 local ntoh, hton = ntoh, hton
 local ntoh16, hton16 = ntoh16, hton16
@@ -46,13 +45,85 @@ ipfix.ID_MIN_DATA_SET = 0x00ff
 ipfix.ENTERPRISE_BIT = 0x00
 
 
+-----------------------------------------------------
+---- https://tools.ietf.org/html/rfc7011
+---- IPFIX structures
+-----------------------------------------------------
+
+ffi.cdef[[
+	struct __attribute__((__packed__)) ipfix_set_header {
+		uint16_t	set_id;
+		uint16_t	length;
+	};
+
+	struct __attribute__((__packed__)) ipfix_tmpl_record_header {
+		uint16_t	template_id;
+		uint16_t	field_count;
+	};
+
+	struct __attribute__((__packed__)) ipfix_opts_tmpl_record_header {
+		uint16_t	template_id;
+		uint16_t	field_count;
+		uint16_t	scope_field_count;
+	};
+
+	struct __attribute__((__packed__)) ipfix_information_element {
+		uint16_t	ie_id;
+		uint16_t	length;
+	};
+
+	struct __attribute__((__packed__)) ipfix_data_record {
+		uint8_t		field_values[?];
+	};
+
+	struct __attribute__((__packed__)) ipfix_tmpl_record {
+		struct ipfix_tmpl_record_header		template_header;
+		struct ipfix_information_element	information_elements[5];
+	};
+
+	struct __attribute__((__packed__)) ipfix_opts_tmpl_record {
+		struct ipfix_opts_tmpl_record_header	template_header;
+		struct ipfix_information_element	information_elements[5];
+	};
+
+	struct __attribute__((__packed__)) ipfix_data_set {
+		struct ipfix_set_header		set_header;
+		uint8_t				field_values[?];
+	};
+
+	struct __attribute__((__packed__)) ipfix_tmpl_set {
+		struct ipfix_set_header		set_header;
+		struct ipfix_tmpl_record	record;
+		uint8_t				padding;
+	};
+
+	struct __attribute__((__packed__)) ipfix_opts_tmpl_set {
+		struct ipfix_set_header		set_header;
+		struct ipfix_opts_tmpl_record	record;
+		uint8_t				padding;
+	};
+]]
+
+
 ---------------------------------------------------------------------------
 ---- IPFix header
 ---- https://tools.ietf.org/html/rfc7011#section-3.1
 ---------------------------------------------------------------------------
 
---- Module for ipfix struct (see \ref headers.lua).
-local ipfixHeader = {}
+-- definition of the header format
+ipfix.headerFormat = [[
+	uint16_t	version;
+	uint16_t	length;
+	uint32_t	export_time;
+	uint32_t	sequence_number;
+	uint32_t	observation_domain_id;
+]]
+
+--- Variable sized member
+ipfix.headerVariableMember = nil
+
+--- Module for ipfix struct
+local ipfixHeader = initHeader()
 ipfixHeader.__index = ipfixHeader
 
 --- Set the version.
@@ -199,15 +270,6 @@ function ipfixHeader:getString()
 		.. " observation domain id "	.. self:getObservationDomainString()
 end
 
---- Resolve which header comes after this one (in a packet)
---- For instance: in tcp/udp based on the ports
---- This function must exist and is only used when get/dump is executed on
---- an unknown (mbuf not yet casted to e.g. tcpv6 packet) packet (mbuf)
---- @return String next header (e.g. 'eth', 'ip4', nil)
-function ipfixHeader:resolveNextHeader()
-	return nil
-end	
-
 --- Change the default values for namedArguments (for fill/get)
 --- This can be used to for instance calculate a length value based on the total packet length
 --- See ipfix/ip4.setDefaultNamedArgs as an example
@@ -224,18 +286,6 @@ function ipfixHeader:setDefaultNamedArgs(pre, namedArgs, nextHeader, accumulated
 
 	return namedArgs
 end
-
-
-----------------------------------------------------------------------------------
----- Packets
-----------------------------------------------------------------------------------
-
---[[ define how a packet with this header looks like
--- e.g. 'ip4' will add a member ip4 of type struct ip4_header to the packet
--- e.g. {'ip4', 'innerIP'} will add a member innerIP of type struct ip4_header to the packet
---]]
---- Cast the packet to a ipfix (IPFix) packet
-pkt.getIpfixPacket = packetCreate("eth", "ip4", "udp", "ipfix")
 
 
 ----------------------------------------------------------------------------------
@@ -443,7 +493,7 @@ end
 
 --- Returns Header's length in octets
 function ipfix:getHeadersLength()
-	return ffi.sizeof(Header)
+	return ffi.sizeof(ffi.typeof("struct ipfix_header"))
 end
 
 
@@ -451,10 +501,9 @@ end
 ---- Metatypes
 ------------------------------------------------------------------------
 
-ffi.metatype("struct ipfix_header", ipfixHeader)
+ipfix.metatype = ipfixHeader
 
 -- ctypes
-Header                = ffi.typeof("struct ipfix_header")
 SetHeader             = ffi.typeof("struct ipfix_set_header")
 InformationElement    = ffi.typeof("struct ipfix_information_element")
 DataSet               = ffi.typeof("struct ipfix_data_set")

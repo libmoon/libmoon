@@ -18,7 +18,7 @@ timestamper.__index = timestamper
 --- Create a new timestamper.
 --- A NIC can only be used by one thread at a time due to clock synchronization.
 --- Best current pratice is to use only one timestamping thread to avoid problems.
-function mod:newTimestamper(txQueue, rxQueue, mem, udp)
+function mod:newTimestamper(txQueue, rxQueue, mem, udp, doNotConfigureUdpPort)
 	mem = mem or memory.createMemPool(function(buf)
 		-- defaults are good enough for us here
 		if udp then
@@ -49,12 +49,13 @@ function mod:newTimestamper(txQueue, rxQueue, mem, udp)
 		seq = 1,
 		udp = udp,
 		useTimesync = rxQueue.dev.useTimsyncIds,
+		doNotConfigureUdpPort = doNotConfigureUdpPort
 	}, timestamper)
 end
 
 --- See newTimestamper()
-function mod:newUdpTimestamper(txQueue, rxQueue, mem)
-	return self:newTimestamper(txQueue, rxQueue, mem, true)
+function mod:newUdpTimestamper(txQueue, rxQueue, mem, doNotConfigureUdpPort)
+	return self:newTimestamper(txQueue, rxQueue, mem, true, doNotConfigureUdpPort)
 end
 
 --- Try to measure the latency of a single packet.
@@ -82,8 +83,11 @@ function timestamper:measureLatency(pktSize, packetModifier, maxWait)
 		skipReconfigure = packetModifier(buf)
 	end
 	if self.udp then
-		-- change timestamped UDP port as each packet may be on a different port
-		self.rxQueue:enableTimestamps(buf:getUdpPacket().udp:getDstPort())
+		if not self.doNotConfigureUdpPort then
+			-- change timestamped UDP port as each packet may be on a different port
+			self.rxQueue:enableTimestamps(buf:getUdpPacket().udp:getDstPort())
+		end
+		buf:getUdpPtpPacket():setLength(pktSize)
 		self.txBufs:offloadUdpChecksums()
 		if self.rxQueue.dev.reconfigureUdpTimestampFilter and not skipReconfigure then
 			-- i40e driver fdir filters are broken
@@ -91,18 +95,19 @@ function timestamper:measureLatency(pktSize, packetModifier, maxWait)
 			-- so we have to look at that packet and reconfigure the filters
 			self.rxQueue.dev:reconfigureUdpTimestampFilter(self.rxQueue, buf:getUdpPacket())
 		end
-	else
 	end
 	mod.syncClocks(self.txDev, self.rxDev)
 	-- clear any "leftover" timestamps
 	self.rxDev:clearTimestamps()
 	self.txQueue:send(self.txBufs)
 	local tx = self.txQueue:getTimestamp(500)
+	local numPkts = 0
 	if tx then
 		-- sent was successful, try to get the packet back (assume that it is lost after a given delay)
 		local timer = timer:new(maxWait)
 		while timer:running() do
 			local rx = self.rxQueue:tryRecv(self.rxBufs, 1000)
+			numPkts = numPkts + rx
 			local timestampedPkt = self.rxDev:hasRxTimestamp()
 			if not timestampedPkt then
 				-- NIC didn't save a timestamp yet, just throw away the packets
@@ -118,7 +123,7 @@ function timestamper:measureLatency(pktSize, packetModifier, maxWait)
 						local rxTs = self.rxQueue:getTimestamp(nil, timesync) 
 						if not rxTs then
 							-- can happen if you hotplug cables
-							return nil
+							return nil, numPkts
 						end
 						self.rxBufs:freeAll()
 						local lat = rxTs - tx
@@ -129,7 +134,7 @@ function timestamper:measureLatency(pktSize, packetModifier, maxWait)
 							-- also sometimes happen since changing to DPDK for reading the timing registers
 							-- probably something wrong with the DPDK wraparound tracking
 							-- (but that's really rare and the resulting latency > a few days, so we don't really care)
-							return lat
+							return lat, numPkts
 						end
 					elseif buf:hasTimestamp() and (seq == timestampedPkt or timestampedPkt == -1) then
 						-- we got a timestamp but the wrong sequence number. meh.
@@ -139,17 +144,18 @@ function timestamper:measureLatency(pktSize, packetModifier, maxWait)
 						-- we got our packet back but it wasn't timestamped
 						-- we likely ran into the previous case earlier and cleared the ts register too late
 						self.rxBufs:freeAll()
-						return
+						return nil, numPkts
 					end
 				end
 			end
 		end
 		-- looks like our packet got lost :(
-		return
+		return nil, numPkts
 	else
 		-- happens when hotplugging cables
 		log:warn("Failed to timestamp packet on transmission")
 		timer:new(maxWait):wait()
+		return nil, numPkts
 	end
 end
 

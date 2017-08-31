@@ -42,6 +42,12 @@ local voidPointer = ffi.typeof("void*")
 
 local INITIAL_FILE_SIZE = 512 * 1024 * 1024
 
+--- Set the file size for new pcap writers
+--- @param newSizeInBytes new file size in bytes
+function mod:setInitialFilesize(newSizeInBytes)
+	INITIAL_FILE_SIZE = newSizeInBytes
+end
+
 local writer = {}
 writer.__index = writer
 
@@ -52,7 +58,7 @@ local function writeHeader(ptr)
 	hdr.version_minor = 4
 	hdr.thiszone = 0
 	hdr.sigfigs = 0
-	hdr.snaplen = 0x7FFFFFFF
+	hdr.snaplen = 0x40000
 	hdr.network = 1
 	return ffi.sizeof(headerType)
 end
