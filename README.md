@@ -36,7 +36,7 @@ Just run `build.sh`, `bind-interfaces.sh`, and `setup-hugetlbfs.sh`. When using 
 
 ```
 # install dependencies and compile libmoon
-sudo apt-get install git build-essential cmake linux-headers-`uname -r` lshw libnuma1
+sudo apt-get install git build-essential cmake linux-headers-`uname -r` lshw libnuma-dev
 git clone https://github.com/libmoon/libmoon
 cd libmoon
 ./build.sh
@@ -56,7 +56,7 @@ Note: Use `deps/dpdk/tools/dpdk-devbind.py` to manage NIC drivers manually to ge
 * cmake
 * kernel headers (for the DPDK igb-uio driver)
 * lspci (for dpdk-devbind.py)
-* libnuma
+* libnuma-dev
 
 # FAQ
 
