@@ -11,6 +11,7 @@ mod.net_e1000_em = require "driver.igb"
 mod.net_virtio = require "driver.virtio"
 mod.net_vmxnet3 = require "driver.vmxnet3"
 mod.net_mlx5 = require "driver.mlx5"
+mod.net_ena = require "driver.ena"
 
 function mod.initDriver(dev)
 	local device = require "device"
