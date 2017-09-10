@@ -1,12 +1,14 @@
 MoonGen/libmoon with Mellanox NICs
 ==================================
 
+Instructions apply to DPDK version: 17.08
+
 In order to use MoonGen/libmoon with Mellanox NICs some addtional steps are necessary as the PMDs for those NICs have external dependecies.
 
 Additional prerequisites
 ------------------------
 
- - Mellanox OFED version: ``4.0-2.0.0.x``; Download from [here](http://www.mellanox.com/page/products_dyn?product_family=26&mtag=linux). Other versions may work (check the [driver compatibility matrix](http://www.mellanox.com/page/mlnx_ofed_matrix?mtag=linux_sw_drivers)), though that has not been tested.
+ - Mellanox OFED version: ``4.1``; Download from [here](http://www.mellanox.com/page/products_dyn?product_family=26&mtag=linux). Other versions may work (check the [driver compatibility matrix](http://www.mellanox.com/page/mlnx_ofed_matrix?mtag=linux_sw_drivers)), though that has not been tested.
 	
 	Use one of the following options for installation:
 
@@ -32,10 +34,10 @@ Additional prerequisites
 		
  
  - Required firmware version:
-	- ConnectX-4: 12.18.2000 (or higher)
-	- ConnectX-4 Lx: 14.18.2000 (or higher)
-	- ConnectX-5: 16.19.1200 (or higher)
-	- ConnectX-5 Ex: 16.19.1200 (or higher)
+	- ConnectX-4: 12.20.1010 (or higher)
+	- ConnectX-4 Lx: 14.20.1010 (or higher)
+	- ConnectX-5: 16.20.1010 (or higher)
+	- ConnectX-5 Ex: 16.20.1010 (or higher)
 
 	The firmware must be updated manually if installation without Mellanox OFED was chosen. See this [site](http://www.mellanox.com/page/firmware_HCA_FW_update) for updating instructions.
 	
