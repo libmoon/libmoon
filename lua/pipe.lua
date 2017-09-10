@@ -111,6 +111,7 @@ function slowPipe:send(...)
 end
 
 function slowPipe:tryRecv(wait)
+	wait = wait or 0
 	while wait >= 0 do
 		local buf = C.pipe_mpmc_try_dequeue(self.pipe)
 		if buf ~= nil then

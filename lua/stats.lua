@@ -1,11 +1,26 @@
 --- IO stats for devices
 local mod = {}
 
-local libmoon    = require "libmoon"
+local libmoon   = require "libmoon"
 local dpdk      = require "dpdk"
 local device    = require "device"
 local log       = require "log"
 local colors    = require "colors"
+local ns        = require "namespaces"
+local pipe      = require "pipe"
+
+mod.share = ns:get()
+mod.share.lock(function()
+	if mod.share.initialized then
+		return
+	end
+	mod.share.counterId = 0
+	mod.share.pipe = pipe:newSlowPipe()
+	mod.share.initialized = true
+end)
+
+local serverPipe = mod.share.pipe
+
 
 function mod.average(data)
 	local sum = 0
@@ -60,6 +75,10 @@ function mod.addStats(data, ignoreFirstAndLast)
 	data.stdDev = mod.stdDev(copy)
 	data.median = mod.median(copy)
 	data.sum = mod.sum(copy)
+end
+
+function mod.numCounters()
+	return mod.share.counterId
 end
 
 local colors = {
@@ -158,7 +177,12 @@ formatters["nil"] = {
 local openFiles = {}
 
 --- base constructor for rx and tx counters
-local function newCounter(ctrType, name, dev, format, file)
+local function newCounter(ctrType, name, dev, format, file, direction)
+	local id
+	mod.share.lock(function()
+		id = mod.share.counterId + 1
+		mod.share.counterId = id
+	end)
 	name = tostring(name)
 	if name:sub(1, 1) == "[" and name:sub(#name, #name) == "]" then
 		name = name:sub(2, #name - 1)
@@ -193,6 +217,8 @@ local function newCounter(ctrType, name, dev, format, file)
 		mpps = {},
 		mbit = {},
 		wireMbit = {},
+		id = id,
+		dir = direction
 	}
 end
 
@@ -207,6 +233,7 @@ local function printStats(self, statsType, event, ...)
 	end
 end
 
+local webserver
 local function updateCounter(self, time, pkts, bytes, dontPrint)
 	if not self.lastUpdate then
 		-- first call, save current stats but do not print anything
@@ -223,6 +250,17 @@ local function updateCounter(self, time, pkts, bytes, dontPrint)
 	self.total = pkts
 	self.totalBytes = bytes
 	if not dontPrint then
+		if not webserver then
+			webserver = require "webserver"
+		end
+		if webserver.running() then
+			serverPipe:send{
+				id = self.id, name = self.name, dev = self.dev and self.dev.id, dir = self.dir,
+				packets = self.total, bytes = self.totalBytes,
+				mpps = mpps, mbit = mbit, wireMbit = wireRate,
+				time = _G.time()
+			}
+		end
 		self:print("Update", self.total, mpps, mbit, wireRate, self.totalBytes)
 	end
 	table.insert(self.mpps, mpps)
@@ -284,7 +322,7 @@ function mod:newDevRxCounter(name, dev, format, file)
 		log:fatal("Bad device")
 	end
 	name = name or tostring(dev):sub(2, -2) -- strip brackets as they are added by the 'plain' output again
-	local obj = newCounter("dev", name, dev, format, file)
+	local obj = newCounter("dev", name, dev, format, file, "rx")
 	obj.sleep = 100
 	setmetatable(obj, devRxCounter)
 	obj:clearThroughput() -- reset stats on the NIC
@@ -296,7 +334,7 @@ end
 --- @param format the output format, "CSV" and "plain" (default) are currently supported
 --- @param file the output file, defaults to standard out
 function mod:newPktRxCounter(name, format, file)
-	local obj = newCounter("pkt", name, nil, format, file)
+	local obj = newCounter("pkt", name, nil, format, file, "rx")
 	return setmetatable(obj, pktRxCounter)
 end
 
@@ -305,7 +343,7 @@ end
 --- @param format the output format, "CSV" and "plain" (default) are currently supported
 --- @param file the output file, defaults to standard out
 function mod:newManualRxCounter(name, format, file)
-	local obj = newCounter("manual", name, nil, format, file)
+	local obj = newCounter("manual", name, nil, format, file, "rx")
 	return setmetatable(obj, manualRxCounter)
 end
 
@@ -412,7 +450,7 @@ function mod:newDevTxCounter(name, dev, format, file)
 		log:fatal("Bad device")
 	end
 	name = name or tostring(dev):sub(2, -2) -- strip brackets as they are added by the 'plain' output again
-	local obj = newCounter("dev", name, dev, format, file)
+	local obj = newCounter("dev", name, dev, format, file, "tx")
 	obj.sleep = 50
 	setmetatable(obj, devTxCounter)
 	obj:getThroughput() -- reset stats on the NIC
@@ -424,7 +462,7 @@ end
 --- @param format the output format, "CSV" and "plain" (default) are currently supported
 --- @param file the output file, defaults to standard out
 function mod:newPktTxCounter(name, format, file)
-	local obj = newCounter("pkt", name, nil, format, file)
+	local obj = newCounter("pkt", name, nil, format, file, "tx")
 	return setmetatable(obj, pktTxCounter)
 end
 
@@ -433,7 +471,7 @@ end
 --- @param format the output format, "CSV" and "plain" (default) are currently supported
 --- @param file the output file, defaults to standard out
 function mod:newManualTxCounter(name, format, file)
-	local obj = newCounter("manual", name, nil, format, file)
+	local obj = newCounter("manual", name, nil, format, file, "tx")
 	return setmetatable(obj, manualTxCounter)
 end
 

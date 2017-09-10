@@ -5,6 +5,7 @@ local stats  = require "stats"
 local log    = require "log"
 local memory = require "memory"
 local arp    = require "proto.arp"
+local server = require "webserver"
 
 -- set addresses here
 local DST_MAC       = nil -- resolved via ARP on GW_IP or DST_IP, can be overriden with a string here
@@ -27,6 +28,7 @@ function configure(parser)
 	parser:argument("dev", "Devices to use."):args("+"):convert(tonumber)
 	parser:option("-t --threads", "Number of threads per device."):args(1):convert(tonumber):default(1)
 	parser:option("-r --rate", "Transmit rate in Mbit/s per device."):args(1)
+	parser:option("-w --webserver", "Start a REST API on the given port."):convert(tonumber)
 	parser:flag("-a --arp", "Use ARP.")
 	return parser:parse()
 end
@@ -63,6 +65,12 @@ function master(args,...)
 			end
 		end
 		log:info("Destination mac: %s", DST_MAC)
+	end
+
+	if args.webserver then
+		server.startWebserverTask{
+			port = args.webserver
+		}
 	end
 
 	-- print statistics
