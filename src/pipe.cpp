@@ -13,6 +13,10 @@ extern "C" {
 		return new ReaderWriterQueue<void*>(capacity);
 	}
 
+	void pipe_spsc_delete(ReaderWriterQueue<void*>* queue) {
+		delete queue;
+	}
+
 	void pipe_spsc_enqueue(ReaderWriterQueue<void*>* queue, void* data) {
 		queue->enqueue(data);
 	}
@@ -33,6 +37,10 @@ extern "C" {
 
 	ConcurrentQueue<void*>* pipe_mpmc_new(int capacity) {
 		return new ConcurrentQueue<void*>(capacity);
+	}
+
+	void pipe_mpmc_delete(ConcurrentQueue<void*>* queue) {
+		delete queue;
 	}
 
 	void pipe_mpmc_enqueue(ConcurrentQueue<void*>* queue, void* data) {

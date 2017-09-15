@@ -14,12 +14,14 @@ ffi.cdef [[
 	struct mpmc_ptr_queue { };
 
 	struct spsc_ptr_queue* pipe_spsc_new(int size);
+	void pipe_spsc_delete(struct spsc_ptr_queue* queue);
 	void pipe_spsc_enqueue(struct spsc_ptr_queue* queue, void* data);
 	uint8_t pipe_spsc_try_enqueue(struct spsc_ptr_queue* queue, void* data);
 	void* pipe_spsc_try_dequeue(struct spsc_ptr_queue* queue);
 	size_t pipe_spsc_count(struct spsc_ptr_queue* queue);
 
 	struct mpmc_ptr_queue* pipe_mpmc_new(int size);
+	void pipe_mpmc_delete(struct mpmc_ptr_queue* queue);
 	void pipe_mpmc_enqueue(struct mpmc_ptr_queue* queue, void* data);
 	uint8_t pipe_mpmc_try_enqueue(struct mpmc_ptr_queue* queue, void* data);
 	void* pipe_mpmc_try_dequeue(struct mpmc_ptr_queue* queue);
@@ -149,6 +151,10 @@ function slowPipe:empty()
 	end
 end
 
+function slowPipe:delete()
+	C.pipe_mpmc_delete(self.pipe)
+end
+
 function slowPipe:__serialize()
 	return "require'pipe'; return " .. serpent.addMt(serpent.dumpRaw(self), "require('pipe').slowPipe"), true
 end
@@ -209,6 +215,10 @@ end
 
 function fastPipe:count()
 	return tonumber(C.pipe_spsc_count(self.pipe))
+end
+
+function fastPipe:delete()
+	C.pipe_spsc_delete(self.pipe)
 end
 
 function fastPipe:__serialize()
