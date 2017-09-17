@@ -7,6 +7,7 @@ local ts     = require "timestamping"
 local hist   = require "histogram"
 local timer  = require "timer"
 local log    = require "log"
+local stats  = require "stats"
 
 local RUN_TIME = 5
 
@@ -32,9 +33,15 @@ function master(args)
 	lm.startTask("timestamper", txQueue0, rxQueue0, 319, nil, true):wait()
 	lm.startTask("timestamper", txQueue0, rxQueue1, 319):wait()
 	lm.startTask("timestamper", txQueue0, rxQueue1, 319, true):wait()
-	lm.startTask("timestamper", txQueue0, rxQueue1, 319)
-	lm.startTask("flooder", txQueue1, 319)
-	lm.waitForTasks()
+	local timestamper = lm.startTask("timestamper", txQueue0, rxQueue1, 319)
+	local flooder = lm.startTask("flooder", txQueue1, 319)
+	timestamper:wait()
+	flooder:wait()
+	stats.startStatsTask{txDevices = {args.dev[1]}, rxDevices = {args.dev[2]}}
+	local receiver = lm.startTask("timestampAllPacketsReceiver", rxQueue0)
+	local sender = lm.startTask("timestampAllPacketsSender", txQueue0)
+	receiver:wait()
+	sender:wait()
 end
 
 
@@ -80,6 +87,61 @@ function timestamper(txQueue, rxQueue, udp, randomSrc, vlan)
 	print()
 end
 
+function timestampAllPacketsSender(queue)
+	log:info("Trying to enable rx timestamping of all packets, this isn't supported by most nics")
+	local runtime = timer:new(RUN_TIME)
+	local hist = hist:new()
+	local mempool = memory.createMemPool(function(buf)
+		buf:getUdpPacket():fill{}
+	end)
+	local bufs = mempool:bufArray()
+	if lm.running() then
+		lm.sleepMillis(500)
+	end
+	log:info("Trying to generate ~1000 mbit/s")
+	queue:setRate(1000)
+	local runtime = timer:new(RUN_TIME)
+	while lm.running() and runtime:running() do
+		bufs:alloc(60)
+		queue:send(bufs)
+	end
+end
+
+function timestampAllPacketsReceiver(queue)
+	queue.dev:enableRxTimestampsAllPackets(queue)
+	local bufs = memory.bufArray()
+	local drainQueue = timer:new(0.5)
+	while lm.running and drainQueue:running() do
+		local rx = queue:tryRecv(bufs, 1000)
+		bufs:free(rx)
+	end
+	local runtime = timer:new(RUN_TIME + 0.5)
+	local hist = hist:new()
+	local lastTimestamp
+	local count = 0
+	while lm.running() and runtime:running() do
+		local rx = queue:tryRecv(bufs, 1000)
+		for i = 1, rx do
+			count = count + 1
+			local timestamp = bufs[i]:getTimestamp(queue.dev)
+			if timestamp then
+				-- timestamp sometimes jumps by ~3 seconds on ixgbe (in less than a few milliseconds wall-clock time)
+				if lastTimestamp and timestamp - lastTimestamp < 10^9 then
+					hist:update(timestamp - lastTimestamp)
+				end
+				lastTimestamp = timestamp
+			end
+		end
+		bufs:free(rx)
+	end
+	log:info("Inter-arrival time distribution, this will report 0 on unsupported NICs")
+	hist:print()
+	if hist.numSamples == 0 then
+		log:error("Received no timestamped packets.")
+	end
+	print()
+end
+
 function flooder(queue, port)
 	log:info("Flooding link with UDP packets with the same flow 5-tuple.")
 	log:info("This tests whether the filter matches on payload.")
@@ -99,3 +161,4 @@ function flooder(queue, port)
 		queue:send(bufs)
 	end
 end
+

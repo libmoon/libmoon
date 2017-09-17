@@ -25,9 +25,12 @@ local TIMEADJL   = 0x00008C18
 local TIMEADJH   = 0x00008C1C
 local ETQS_3     = 0x0000EC00 + 4 * 3
 
-local TSYNCRXCTL_RXTT      = 1
-local TSYNCRXCTL_TYPE_OFFS = 1
-local TSYNCRXCTL_TYPE_MASK = bit.lshift(7, TSYNCRXCTL_TYPE_OFFS)
+local TSYNCRXCTL_RXTT            = 1
+local TSYNCRXCTL_TYPE_OFFS       = 1
+local TSYNCRXCTL_TYPE_MASK       = bit.lshift(7, TSYNCRXCTL_TYPE_OFFS)
+local TSYNCRXCTL_TSIP_UT_EN_OFFS = 23
+local TSYNCRXCTL_TSIP_UP_EN_OFFS = 24
+
 local ETQS_RX_QUEUE_OFFS   = 16
 local ETQS_QUEUE_ENABLE    = bit.lshift(1, 31)
 
@@ -107,8 +110,17 @@ function dev:filterL2Timestamps(queue)
 end
 
 function dev:enableRxTimestampsAllPackets(queue)
-	log:warn("timestmaping all packets is supported on X550 but NYI")
+	dpdkc.rte_eth_timesync_enable(self.id)
+	local val = dpdkc.read_reg32(self.id, TSYNCRXCTL)
+	val = bit.band(val, bit.bnot(TSYNCRXCTL_TYPE_MASK))
+	val = bit.bor(val, bit.lshift(4, TSYNCRXCTL_TYPE_OFFS))
+	val = bit.bor(val, bit.lshift(1, TSYNCRXCTL_TSIP_UT_EN_OFFS))
+	-- not necessary unless you configure some weird stuff
+	val = bit.bor(val, bit.lshift(0xFF, TSYNCRXCTL_TSIP_UP_EN_OFFS))
+	dpdkc.write_reg32(self.id, TSYNCRXCTL, val)
 end
+
+dev.embeddedTimestampAtEndOfBuffer = true
 
 return dev
 

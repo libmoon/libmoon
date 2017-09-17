@@ -34,6 +34,7 @@ local TSYNCRXCTL_TYPE_OFFS = 1
 local TSYNCRXCTL_TYPE_MASK = bit.lshift(7, TSYNCRXCTL_TYPE_OFFS)
 local TSYNCRXCTL_RXTT      = 1
 local ETQF_QUEUE_ENABLE    = bit.lshift(1, 31)
+local SRRCTL_TIMESTAMP     = bit.lshift(1, 30)
 
 -- device initializing takes unreasonably long sometimes
 dev.linkWaitTime = 18
