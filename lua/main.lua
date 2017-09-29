@@ -93,10 +93,13 @@ local function master(_, file, ...)
 			log:fatal("Could not initialize DPDK")
 		end
 	end
-	xpcall(_G.master, getStackTrace, unpack(concatArrays(parsedArgs, args)))
+	local result = xpcall(_G.master, getStackTrace, unpack(concatArrays(parsedArgs, args)))
 	-- stop devices if necessary (seems to be a problem with virtio attached via vhost user
 	device.cleanupDevices()
 	-- exit program once the master task finishes
+	if not result then
+		os.exit(result)
+	end
 	-- it is up to the user program to wait for slaves to finish, e.g. by calling dpdk.waitForSlaves()
 end
 
