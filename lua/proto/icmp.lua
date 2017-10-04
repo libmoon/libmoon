@@ -171,7 +171,7 @@ end
 --- Calculate the checksum
 --- @param len Number of bytes that the checksum will be computed over
 function icmpHeader:calculateChecksum(len)
-	len = len or sizeof(self)
+	len = len or ffi.sizeof(self)
 	self:setChecksum(0)
 	self:setChecksum(hton16(checksum(self, len)))
 end
