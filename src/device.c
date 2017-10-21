@@ -66,7 +66,7 @@ int dpdk_configure_device(struct libmoon_device_config* cfg) {
 	struct rte_fdir_conf fdir_conf = {
 		.mode = RTE_FDIR_MODE_PERFECT,
 		.pballoc = RTE_FDIR_PBALLOC_64K,
-		.status = RTE_FDIR_REPORT_STATUS_ALWAYS,
+		.status = RTE_FDIR_REPORT_STATUS,
 		.mask = {
 			.vlan_tci_mask = 0x0,
 			.ipv4_mask = {
