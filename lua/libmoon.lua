@@ -47,8 +47,9 @@ function mod.setupPaths()
 		-- handle paths, package.searchpath can't do that for us because of the pesky lib prefix
 		if name:match("/") then
 			local first, second = name:match("(.+)/([^/]+)$")
+			second = second:gsub("^lib", "")
 			name = first .. "/lib" .. second
-		else
+		elseif not name:match("^lib") then
 			name = "lib" .. name
 		end
 		local path, err =  package.searchpath(name .. ".so", package.ffipath, "/")
