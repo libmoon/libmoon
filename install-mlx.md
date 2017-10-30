@@ -14,7 +14,7 @@ Additional prerequisites
 
 	- install the **complete** Mellanox OFED. For installation refer to the installation manual from the [related documents](http://www.mellanox.com/page/products_dyn?product_family=26&mtag=linux) section. The install procedure will also guide you through the firmware update. **Caution**: The installation will uninstall certain software which conflicts with Mellnox OFED such as previous versions of itself.
 
-	- install **only the required** packages. The required packages are: ``libibverbs, libmlx5, mlnx-ofed-kernel packages``. These packagaes can be found in the ``DEBS`` folder of Mellanox DPDK. Install the by executing:
+	- install **only the required** packages. The required packages are: ``libibverbs, libmlx5, mlnx-ofed-kernel packages``. These packages can be found in the ``DEBS`` folder of Mellanox DPDK. Install the by executing:
 
 			sudo apt install /<Path to MLNX_OFED>/DEBS/<packetname>.deb 
 
@@ -33,7 +33,8 @@ Additional prerequisites
 			mlnx-ofed-kernel-utils[...].deb
 		
  
- - Required firmware version:
+ - Required firmware versions:
+ 	- ConnectX-3: 2.40.7000 (or higher)
 	- ConnectX-4: 12.20.1010 (or higher)
 	- ConnectX-4 Lx: 14.20.1010 (or higher)
 	- ConnectX-5: 16.20.1010 (or higher)
@@ -51,7 +52,7 @@ If all prerequisites are fulfilled, install MoonGen/libmoon by executing:
 
 	build.sh --mlx5 --mlx4
 
-Leave out Flags which are not needed. Currently only mlx5 is tested and has custom driver patches. However mlx4 driven devices should behave similar.
+Leave out Flags which are not needed. Currently only mlx5 is tested and has custom driver patches. However, user reported success with mlx4 devices.
 
 
 Troubleshooting
