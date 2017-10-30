@@ -149,6 +149,16 @@ function ip6Addr:__sub(val)
 	return self + -val
 end
 
+function ip6Addr:__lt(other)
+	local selfLow, selfHigh = bswap(self.uint64[1]), bswap(self.uint64[0])
+	local otherLow, otherHigh = bswap(other.uint64[1]), bswap(other.uint64[0])
+	if otherHigh == selfHigh then
+		return selfLow < otherLow
+	else
+		return selfHigh < otherHigh
+	end
+end
+
 --- Retrieve the string representation of an IPv6 address.
 --- Assumes 'union ip6_address' is in network byteorder.
 --- @param doByteSwap Optional change the byteorder of the ip6 address before returning the string representation.
