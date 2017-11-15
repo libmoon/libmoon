@@ -369,8 +369,7 @@ function dnsHeader:setRCode(int)
 		rcode = int
 
 		--- XXXXXXXX XXXX0000
-		opcode = lshift(opcode,11)
-		self.hdrflags = bor(self.hdrflags, opcode)
+		self.hdrflags = bor(self.hdrflags, rcode)
 	end
 	-- TODO: handle invalid args
 end
@@ -539,6 +538,7 @@ function dnsHeader:fill(args, pre)
 		self:setRA()
 	end
 	self:setRCode(args[pre .. "RCode"])
+	self.hdrflags = hton16(self.hdrflags)
 	self:setQDCount(args[pre .. "QDCount"])
 	self:setANCount(args[pre .. "ANCount"])
 	self:setNSCount(args[pre .. "NSCount"])
