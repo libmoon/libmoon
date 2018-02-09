@@ -206,7 +206,7 @@ end
 --- The buffer's packet size corresponds to the original packet size, cut off bytes are zero-filled.
 --- @return the number of packets read
 function reader:read(bufs, mempoolBufSize)
-	mempoolBufSize = memPoolBufSize or 2048
+	mempoolBufSize = mempoolBufSize or 2048
 	local fileRemaining = self.size - self.offset
 	if fileRemaining < 32 then -- header size
 		return 0
