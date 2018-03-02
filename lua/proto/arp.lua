@@ -99,7 +99,7 @@ function arpHeader:getHardwareAddressTypeString()
 		return format("0x%04x", type)
 	end
 end
-	
+
 --- Set the protocol address type.
 --- @param int Type as 16 bit integer.
 function arpHeader:setProtoAddressType(int)
@@ -296,7 +296,7 @@ end
 function arpHeader:fill(args, pre)
 	args = args or {}
 	pre = pre or "arp"
-	
+
 	self:setHardwareAddressType(args[pre .. "HardwareAddressType"])
 	self:setProtoAddressType(args[pre .. "ProtoAddressType"])
 	self:setHardwareAddressLength(args[pre .. "HardwareAddressLength"])
@@ -311,7 +311,7 @@ function arpHeader:fill(args, pre)
 	args[hwDst] = args[hwDst] or "07:08:09:0a:0b:0c"
 	args[prSrc] = args[prSrc] or "0.1.2.3"
 	args[prDst] = args[prDst] or "4.5.6.7"
-	
+
 	-- if for some reason the address is in 'union mac_address'/'union ipv4_address' format, cope with it
 	if type(args[hwSrc]) == "string" then
 		self:setHardwareSrcString(args[hwSrc])
@@ -323,7 +323,7 @@ function arpHeader:fill(args, pre)
 	else
 		self:setHardwareDst(args[hwDst])
 	end
-	
+
 	if type(args[prSrc]) == "string" then
 		self:setProtoSrcString(args[prSrc])
 	else
@@ -352,7 +352,7 @@ function arpHeader:get(pre)
 	args[pre .. "HardwareSrc"] = self:getHardwareSrc()
 	args[pre .. "HardwareDst"] = self:getHardwareDst()
 	args[pre .. "ProtoSrc"] = self:getProtoSrc()
-	args[pre .. "ProtoDst"] = self:getProtoDst() 
+	args[pre .. "ProtoDst"] = self:getProtoDst()
 
 	return args
 end
@@ -360,29 +360,29 @@ end
 --- Retrieve the values of all members.
 --- @return Values in string format.
 function arpHeader:getString()
-	local str = "ARP hrd " 			.. self:getHardwareAddressTypeString() 
-				.. " (hln " 		.. self:getHardwareAddressLengthString() 
-				.. ") pro " 		.. self:getProtoAddressTypeString() 
-				.. " (pln " 		.. self:getProtoAddressLength(String) 
+	local str = "ARP hrd " 			.. self:getHardwareAddressTypeString()
+				.. " (hln " 		.. self:getHardwareAddressLengthString()
+				.. ") pro " 		.. self:getProtoAddressTypeString()
+				.. " (pln " 		.. self:getProtoAddressLength(String)
 				.. ") op " 			.. self:getOperationString()
 
 	local op = self:getOperation()
 	if op == arp.OP_REQUEST then
-		str = str .. " who-has " 	.. self:getProtoDstString() 
-				  .. " (" 			.. self:getHardwareDstString() 
-				  .. ") tell " 		.. self:getProtoSrcString() 
-				  .. " (" 			.. self:getHardwareSrcString() 
+		str = str .. " who-has " 	.. self:getProtoDstString()
+				  .. " (" 			.. self:getHardwareDstString()
+				  .. ") tell " 		.. self:getProtoSrcString()
+				  .. " (" 			.. self:getHardwareSrcString()
 				  .. ")"
 	elseif op == arp.OP_REPLY then
-		str = str .. " " 			.. self:getProtoSrcString() 
-				  .. " is-at " 		.. self:getHardwareSrcString() 
-				  .. " (for " 		.. self:getProtoDstString() 
-				  .. " @ " 			.. self:getHardwareDstString() 
+		str = str .. " " 			.. self:getProtoSrcString()
+				  .. " is-at " 		.. self:getHardwareSrcString()
+				  .. " (for " 		.. self:getProtoDstString()
+				  .. " @ " 			.. self:getHardwareDstString()
 				  .. ")"
 	else
-		str = str .. " " 			.. self:getHardwareSrcString() 
-				  .. " > " 			.. self:getHardwareDstString() 
-				  .. " " 			.. self:getProtoSrcString() 
+		str = str .. " " 			.. self:getHardwareSrcString()
+				  .. " > " 			.. self:getHardwareDstString()
+				  .. " " 			.. self:getProtoSrcString()
 				  .. " > " 			.. self:getProtoDstString()
 	end
 
@@ -472,8 +472,10 @@ local function arpTask(qs)
 		if type(nic.ips) == "string" then
 			nic.ips = { nic.ips }
 		end
+
+		ipToMac[tostring(i)] = {}
 		for _, ip in pairs(nic.ips) do
-			ipToMac[parseIPAddress(ip)] = nic.txQueue.dev:getMacString()
+			ipToMac[tostring(i)][parseIPAddress(ip)] = nic.txQueue.dev:getMacString()
 		end
 		if nic.rxQueue then
 			nic.txQueue.dev:l2Filter(eth.TYPE_ARP, nic.rxQueue)
@@ -485,13 +487,13 @@ local function arpTask(qs)
 
 	local rxBufs = memory.createBufArray(1)
 	local txMem = memory.createMemPool(function(buf)
-		buf:getArpPacket():fill{ 
+		buf:getArpPacket():fill{
 			arpOperation	= arp.OP_REPLY,
 			pktLength		= 60
 		}
 	end)
 	local txBufs = txMem:bufArray(1)
-	
+
 	arpTable.taskRunning = true
 
 	local gratArpTimer = timer:new(0)
@@ -513,23 +515,23 @@ local function arpTask(qs)
 				nic.txQueue:send(txBufs)
 			end
 		end
-		for _, nic in ipairs(qs) do
+		for i, nic in ipairs(qs) do
 			if nic.rxQueue then
 				rx = nic.rxQueue:tryRecvIdle(rxBufs, 1000)
 				assert(rx <= 1)
 				if rx > 0 then
-					handleArpPacket(rxBufs, txBufs, nic, ipToMac)
+					handleArpPacket(rxBufs, txBufs, nic, ipToMac[tostring(i)])
 				end
 			end
 			local pkt = nic.pipe:tryRecv(100)
 			if pkt then
 				rxBufs[1] = pkt
-				handleArpPacket(rxBufs, txBufs, nic, ipToMac)
+				handleArpPacket(rxBufs, txBufs, nic, ipToMac[tostring(i)])
 			end
 		end
 
 		local timedOutEntries = {}
-		-- send requests 
+		-- send requests
 		arpTable:forEach(function(ip, value)
 			local ts = time()
 			if type(value) ~= "table" then
