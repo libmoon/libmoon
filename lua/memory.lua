@@ -171,7 +171,9 @@ end
 --- @param	bufSize optional the size of each buffer, can only be used if all other args are passed as well
 function mod.createMemPool(...)
 	local args = {...}
-	if type(args[1]) == "table" then
+	if args[2] and type(args[2]) == "table" then
+		args = args[2]
+	elseif type(args[1]) == "table" then
 		args = args[1]
 	else
 		if type(args[1]) == "function" then
