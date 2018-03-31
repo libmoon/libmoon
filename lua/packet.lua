@@ -65,17 +65,19 @@ function pkt:getTimestamp(dev)
 		local data = ffi.cast("uint32_t* ", self:getData())
 		local low, high
 		if dev and dev.embeddedTimestampAtEndOfBuffer then
+			-- ixgbe-style nics that support this (i.e. x550)
 			local timestamp = ffi.cast("uint32_t*", ffi.cast("uint8_t*", self:getData()) + self:getSize() - 8)
 			low = timestamp[0]
 			high = timestamp[1]
+			return high * 10^9 + low
 		else
 			-- TODO: this is only tested with the Intel 82580 NIC at the moment
 			-- the datasheet claims that low and high are swapped, but this doesn't seem to be the case
 			-- TODO: check other NICs
 			low = data[2]
 			high = data[3]
+			return high * 2^32 + low
 		end
-		return high * 2^32 + low
 	end
 end
 
