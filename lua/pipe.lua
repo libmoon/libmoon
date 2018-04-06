@@ -30,8 +30,13 @@ ffi.cdef [[
 	// DPDK SPSC ring
 	struct rte_ring { };
 	struct rte_ring* create_ring(uint32_t count, int32_t socket);
+	void free_ring(struct rte_ring* r);
 	int ring_enqueue(struct rte_ring* r, struct rte_mbuf** obj, int n);
 	int ring_dequeue(struct rte_ring* r, struct rte_mbuf** obj, int n);
+	int ring_count(struct rte_ring* r);
+	int ring_free_count(struct rte_ring* r);
+	bool ring_empty(struct rte_ring* r);
+	bool ring_full(struct rte_ring* r);
 ]]
 
 local C = ffi.C
@@ -61,6 +66,10 @@ function mod:sendToPacketRing(ring, bufs, n)
 	return C.ring_enqueue(ring, bufs.array, n or bufs.size) > 0
 end
 
+function packetRing:free()
+	return C.free_ring(self.ring)
+end
+
 -- try to enqueue packets in a ring, returns true on success
 function packetRing:send(bufs)
 	return C.ring_enqueue(self.ring, bufs.array, bufs.size) > 0
@@ -71,8 +80,30 @@ function packetRing:sendN(bufs, n)
 	return C.ring_enqueue(self.ring, bufs.array, n) > 0
 end
 
+-- returns number of packets received
 function packetRing:recv(bufs)
-	error("NYI")
+	return C.ring_dequeue(self.ring, bufs.array, bufs.size)
+end
+
+-- returns number of packets received
+function packetRing:recvN(bufs, n)
+	return C.ring_dequeue(self.ring, bufs.array, n)
+end
+
+function packetRing:count()
+	return C.ring_count(self.ring)
+end
+
+function packetRing:freeCount()
+	return C.ring_free_count(self.ring)
+end
+
+function packetRing:empty()
+	return C.ring_empty(self.ring)
+end
+
+function packetRing:full()
+	return C.ring_full(self.ring)
 end
 
 function packetRing:__serialize()
