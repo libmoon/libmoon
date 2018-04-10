@@ -8,6 +8,7 @@ local memory = require "memory"
 function configure(parser)
 	parser:argument("dev", "Devices to use, specify the same device twice to echo packets."):args(2):convert(tonumber)
 	parser:option("-t --threads", "Number of threads per forwarding direction using RSS."):args(1):convert(tonumber):default(1)
+	parser:option("-o --output", "File to output statistics to")
 	return parser:parse()
 end
 
@@ -24,7 +25,7 @@ function master(args)
 	device.waitForLinks()
 
 	-- print stats
-	stats.startStatsTask{devices = args.dev}
+	stats.startStatsTask{devices = args.dev, file = args.output}
 
 	-- start forwarding tasks
 	for i = 1, args.threads do

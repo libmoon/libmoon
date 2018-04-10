@@ -12,6 +12,7 @@ function configure(parser)
 	parser:argument("rxDev", "Device to receive from."):args(1):convert(tonumber)
 	parser:argument("txDev", "Device to send to."):args(1):convert(tonumber)
 	parser:option("--threads -t", "Number of threads"):args(1):convert(tonumber):default(1)
+	parser:option("-o --output", "File to output statistics to")
 	parser:mutex(
 		parser:option("--udp-port -u", "A UDP port to filter."):args(1):convert(tonumber):target("udpPort"),
 		parser:option("--pcap -p", "A pcap filter expression."):args("*"):combine()
@@ -26,7 +27,7 @@ function master(args)
 	for i = 1, args.threads do
 		lm.startTask("filter", rxDev:getRxQueue(i - 1), txDev:getTxQueue(i - 1), args)
 	end
-	stats.startStatsTask{rxDevices = {rxDev}, txDevices = {txDev}}
+	stats.startStatsTask{rxDevices = {rxDev}, txDevices = {txDev}, file = args.output}
 	lm.waitForTasks()
 end
 

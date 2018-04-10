@@ -9,6 +9,7 @@ function configure(parser)
 	parser:argument("dev", "Devices to use."):args("+"):convert(tonumber)
 	parser:option("-t --threads", "Number of threads per device."):args(1):convert(tonumber):default(1)
 	parser:flag("-l --lacp", "Try to setup an LACP channel.")
+	parser:option("-o --output", "File to output statistics to")
 	return parser:parse()
 end
 
@@ -36,7 +37,7 @@ function master(args)
 	end
 
 	-- print statistics
-	stats.startStatsTask{devices = args.dev}
+	stats.startStatsTask{devices = args.dev, file = args.output}
 
 	for i, dev in ipairs(args.dev) do 
 		for i = 1, args.threads do

@@ -14,6 +14,7 @@ function configure(parser)
 	parser:argument("devOut", "Device which forwards the packets not matching filters"):args(1):convert(tonumber)
 	parser:option("-p --pcapDev", "Device which replays a pcap for testing, connect to devIn"):args(1):convert(tonumber):default(-1)
 	parser:option("-f --pcapFile", "pcap file for --pcapDev"):args(1):default("dump.pcap")
+	parser:option("-o --output", "File to output statistics to")
 	return parser:parse()
 end
 
@@ -30,7 +31,7 @@ function master(args)
 		lm.startTask("playPcap", args.pcapFile, args.pcapDev)
 	end
 	lm.startTask("filter", devRecv, devForward, filter)
-	stats.startStatsTask{rxDevices = {devRecv.dev}, txDevices = {devForward.dev}}
+	stats.startStatsTask{rxDevices = {devRecv.dev}, txDevices = {devForward.dev}, file = args.output}
 	lm.waitForTasks()
 end
 

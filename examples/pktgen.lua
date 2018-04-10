@@ -29,6 +29,7 @@ function configure(parser)
 	parser:option("-t --threads", "Number of threads per device."):args(1):convert(tonumber):default(1)
 	parser:option("-r --rate", "Transmit rate in Mbit/s per device."):args(1)
 	parser:option("-w --webserver", "Start a REST API on the given port."):convert(tonumber)
+	parser:option("-o --output", "File to output statistics to")
 	parser:flag("-a --arp", "Use ARP.")
 	return parser:parse()
 end
@@ -74,7 +75,7 @@ function master(args,...)
 	end
 
 	-- print statistics
-	stats.startStatsTask{devices = args.dev}
+	stats.startStatsTask{devices = args.dev, file = args.output}
 
 	-- configure tx rates and start transmit slaves
 	for i, dev in ipairs(args.dev) do

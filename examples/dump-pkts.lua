@@ -27,6 +27,7 @@ function configure(parser)
 	parser:option("-f --file", "Write result to a pcap file.")
 	parser:option("-s --snap-len", "Truncate packets to this size."):convert(tonumber):target("snapLen")
 	parser:option("-t --threads", "Number of threads."):convert(tonumber):default(1)
+	parser:option("-o --output", "File to output statistics to")
 	parser:argument("filter", "A BPF filter expression."):args("*"):combine()
 	local args = parser:parse()
 	if args.filter then
@@ -45,7 +46,7 @@ function master(args)
 		arp.startArpTask{txQueue = dev:getTxQueue(1), ips = args.arp}
 		arp.waitForStartup() -- race condition with arp.handlePacket() otherwise
 	end
-	stats.startStatsTask{rxDevices = {dev}}
+	stats.startStatsTask{rxDevices = {dev}, file = args.output}
 	for i = 1, args.threads do
 		lm.startTask("dumper", dev:getRxQueue(i - 1), args, i)
 	end
