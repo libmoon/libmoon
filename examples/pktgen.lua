@@ -30,6 +30,7 @@ function configure(parser)
 	parser:option("-r --rate", "Transmit rate in Mbit/s per device."):args(1)
 	parser:option("-w --webserver", "Start a REST API on the given port."):convert(tonumber)
 	parser:option("-o --output", "File to output statistics to")
+	parser:option("-s --seconds", "Stop after n seconds")
 	parser:flag("-a --arp", "Use ARP.")
 	return parser:parse()
 end
@@ -87,6 +88,11 @@ function master(args,...)
 			lm.startTask("txSlave", queue, DST_MAC)
 		end
 	end
+
+	if args.seconds then
+		lm.setRuntime(tonumber(args.seconds))
+	end
+
 	lm.waitForTasks()
 end
 
