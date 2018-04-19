@@ -276,7 +276,7 @@ end
 --- Retrieve the flags. 
 --- @return Flags as 3 bit integer.
 function ip4Header:getFlags()
-	return band(rshift(hton16(self.frag), 13), 0x000e)
+	return band(rshift(hton16(self.frag), 13), 0x0007)
 end
 
 --- Retrieve the flags. 
