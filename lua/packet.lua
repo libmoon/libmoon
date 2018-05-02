@@ -638,6 +638,7 @@ function packetSetLength(args)
 		header = data['proto']
 		member = data['name']
 		subType = data['subType']
+		length = data['length']
 		header = subType and header .. "_" .. subType or header
 		if header == "ip4" or header == "udp" or header == "ptp" or header == "ipfix" then
 			str = str .. [[
@@ -648,7 +649,7 @@ function packetSetLength(args)
 				self.]] .. member .. [[:setLength(length - ]] .. accumulatedLength + 40 .. [[)
 				]]
 		end
-		accumulatedLength = accumulatedLength + ffi.sizeof("struct " .. header .. "_header")
+		accumulatedLength = accumulatedLength + ffi.sizeof("struct " .. header .. "_header" .. (length and "_" .. length or ""))
 	end
 
 	-- build complete function
