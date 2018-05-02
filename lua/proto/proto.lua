@@ -9,6 +9,7 @@ proto.eth = require "proto.ethernet"
 proto.ethernet = proto.eth
 proto.ip4 = require "proto.ip4"
 proto.ip6 = require "proto.ip6"
+proto.ip6sr = require "proto.ip6sr"
 proto.arp = require "proto.arp"
 proto.icmp = require "proto.icmp"
 proto.udp = require "proto.udp"

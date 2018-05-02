@@ -638,6 +638,7 @@ function packetSetLength(args)
 		header = data['proto']
 		member = data['name']
 		subType = data['subType']
+		length = data['length']
 		header = subType and header .. "_" .. subType or header
 		if header == "ip4" or header == "udp" or header == "ptp" or header == "ipfix" then
 			str = str .. [[
@@ -648,7 +649,7 @@ function packetSetLength(args)
 				self.]] .. member .. [[:setLength(length - ]] .. accumulatedLength + 40 .. [[)
 				]]
 		end
-		accumulatedLength = accumulatedLength + ffi.sizeof("struct " .. header .. "_header")
+		accumulatedLength = accumulatedLength + ffi.sizeof("struct " .. header .. "_header" .. (length and "_" .. length or ""))
 	end
 
 	-- build complete function
@@ -913,7 +914,17 @@ pkt.getTcpPacket = function(self, ip4)
 	else 
 		return pkt.getTcp6Packet(self) 
 	end 
-end   
+end
+
+pkt.getTcp6SrPacket = function(self, len)
+	local name = "getIp6SrPacket_" .. len .. "_tcp"
+	if not pkt[name] then
+		--- createStack should only be called once per header sequence and length combination,
+		--- so store the result in the pkt table after calling it for the first time.
+		pkt[name] = createStack("eth", "ip6", { "ip6sr", length = len }, "tcp")
+	end
+	return pkt[name](self)
+end
 
 pkt.getPtpPacket = createStack("eth", "ptp")
 pkt.getUdpPtpPacket = createStack("eth", "ip4", "udp", "ptp")
