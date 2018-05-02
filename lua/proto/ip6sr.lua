@@ -18,9 +18,6 @@
 --]]
 local ffi = require "ffi"
 require "proto.template"
--- require "ip6"
-local ip6 = require "proto.ip6"
--- local ip6_address = ip6.ip6_address
 local initHeader = initHeader
 
 
@@ -42,7 +39,7 @@ ip6sr.PROTO_ICMP	= 0x3a -- 58
 ip6sr.PROTO_ESP	= 0x32
 ip6sr.PROTO_AH	= 0x33
 -- NextHeader field value for SRH
-ip6sr.PROTO_SRH   = 0x2b -- maybe?
+ip6sr.PROTO_SRH   = 0x2b
 
 
 --- TODO copy-pastad from ip6.lua, reuse?
@@ -58,6 +55,7 @@ local mapNameProto = {
 	srh = ip6sr.PROTO_SRH,
 }
 
+local ip6AddrType = ffi.typeof("union ip6_address")
 
 ---------------------------------------------------------------------------
 ---- ip6sr header
@@ -71,12 +69,12 @@ ip6sr.headerFormat = [[
 	uint8_t		lastEntry;
 	uint8_t		flags;
 	uint16_t	tag;
-	union ip6_address segment;
+	union ip6_address segments[];
 ]]
 
 
 --- Variable sized member
-ip6sr.headerVariableMember = nil
+ip6sr.headerVariableMember = "segments"
 
 --- Module for ip6sr_address struct
 local ip6srHeader = initHeader()
@@ -85,16 +83,6 @@ ip6srHeader.__index = ip6srHeader
 --[[ for all members of the header with non-standard data type: set, get, getString 
 -- for set also specify a suitable default value
 --]]
-
---uint8_t		nextHeader;
---uint8_t		hdrExtLen;
---uint8_t		routingType;
---uint8_t		segmentsLeft;
---uint8_t		lastEntry;
---uint8_t		flags;
---uint16_t	tag;
---union ip6_address segment;
-
 function ip6srHeader:getNextHeader()
 	return self.nextHeader
 end
@@ -112,9 +100,8 @@ function ip6srHeader:getHeaderExtLenString()
 	return self:getHeaderExtLen()
 end
 function ip6srHeader:setHeaderExtLen(headerExtLen)
-	-- in 8-octet segments, not including the first 8 octets
-    -- aka number of segments * 2
-    headerExtLen = headerExtLen or 2
+	-- no default, this needs to be calculated from the rest of the packet if
+	-- it's not manually passed in (it should really just be calculated)
 	self.headerExtLen = headerExtLen
 end
 
@@ -151,6 +138,7 @@ function ip6srHeader:setLastEntry(lastEntry)
 end
 
 function ip6srHeader:getFlags()
+	print("Entering getFlags")
 	return self.flags
 end
 function ip6srHeader:getFlagsString()
@@ -161,43 +149,67 @@ function ip6srHeader:setFlags(flags)
 	self.flags = flags
 end
 
+
 function ip6srHeader:getTag()
+	print("Entering getTag")
 	return self.tag
 end
 function ip6srHeader:getTagString()
 	return self:getTag()
 end
 function ip6srHeader:setTag(tag)
-	tag = tag or 0x0
-	self.tag = tag
+	tag = tag or 0x0000
+	self.tag = hton16(tag)
 end
 
+function byteSwap(addr)
+	local swapped = ip6AddrType()
+	swapped.uint32[0] = bswap(addr.uint32[3])
+	swapped.uint32[1] = bswap(addr.uint32[2])
+	swapped.uint32[2] = bswap(addr.uint32[1])
+	swapped.uint32[3] = bswap(addr.uint32[0])
+	return swapped
+end
 
---- Retrieve the Segment.
---- @return Segment in 'union ip6_address' format.
-function ip6srHeader:getSegment()
-	return self.segment:get()
+--- Retrieve the Segments.
+--- @return Segment array in 'union ip6_address' format.
+function ip6srHeader:getSegments()
+	local segments = {}
+	for i, v in ipairs(self.segments) do
+		local segment = v:get()
+		segments[i] = segment
+	end
+	return segments
 end
 
 --- Retrieve the Segment address.
 --- @return Segment in string format.
-function ip6srHeader:getSegmentString()
-	return self.segment:getString()
+function ip6srHeader:getSegmentsString()
+	local str = "[ "
+	for _, v in pairs(self.segments) do
+		str = str .. v:getString() .. " "
+	end
+	str = str .. "]"
+	return str
 end
 
 --- Set the Segment.
 --- @param ip6_address segment of the ip6sr header as a union ip6_address.
-function ip6srHeader:setSegment(addr)
-	-- allocate enough space for address.len ip6_address
-	-- for i <- 0 .. len: self.segmentList[i]:set(addresses[i])
-
-	-- for now, just set one segment
-	addr = addr or parseIP6Address("fe80::1")
-	self.segment:set(addr)
+function ip6srHeader:setSegments(segments)
+	if (#segments > 0 and type(segments[1]) == "string") then
+		self:setSegmentsString(segments)
+	else
+		self.segments = segments
+	end
 end
 
-function ip6srHeader:setSegmentString(str)
-	self:setSegment(parseIP6Address(str))
+function ip6srHeader:setSegmentsString(segmentStrings)
+	local segments = {}
+	for i, v in ipairs(segmentStrings) do
+		local segment = byteSwap(parseIP6Address(v))
+		segments[i] = segment
+	end
+	self.segments = segments
 end
 
 
@@ -222,7 +234,7 @@ function ip6srHeader:fill(args, pre)
 	self:setLastEntry(args[pre .. "LastEntry"])
 	self:setFlags(args[pre .. "Flags"])
 	self:setTag(args[pre .. "Tag"])
-	self:setSegment(args[pre .. "Segment"])
+	self:setSegments(args[pre .. "Segments"])
 end
 
 --- Retrieve the values of all members.
@@ -240,7 +252,7 @@ function ip6srHeader:get(pre)
 	args[pre .. "LastEntry"] = self:getLastEntry()
 	args[pre .. "Flags"] = self:getFlags()
 	args[pre .. "Tag"] = self:getTag()
-	args[pre .. "Segment"] = self:getSegment()
+	args[pre .. "Segments"] = self:getSegments()
 
 	return args
 end
@@ -256,7 +268,7 @@ function ip6srHeader:getString()
 			" lastEntry " .. self:getLastEntryString() ..
 			" flags " .. self.getFlagsString() ..
 			" tag " .. self.getTagString() ..
-			" segment " .. self.self:getSegmentString()
+			" segments " .. self.self:getSegmentsString()
 end
 
 --- Resolve which header comes after this one (in a packet)
@@ -285,7 +297,22 @@ end
 --- @return Table of namedArgs
 --- @see ip6srHeader:fill
 function ip6srHeader:setDefaultNamedArgs(pre, namedArgs, nextHeader, accumulatedLength)
-	-- set protocol
+	local segmentCount = #(namedArgs[pre .. "Segments"] or {})
+
+	-- set headerExtLen
+	if not namedArgs[pre .. "HeaderExtLen"] then
+		-- length of the SRH header in 8-octet units, not including the first 8 octets
+		-- i.e., skipping the static portion of the SRH, and 2 units per IPv6 Segment
+		namedArgs[pre .. "HeaderExtLen"] = segmentCount * 2
+	end
+
+	-- set lastEntry
+	if not namedArgs[pre .. "LastEntry"] then
+		-- lastEntry is equal to the number of segments - 1
+		namedArgs[pre .. "LastEntry"] = segmentCount - 1
+	end
+
+	-- set protocol for next header
 	if not namedArgs[pre .. "NextHeader"] then
 		for name, type in pairs(mapNameProto) do
 			if nextHeader == name then
