@@ -40,7 +40,7 @@ ip6.PROTO_ICMP	= 0x3a -- 58
 ip6.PROTO_ESP	= 0x32
 ip6.PROTO_AH	= 0x33
 -- NextHeader field value for SRH
-ip6.PROTO_SRH   = 0x2b -- maybe?
+ip6.PROTO_SRH   = 0x2b
 
 
 -------------------------------------------------------------------------------------

@@ -8,48 +8,32 @@
 --- - Definition of ip6sr packets
 ------------------------------------------------------------------------
 
---[[
--- Use this file as template when implementing a new protocol (to implement all mandatory stuff)
--- Replace all occurrences of ip6sr with your protocol (e.g. sctp)
--- Necessary changes to other files:
--- - packet.lua: if the header has a length member, adapt packetSetLength; 
--- 				 if the packet has a checksum, adapt createStack (loop at end of function) and packetCalculateChecksums
--- - proto/proto.lua: add ip6sr.lua to the list so it gets loaded
---]]
 local ffi = require "ffi"
 require "proto.template"
 local initHeader = initHeader
 
-
 ---------------------------------------------------------------------------
----- ip6sr constants 
+---- IPv6 SR Constants
 ---------------------------------------------------------------------------
 
---- TODO copy-pastad from ip6.lua, reuse?
 --- ip6sr protocol constants
 local ip6sr = {}
 
---- NextHeader field value for Tcp
 ip6sr.PROTO_TCP 	= 0x06
---- NextHeader field value for Udp
 ip6sr.PROTO_UDP 	= 0x11
-ip6sr.PROTO_GRE = 0x2f
---- NextHeader field value for Icmp
-ip6sr.PROTO_ICMP	= 0x3a -- 58
-ip6sr.PROTO_ESP	= 0x32
-ip6sr.PROTO_AH	= 0x33
--- NextHeader field value for SRH
-ip6sr.PROTO_SRH   = 0x2b
+ip6sr.PROTO_GRE 	= 0x2f
+ip6sr.PROTO_ICMP	= 0x3a
+ip6sr.PROTO_ESP 	= 0x32
+ip6sr.PROTO_AH		= 0x33
+ip6sr.PROTO_SRH 	= 0x2b
 
-
---- TODO copy-pastad from ip6.lua, reuse?
 -- Maps headers to respective nextHeader value.
--- This list should be extended whenever a new protocol is added to 'IPv6 constants'.
+-- This list should be extended whenever a new protocol is added to 'IPv6 SR constants'.
 local mapNameProto = {
 	icmp = ip6sr.PROTO_ICMP,
 	udp = ip6sr.PROTO_UDP,
 	tcp = ip6sr.PROTO_TCP,
-	esp = ip6sr.PROTO_ESP,
+	esp	= ip6sr.PROTO_ESP,
 	ah = ip6sr.PROTO_AH,
 	gre = ip6sr.PROTO_GRE,
 	srh = ip6sr.PROTO_SRH,
@@ -63,46 +47,48 @@ local ip6AddrType = ffi.typeof("union ip6_address")
 
 ip6sr.headerFormat = [[
 	uint8_t		nextHeader;
-	uint8_t		headerExtLen;
+	uint8_t		hdrExtLen;
 	uint8_t		routingType;
 	uint8_t		segmentsLeft;
 	uint8_t		lastEntry;
 	uint8_t		flags;
 	uint16_t	tag;
-	union ip6_address segments[];
+	union ip6_address segmentList[];
 ]]
 
 
 --- Variable sized member
-ip6sr.headerVariableMember = "segments"
+ip6sr.headerVariableMember = "segmentList"
 
 --- Module for ip6sr_address struct
 local ip6srHeader = initHeader()
 ip6srHeader.__index = ip6srHeader
 
---[[ for all members of the header with non-standard data type: set, get, getString 
--- for set also specify a suitable default value
---]]
+--- Next Header: 8-bit selector.  Identifies the type of header
+--- immediately following the SRH.
+
+function ip6srHeader:setNextHeader(nextHeader)
+	self.nextHeader = nextHeader
+end
 function ip6srHeader:getNextHeader()
 	return self.nextHeader
 end
 function ip6srHeader:getNextHeaderString()
 	return self:getNextHeader()
 end
-function ip6srHeader:setNextHeader(nextHeader)
-	self.nextHeader = nextHeader
-end
 
-function ip6srHeader:getHeaderExtLen()
-	return self.headerExtLen
+--- 
+function ip6srHeader:getHdrExtLen()
+	return self.hdrExtLen
 end
-function ip6srHeader:getHeaderExtLenString()
-	return self:getHeaderExtLen()
+function ip6srHeader:getHdrExtLenString()
+	return self:getHdrExtLen()
 end
-function ip6srHeader:setHeaderExtLen(headerExtLen)
-	-- no default, this needs to be calculated from the rest of the packet if
-	-- it's not manually passed in (it should really just be calculated)
-	self.headerExtLen = headerExtLen
+function ip6srHeader:setHdrExtLen(hdrExtLen)
+	-- No default. This needs to be calculated based on the number of segments, unless
+	-- it has been provided by the user. That calculation is in setDefaultNamedArgs.
+	-- This should generally be left unset so it can be correctly calculated.
+	self.hdrExtLen = hdrExtLen
 end
 
 function ip6srHeader:getRoutingType()
@@ -162,31 +148,22 @@ function ip6srHeader:setTag(tag)
 	self.tag = hton16(tag)
 end
 
-function byteSwap(addr)
-	local swapped = ip6AddrType()
-	swapped.uint32[0] = bswap(addr.uint32[3])
-	swapped.uint32[1] = bswap(addr.uint32[2])
-	swapped.uint32[2] = bswap(addr.uint32[1])
-	swapped.uint32[3] = bswap(addr.uint32[0])
-	return swapped
-end
-
 --- Retrieve the Segments.
 --- @return Segment array in 'union ip6_address' format.
-function ip6srHeader:getSegments()
-	local segments = {}
-	for i, v in ipairs(self.segments) do
+function ip6srHeader:getSegmentList()
+	local segmentList = {}
+	for i, v in ipairs(self.segmentList) do
 		local segment = v:get()
-		segments[i] = segment
+		segmentList[i] = segment
 	end
-	return segments
+	return segmentList
 end
 
 --- Retrieve the Segment address.
 --- @return Segment in string format.
-function ip6srHeader:getSegmentsString()
+function ip6srHeader:getSegmentListString()
 	local str = "[ "
-	for _, v in pairs(self.segments) do
+	for _, v in pairs(self.segmentList) do
 		str = str .. v:getString() .. " "
 	end
 	str = str .. "]"
@@ -195,21 +172,30 @@ end
 
 --- Set the Segment.
 --- @param ip6_address segment of the ip6sr header as a union ip6_address.
-function ip6srHeader:setSegments(segments)
-	if (#segments > 0 and type(segments[1]) == "string") then
-		self:setSegmentsString(segments)
+function ip6srHeader:setSegmentList(segmentList)
+	if (#segmentList > 0 and type(segmentList[1]) == "string") then
+		self:setSegmentListString(segmentList)
 	else
-		self.segments = segments
+		self.segmentList = segmentList
 	end
 end
 
-function ip6srHeader:setSegmentsString(segmentStrings)
-	local segments = {}
-	for i, v in ipairs(segmentStrings) do
-		local segment = byteSwap(parseIP6Address(v))
-		segments[i] = segment
+function byteSwapIP6Addr(addr)
+	local swapped = ip6AddrType()
+	swapped.uint32[0] = bswap(addr.uint32[3])
+	swapped.uint32[1] = bswap(addr.uint32[2])
+	swapped.uint32[2] = bswap(addr.uint32[1])
+	swapped.uint32[3] = bswap(addr.uint32[0])
+	return swapped
+end
+
+function ip6srHeader:setSegmentListString(segmentListStrings)
+	local segmentList = {}
+	for i, v in ipairs(segmentListStrings) do
+		local segment = byteSwapIP6Addr(parseIP6Address(v))
+		segmentList[i] = segment
 	end
-	self.segments = segments
+	self.segmentList = segmentList
 end
 
 
@@ -228,13 +214,13 @@ function ip6srHeader:fill(args, pre)
 	pre = pre or "ip6sr"
 
 	self:setNextHeader(args[pre .. "NextHeader"])
-	self:setHeaderExtLen(args[pre .. "HeaderExtLen"])
+	self:setHdrExtLen(args[pre .. "HdrExtLen"])
 	self:setRoutingType(args[pre .. "RoutingType"])
 	self:setSegmentsLeft(args[pre .. "SegmentsLeft"])
 	self:setLastEntry(args[pre .. "LastEntry"])
 	self:setFlags(args[pre .. "Flags"])
 	self:setTag(args[pre .. "Tag"])
-	self:setSegments(args[pre .. "Segments"])
+	self:setSegmentList(args[pre .. "SegmentList"])
 end
 
 --- Retrieve the values of all members.
@@ -246,13 +232,13 @@ function ip6srHeader:get(pre)
 
 	local args = {}
 	args[pre .. "NextHeader"] = self:getNextHeader()
-	args[pre .. "HeaderExtLen"] = self:getHeaderExtLen()
+	args[pre .. "HdrExtLen"] = self:getHdrExtLen()
 	args[pre .. "RoutingType"] = self:getRoutingType()
 	args[pre .. "SegmentsLeft"] = self:getSegmentsLeft()
 	args[pre .. "LastEntry"] = self:getLastEntry()
 	args[pre .. "Flags"] = self:getFlags()
 	args[pre .. "Tag"] = self:getTag()
-	args[pre .. "Segments"] = self:getSegments()
+	args[pre .. "SegmentList"] = self:getSegmentList()
 
 	return args
 end
@@ -262,13 +248,13 @@ end
 function ip6srHeader:getString()
 	return "ip6sr" ..
 			" nextHeader " .. self:getNextHeaderString() ..
-			" headerExtLen " .. self:getHeaderExtLenString() ..
+			" hdrExtLen " .. self:getHdrExtLenString() ..
 			" routingType " .. self:getRoutingTypeString() ..
 			" segmentsLeft " .. self:getSegmentsLeftString() ..
 			" lastEntry " .. self:getLastEntryString() ..
 			" flags " .. self.getFlagsString() ..
 			" tag " .. self.getTagString() ..
-			" segments " .. self.self:getSegmentsString()
+			" segmentList " .. self.self:getSegmentListString()
 end
 
 --- Resolve which header comes after this one (in a packet)
@@ -297,13 +283,13 @@ end
 --- @return Table of namedArgs
 --- @see ip6srHeader:fill
 function ip6srHeader:setDefaultNamedArgs(pre, namedArgs, nextHeader, accumulatedLength)
-	local segmentCount = #(namedArgs[pre .. "Segments"] or {})
+	local segmentCount = #(namedArgs[pre .. "SegmentList"] or {})
 
-	-- set headerExtLen
-	if not namedArgs[pre .. "HeaderExtLen"] then
+	-- set hdrExtLen
+	if not namedArgs[pre .. "HdrExtLen"] then
 		-- length of the SRH header in 8-octet units, not including the first 8 octets
 		-- i.e., skipping the static portion of the SRH, and 2 units per IPv6 Segment
-		namedArgs[pre .. "HeaderExtLen"] = segmentCount * 2
+		namedArgs[pre .. "HdrExtLen"] = segmentCount * 2
 	end
 
 	-- set lastEntry
