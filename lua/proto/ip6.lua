@@ -39,6 +39,8 @@ ip6.PROTO_GRE = 0x2f
 ip6.PROTO_ICMP	= 0x3a -- 58
 ip6.PROTO_ESP	= 0x32
 ip6.PROTO_AH	= 0x33
+-- NextHeader field value for SRH
+ip6.PROTO_SRH   = 0x2b -- maybe?
 
 
 -------------------------------------------------------------------------------------
@@ -470,6 +472,7 @@ local mapNameProto = {
 	esp = ip6.PROTO_ESP,
 	ah = ip6.PROTO_AH,
 	gre = ip6.PROTO_GRE,
+	srh = ip6.PROTO_SRH,
 }
 
 --- Resolve which header comes after this one (in a packet).

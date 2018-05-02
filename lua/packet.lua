@@ -913,7 +913,8 @@ pkt.getTcpPacket = function(self, ip4)
 	else 
 		return pkt.getTcp6Packet(self) 
 	end 
-end   
+end
+pkt.getTcp6SRPacket = createStack("eth", "ip6", "ip6sr", "tcp")
 
 pkt.getPtpPacket = createStack("eth", "ptp")
 pkt.getUdpPtpPacket = createStack("eth", "ip4", "udp", "ptp")
