@@ -472,7 +472,7 @@ local mapNameProto = {
 	esp = ip6.PROTO_ESP,
 	ah = ip6.PROTO_AH,
 	gre = ip6.PROTO_GRE,
-	srh = ip6.PROTO_SRH,
+	ip6sr = ip6.PROTO_SRH,
 }
 
 --- Resolve which header comes after this one (in a packet).

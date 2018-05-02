@@ -916,14 +916,14 @@ pkt.getTcpPacket = function(self, ip4)
 	end 
 end
 
-function generateTcpSrStack(len)
-	pkt["getTcp6SrPacket_" .. len] = createStack("eth", "ip6", { "ip6sr", length = len }, "tcp")
-end
 pkt.getTcp6SrPacket = function(self, len)
-	if not pkt["getTcp6SrPacket_" .. len] then
-		generateTcpSrStack(len)
+	local name = "getIp6SrPacket_" .. len .. "_tcp"
+	if not pkt[name] then
+		--- createStack should only be called once per header sequence and length combination,
+		--- so store the result in the pkt table after calling it for the first time.
+		pkt[name] = createStack("eth", "ip6", { "ip6sr", length = len }, "tcp")
 	end
-	return pkt["getTcp6SrPacket_" .. len](self)
+	return pkt[name](self)
 end
 
 pkt.getPtpPacket = createStack("eth", "ptp")

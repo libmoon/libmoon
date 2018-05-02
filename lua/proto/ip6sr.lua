@@ -36,7 +36,7 @@ local mapNameProto = {
 	esp	= ip6sr.PROTO_ESP,
 	ah = ip6sr.PROTO_AH,
 	gre = ip6sr.PROTO_GRE,
-	srh = ip6sr.PROTO_SRH,
+	ip6sr = ip6sr.PROTO_SRH,
 }
 
 local ip6AddrType = ffi.typeof("union ip6_address")
@@ -64,10 +64,14 @@ ip6sr.headerVariableMember = "segmentList"
 local ip6srHeader = initHeader()
 ip6srHeader.__index = ip6srHeader
 
+---------------------------------------------------------------------------
 --- Next Header: 8-bit selector.  Identifies the type of header
 --- immediately following the SRH.
-
+---------------------------------------------------------------------------
+--- Set the NextHeader field. Default is TCP.
+--- @param nextHeader 8-bit uint
 function ip6srHeader:setNextHeader(nextHeader)
+	nextHeader = nextHeader or ip6sr.PROTO_TCP
 	self.nextHeader = nextHeader
 end
 function ip6srHeader:getNextHeader()
@@ -77,90 +81,174 @@ function ip6srHeader:getNextHeaderString()
 	return self:getNextHeader()
 end
 
---- 
+---------------------------------------------------------------------------
+--- Hdr Ext Len: 8-bit unsigned integer, is the length of the SRH
+--- header in 8-octet units, not including the first 8 octets.
+---------------------------------------------------------------------------
+--- Set the HdrExtLen field. There is no inline default for this value, it
+--- should be calculated based on the number of segments provided (unless
+--- the value has been passed in by the user). This calculation is performed
+--- in setDefaultNamedArgs. It's generally best to leave this unset so it can
+--- be correctly calculated.
+--- @param hdrExtLen 8-bit uint
+function ip6srHeader:setHdrExtLen(hdrExtLen)
+	self.hdrExtLen = hdrExtLen
+end
 function ip6srHeader:getHdrExtLen()
 	return self.hdrExtLen
 end
 function ip6srHeader:getHdrExtLenString()
 	return self:getHdrExtLen()
 end
-function ip6srHeader:setHdrExtLen(hdrExtLen)
-	-- No default. This needs to be calculated based on the number of segments, unless
-	-- it has been provided by the user. That calculation is in setDefaultNamedArgs.
-	-- This should generally be left unset so it can be correctly calculated.
-	self.hdrExtLen = hdrExtLen
-end
 
+---------------------------------------------------------------------------
+--- Routing Type: TBD, to be assigned by IANA (suggested value: 4).
+---------------------------------------------------------------------------
+--- Set the RoutingType field. Not much reason to change this from the default,
+--- unless IANA actually assigns a value.
+--- @param routingHeader 8-bit uint
+function ip6srHeader:setRoutingType(routingType)
+	routingType = routingType or 4
+	self.routingType = routingType
+end
 function ip6srHeader:getRoutingType()
 	return self.routingType
 end
 function ip6srHeader:getRoutingTypeString()
 	return self:getRoutingType()
 end
-function ip6srHeader:setRoutingType(routingType)
-	routingType = routingType or 4
-	self.routingType = routingType
-end
 
+---------------------------------------------------------------------------
+--- Segments Left.  Defined in [RFC8200], it contains the index, in
+--- the Segment List, of the next segment to inspect.  Segments Left
+--- is decremented at each segment.
+---------------------------------------------------------------------------
+--- Set the SegmentsLeft field. Defaults to 0 (no more segments to process)
+--- @param segmentsLeft 8-bit uint
+function ip6srHeader:setSegmentsLeft(segmentsLeft)
+	segmentsLeft = segmentsLeft or 0
+	self.segmentsLeft = segmentsLeft
+end
 function ip6srHeader:getSegmentsLeft()
 	return self.segmentsLeft
 end
 function ip6srHeader:getSegmentsLeftString()
 	return self:getSegmentsLeft()
 end
-function ip6srHeader:setSegmentsLeft(segmentsLeft)
-	segmentsLeft = segmentsLeft or 0
-	self.segmentsLeft = segmentsLeft
-end
 
+---------------------------------------------------------------------------
+--- Last Entry: contains the index, in the Segment List, of the last
+--- element of the Segment List.
+---------------------------------------------------------------------------
+--- Set the LastEntry field. There is no inline default for this value, it
+--- should be calculated based on the number of segments provided. This
+--- calculation is performed in setDefaultNamedArgs.
+--- @param lastEntry 8-bit uint
+function ip6srHeader:setLastEntry(lastEntry)
+	self.lastEntry = lastEntry
+end
 function ip6srHeader:getLastEntry()
 	return self.lastEntry
 end
 function ip6srHeader:getLastEntryString()
 	return self:getLastEntry()
 end
-function ip6srHeader:setLastEntry(lastEntry)
-	self.lastEntry = lastEntry
-end
 
+---------------------------------------------------------------------------
+--- Flags: 8 bits of flags.  Following flags are defined:
+--- 0 1 2 3 4 5 6 7
+--- +-+-+-+-+-+-+-+-+
+--- |U|P|O|A|H|  U  |
+--- +-+-+-+-+-+-+-+-+
+--- U: Unused and for future use.  SHOULD be unset on transmission
+--- and MUST be ignored on receipt.
+--- P-flag: Protected flag.  Set when the packet has been rerouted
+--- through FRR mechanism by an SR endpoint node.
+--- O-flag: OAM flag.  When set, it indicates that this packet is
+--- an operations and management (OAM) packet.
+--- A-flag: Alert flag.  If present, it means important Type Length
+--- Value (TLV) objects are present.  See Section 3.1 for details
+--- on TLVs objects.
+--- H-flag: HMAC flag.  If set, the HMAC TLV is present and is
+--- encoded as the last TLV of the SRH.  In other words, the last
+--- 36 octets of the SRH represent the HMAC information.  See
+--- Section 3.1.5 for details on the HMAC TLV.
+---------------------------------------------------------------------------
+--- Set flags field. Defaults to 0x00
+--- @param flags 8-bit uint
+function ip6srHeader:setFlags(flags)
+	flags = flags or 0x00
+	self.flags = flags
+end
 function ip6srHeader:getFlags()
-	print("Entering getFlags")
 	return self.flags
 end
 function ip6srHeader:getFlagsString()
 	return self:getFlags()
 end
-function ip6srHeader:setFlags(flags)
-	flags = flags or 0x0
-	self.flags = flags
+
+---------------------------------------------------------------------------
+--- Tag: tag a packet as part of a class or group of packets, e.g.,
+--- packets sharing the same set of properties.
+---------------------------------------------------------------------------
+--- Set the tag field -- TODO does this work as expected?
+--- @param tag 16-bit uint
+function ip6srHeader:setTag(tag)
+	tag = tag or 0
+	self.tag = hton16(tag)
 end
-
-
 function ip6srHeader:getTag()
-	print("Entering getTag")
 	return self.tag
 end
 function ip6srHeader:getTagString()
 	return self:getTag()
 end
-function ip6srHeader:setTag(tag)
-	tag = tag or 0x0000
-	self.tag = hton16(tag)
+
+---------------------------------------------------------------------------
+--- Segment List[n]: 128 bit IPv6 addresses representing the nth
+--- segment in the Segment List.  The Segment List is encoded starting
+--- from the last segment of the path.  I.e., the first element of the
+--- segment list (Segment List [0]) contains the last segment of the
+--- path, the second element contains the penultimate segment of the
+--- path and so on.
+---------------------------------------------------------------------------
+--- Set the SegmentList. If the provided segmentList is actually an
+--- array of strings, be helpful and hand those to setSegmentListString
+--- @param segmentList array of 'union ip6_address' types.
+function ip6srHeader:setSegmentList(segmentList)
+	if (#segmentList > 0 and type(segmentList[1]) == "string") then
+		self:setSegmentListString(segmentList)
+	else
+		self.segmentList = segmentList
+	end
 end
 
---- Retrieve the Segments.
---- @return Segment array in 'union ip6_address' format.
+--- Set the SegmentList from an array of strings. Parse strings as IPv6
+--- addresses use the :set() defined on the ip6addr to handle any necessary
+--- byte-ordering.
+--- @param segmentList array of Strings
+function ip6srHeader:setSegmentListString(segmentListStrings)
+	local segmentList = {}
+	for i, v in ipairs(segmentListStrings) do
+		local segment = ip6AddrType()
+		segment:set(parseIP6Address(v))
+		segmentList[i] = segment
+	end
+	self.segmentList = segmentList
+end
+
+--- Retrieve the SegmentList addresses
+--- @return SegmentList as an array of 'union ip6_address' format
 function ip6srHeader:getSegmentList()
 	local segmentList = {}
 	for i, v in ipairs(self.segmentList) do
-		local segment = v:get()
-		segmentList[i] = segment
+		segmentList[i] = v:get()
 	end
 	return segmentList
 end
 
---- Retrieve the Segment address.
---- @return Segment in string format.
+--- Retrieve the SegmentList as a string
+--- @return SegmentList in a single string
 function ip6srHeader:getSegmentListString()
 	local str = "[ "
 	for _, v in pairs(self.segmentList) do
@@ -170,45 +258,14 @@ function ip6srHeader:getSegmentListString()
 	return str
 end
 
---- Set the Segment.
---- @param ip6_address segment of the ip6sr header as a union ip6_address.
-function ip6srHeader:setSegmentList(segmentList)
-	if (#segmentList > 0 and type(segmentList[1]) == "string") then
-		self:setSegmentListString(segmentList)
-	else
-		self.segmentList = segmentList
-	end
-end
-
-function byteSwapIP6Addr(addr)
-	local swapped = ip6AddrType()
-	swapped.uint32[0] = bswap(addr.uint32[3])
-	swapped.uint32[1] = bswap(addr.uint32[2])
-	swapped.uint32[2] = bswap(addr.uint32[1])
-	swapped.uint32[3] = bswap(addr.uint32[0])
-	return swapped
-end
-
-function ip6srHeader:setSegmentListString(segmentListStrings)
-	local segmentList = {}
-	for i, v in ipairs(segmentListStrings) do
-		local segment = byteSwapIP6Addr(parseIP6Address(v))
-		segmentList[i] = segment
-	end
-	self.segmentList = segmentList
-end
-
-
 
 --- Set all members of the ip6sr header.
 --- Per default, all members are set to default values specified in the respective set function.
 --- Optional named arguments can be used to set a member to a user-provided value.
---- @param args Table of named arguments. Available arguments: ip6srXYZ
+--- @param args Table of named arguments. Available arguments: ip6srNextHeader, ip6srHdrExtLen,
+---	       ip6srRoutingType, ip6srSegmentsLeft, ip6srLastEntry, ip6srFlags, ip6srTag,
+---        ip6srSegmentList
 --- @param pre prefix for namedArgs. Default 'ip6sr'.
---- @code
---- fill() -- only default values
---- fill{ ip6srXYZ=1 } -- all members are set to default values with the exception of ip6srXYZ, ...
---- @endcode
 function ip6srHeader:fill(args, pre)
 	args = args or {}
 	pre = pre or "ip6sr"
@@ -294,11 +351,15 @@ function ip6srHeader:setDefaultNamedArgs(pre, namedArgs, nextHeader, accumulated
 
 	-- set lastEntry
 	if not namedArgs[pre .. "LastEntry"] then
-		-- lastEntry is equal to the number of segments - 1
+		-- lastEntry is 0-indexed index of last segment
+		-- i.e., the number of segments - 1
 		namedArgs[pre .. "LastEntry"] = segmentCount - 1
 	end
 
 	-- set protocol for next header
+	-- nextHeader arg is passed in from packet.lua and is the name of the next header
+	-- pulled from the original createStack call. Seldom need to actually set the
+	-- ip6srNextHeader field, though it does override nextHeader if set.
 	if not namedArgs[pre .. "NextHeader"] then
 		for name, type in pairs(mapNameProto) do
 			if nextHeader == name then
