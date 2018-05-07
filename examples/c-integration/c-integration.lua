@@ -21,6 +21,7 @@ ffi.cdef[[
 function configure(parser)
 	parser:argument("dev", "Devices to use."):args("+"):convert(tonumber)
 	parser:option("-t --threads", "Number of threads per device."):args(1):convert(tonumber):default(1)
+	parser:option("-o --output", "File to output statistics to")
 end
 
 function master(args)
@@ -35,7 +36,7 @@ function master(args)
 	device.waitForLinks()
 
 	-- print statistics
-	stats.startStatsTask{devices = args.dev}
+	stats.startStatsTask{devices = args.dev, file = args.output}
 
 	for i, dev in ipairs(args.dev) do 
 		for i = 0, args.threads - 1 do

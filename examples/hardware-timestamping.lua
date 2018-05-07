@@ -14,6 +14,7 @@ local RUN_TIME = 5
 function configure(parser)
 	parser:description("Demonstrate and test hardware timestamping capabilities.\nThe ideal test setup for this is a cable directly connecting the two test ports.")
 	parser:argument("dev", "Devices to use."):args(2):convert(tonumber)
+	parser:option("-o --output", "File to output statistics to")
 	return parser:parse()
 end
 
@@ -37,7 +38,7 @@ function master(args)
 	local flooder = lm.startTask("flooder", txQueue1, 319)
 	timestamper:wait()
 	flooder:wait()
-	stats.startStatsTask{txDevices = {args.dev[1]}, rxDevices = {args.dev[2]}}
+	stats.startStatsTask{txDevices = {args.dev[1]}, rxDevices = {args.dev[2]}, file = args.output}
 	local receiver = lm.startTask("timestampAllPacketsReceiver", rxQueue0)
 	local sender = lm.startTask("timestampAllPacketsSender", txQueue0)
 	receiver:wait()

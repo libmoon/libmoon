@@ -17,6 +17,7 @@ REST API demo, check out these endpoints:
 	parser:argument("dev", "Device to use, generates some dummy traffic to showcase the statistics API."):convert(tonumber)
 	parser:option("-p --port", "Start the REST API on the given port."):args(1):default(8080):convert(tonumber)
 	parser:option("-b --bind", "Bind to a specific IP.")
+	parser:option("-o --output", "File to output statistics to")
 	return parser:parse()
 end
 
@@ -61,7 +62,7 @@ function master(args,...)
 	if args.dev then
 		local dev = device.config{port = args.dev}
 		device.waitForLinks()
-		stats.startStatsTask{dev}
+		stats.startStatsTask{devices = {dev}, file = args.output}
 		lm.startTask("txTask", dev:getTxQueue(0))
 	end
 	lm.waitForTasks()
