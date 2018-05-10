@@ -20,7 +20,7 @@ extern "C" {
 		dst->ts_sec = ts_sec;
 		dst->ts_usec = ts_usec;
 		dst->incl_len = len;
-		dst->orig_len = len;
+		dst->orig_len = orig_len;
 		memcpy(&dst->data, packet, len);
 	}
 
