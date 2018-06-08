@@ -46,16 +46,16 @@ int dpdk_get_max_ports() {
 }
 
 struct libmoon_device_config {
-	uint32_t port;	/* Port identifier of the ethernet device */
-	struct rte_mempool** mempools;	/* List of mempools */
-	uint16_t rx_queues;	/* Number of receiving queues */
-	uint16_t tx_queues;	/* Number of transmit queues */
-	uint16_t rx_descs;	/* Number of receive descriptors to allocate for the rx_ring */
-	uint16_t tx_descs;	/* Number of transmit descriptors to allocate for the tx_ring */
-	uint8_t drop_enable;	/* Drop packets if no descriptors are available */
-	uint8_t enable_rss;	/* Multi-queue packet distribution mode to be used, e.g. RSS */
-	uint8_t disable_offloads;	/* IP/UDP/TCP checksum offload enable */
-	uint8_t strip_vlan;	/* VLAN strip enable */
+	uint32_t port;
+	struct rte_mempool** mempools;
+	uint16_t rx_queues;
+	uint16_t tx_queues;
+	uint16_t rx_descs;
+	uint16_t tx_descs;
+	uint8_t drop_enable;
+	uint8_t enable_rss;
+	uint8_t disable_offloads;
+	uint8_t strip_vlan;
 	uint32_t rss_mask;
 };
 
