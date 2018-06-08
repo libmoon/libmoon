@@ -47,18 +47,21 @@ void alloc_mbufs(struct rte_mempool* mp, struct rte_mbuf* bufs[], uint32_t len, 
 				bufs[i]->pkt_len = pkt_len;
 				bufs[i]->data_len = pkt_len;
 				i++;
+				// fall through
 			case 3:
 				rte_mbuf_refcnt_set(bufs[i], 1);
 				rte_pktmbuf_reset(bufs[i]);
 				bufs[i]->pkt_len = pkt_len;
 				bufs[i]->data_len = pkt_len;
 				i++;
+				// fall through
 			case 2:
 				rte_mbuf_refcnt_set(bufs[i], 1);
 				rte_pktmbuf_reset(bufs[i]);
 				bufs[i]->pkt_len = pkt_len;
 				bufs[i]->data_len = pkt_len;
 				i++;
+				// fall through
 			case 1:
 				rte_mbuf_refcnt_set(bufs[i], 1);
 				rte_pktmbuf_reset(bufs[i]);
