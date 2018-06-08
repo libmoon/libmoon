@@ -46,16 +46,16 @@ int dpdk_get_max_ports() {
 }
 
 struct libmoon_device_config {
-	uint32_t port;
-	struct rte_mempool** mempools;
-	uint16_t rx_queues;
-	uint16_t tx_queues;
-	uint16_t rx_descs;
-	uint16_t tx_descs;
-	uint8_t drop_enable;
-	uint8_t enable_rss;
-	uint8_t disable_offloads;
-	uint8_t strip_vlan;
+	uint32_t port;	/* Port identifier of the ethernet device */
+	struct rte_mempool** mempools;	/* List of mempools */
+	uint16_t rx_queues;	/* Number of receiving queues */
+	uint16_t tx_queues;	/* Number of transmit queues */
+	uint16_t rx_descs;	/* Number of receive descriptors to allocate for the rx_ring */
+	uint16_t tx_descs;	/* Number of transmit descriptors to allocate for the tx_ring */
+	uint8_t drop_enable;	/* Drop packets if no descriptors are available */
+	uint8_t enable_rss;	/* Multi-queue packet distribution mode to be used, e.g. RSS */
+	uint8_t disable_offloads;	/* IP/UDP/TCP checksum offload enable */
+	uint8_t strip_vlan;	/* VLAN strip enable */
 	uint32_t rss_mask;
 };
 
@@ -303,4 +303,64 @@ void rte_delay_ms_export(uint32_t ms) {
 void rte_delay_us_export(uint32_t us) {
 	rte_delay_us(us);
 }
+
+
+int config_device(uint32_t port, uint16_t rx_queues, uint16_t tx_queues, uint16_t rx_descs, uint16_t tx_descs, uint8_t drop_enable, uint8_t enable_rss, uint8_t disable_offloads, uint8_t strip_vlan, uint32_t rss_mask, uint32_t nb_mbuf, uint32_t mbuf_size){
+
+	struct libmoon_device_config* dev_config = NULL;
+	struct rte_mempool** mpp = NULL;
+	struct rte_mempool* mp = NULL;
+	int aux;
+
+	dev_config=(struct libmoon_device_config*)malloc(sizeof(struct libmoon_device_config));
+	if(dev_config == NULL){
+		printf("Error creating config struct\n");
+		return 1;
+	}
+
+	mp = init_mem(nb_mbuf, rte_socket_id(), mbuf_size);
+	if(mp == NULL){
+		printf("Error creating mempool\n");
+		free(dev_config);
+		return 1;
+	}
+
+	mpp=(struct rte_mempool**)malloc(sizeof(struct rte_mempool*));
+	if(mpp == NULL){
+		printf("Error creating mempool array\n");
+		rte_mempool_free(mp);		
+		free(dev_config);
+		return 1;
+	}
+	
+	/* Store the mempool in the list */
+	mpp[0]=mp;
+
+	/* Assignation of configuration values */
+	dev_config->port=port;				
+	dev_config->mempools=mpp;		
+	dev_config->rx_queues=rx_queues;		
+	dev_config->tx_queues=tx_queues;		
+	dev_config->rx_descs=rx_descs;			
+	dev_config->tx_descs=tx_descs;			
+	dev_config->drop_enable=drop_enable;		
+	dev_config->enable_rss=enable_rss;		
+	dev_config->disable_offloads=disable_offloads;	
+	dev_config->strip_vlan=strip_vlan;		
+	dev_config->rss_mask=rss_mask;		
+
+
+	aux = dpdk_configure_device(dev_config);
+	if(aux!=0){
+		printf("Error configuring device - Error %d\n", aux);
+		rte_mempool_free(mp);
+		free(mpp);
+		free(dev_config);
+		return 1;
+	}
+
+	return 0;
+}
+
+
 
