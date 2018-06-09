@@ -5,6 +5,6 @@
 #include <rte_mempool.h>
 #include <rte_mbuf.h>
 
-struct rte_mempool* init_mem(uint32_t nb_mbuf, int32_t socket);
+struct rte_mempool* init_mem(uint32_t nb_mbuf, uint32_t socket, uint32_t mbuf_size);
 
 #endif /* MEMORY_H__ */
