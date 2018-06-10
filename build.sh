@@ -80,6 +80,11 @@ fi
 )
 
 (
+cd deps/highwayhash
+make
+)
+
+(
 if ! ${MOON}
 then
 	cd build
