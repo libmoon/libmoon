@@ -60,10 +60,17 @@ SET(HIGHWAYHASH_LIBS
 	highwayhash
 )
 
+# add tbb
+include(${CMAKE_CURRENT_SOURCE_DIR}/deps/tbb/cmake/TBBBuild.cmake)
+tbb_build(TBB_ROOT ${CMAKE_CURRENT_SOURCE_DIR}/deps/tbb CONFIG_DIR TBB_DIR)
+# find the cmake configuration file
+find_package(TBB)
+
 SET(ALL_LIBS
 	-Wl,--whole-archive
 	${LUAJIT_LIBS}
 	${HIGHWAYHASH_LIBS}
+	${TBB_IMPORTED_TARGETS}
 	-Wl,--start-group ${DPDK_LIBS} numa -Wl,--end-group
 	pthread dl rt
 	-Wl,--no-whole-archive
@@ -80,6 +87,7 @@ INCLUDE_DIRECTORIES(
 	${CMAKE_CURRENT_SOURCE_DIR}/deps/dpdk/drivers/net/e1000/base
 	${CMAKE_CURRENT_SOURCE_DIR}/deps/luajit/src
 	${CMAKE_CURRENT_SOURCE_DIR}/deps/highwayhash/highwayhash
+	${CMAKE_CURRENT_SOURCE_DIR}/deps/tbb/include
 	${CMAKE_CURRENT_SOURCE_DIR}/lib
 	${CMAKE_CURRENT_SOURCE_DIR}/src
 )
