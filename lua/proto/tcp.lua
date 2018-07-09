@@ -20,6 +20,9 @@ local ntoh16, hton16 = ntoh16, hton16
 local bor, band, bnot, rshift, lshift= bit.bor, bit.band, bit.bnot, bit.rshift, bit.lshift
 local istype = ffi.istype
 local format = string.format
+local tonumber = tonumber
+local uint32 = ffi.typeof("uint32_t")
+
 local log = require "log"
 
 local mod = {}
@@ -130,22 +133,23 @@ function tcpHeader:getDstString()
 end
 
 --- Set the sequence number.
---- @param int Sequence number as 8 bit integer.
+--- @param int Sequence number
 function tcpHeader:setSeqNumber(int)
 	int = int or 0
 	self.seq = hton(int)
 end
 
+
 --- Retrieve the sequence number.
---- @return Seq number as 8 bit integer.
+--- @return Seq number as 32 bit unsigned int in lua Number format
 function tcpHeader:getSeqNumber()
-	return hton(self.seq)
+	return tonumber(uint32(hton(self.seq)))
 end
 
 --- Retrieve the sequence number.
 --- @return Sequence number in string format.
 function tcpHeader:getSeqNumberString()
-	return self:getSeqNumber()
+	return tostring(self:getSeqNumber())
 end
 
 --- Set the acknowledgement number.
@@ -158,13 +162,13 @@ end
 --- Retrieve the acknowledgement number.
 --- @return Seq number as 8 bit integer.
 function tcpHeader:getAckNumber()
-	return hton(self.ack)
+	return tonumber(uint32(hton(self.ack)))
 end
 
 --- Retrieve the acknowledgement number.
 --- @return Ack number in string format.
 function tcpHeader:getAckNumberString()
-	return self:getAckNumber()
+	return tostring(self:getAckNumber())
 end
 
 --- Set the data offset.
