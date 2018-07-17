@@ -197,13 +197,13 @@ function mod.config(args)
 	end
 	local dev = mod.get(args.port)
 	dev.initialized = true
-	dev:store()
 	if args.rssQueues > 1 then
 		dev:setRssQueues(args.rssQueues, args.rssBaseQueue)
 	end
 	if dev.init then
 		dev:init()
 	end
+	dev:store()
 	dev:setPromisc(true)
 	return dev
 end
