@@ -827,12 +827,12 @@ function rxQueue:recvWithTimestamps(bufArray, numpkts)
 	return dpdkc.dpdk_receive_with_timestamps_software(self.id, self.qid, bufArray.array, math.min(bufArray.size, numpkts))
 end
 
-function rxQueue:getMacAddr()
-  return ffi.cast("union mac_address", ffi.C.rte_eth_macaddr_get(self.id))
+function rxQueue:getMacAddr(number)
+  return self.dev:getMac(number)
 end
 
-function txQueue:getMacAddr()
-  return ffi.cast("union mac_address", ffi.C.rte_eth_macaddr_get(self.id))
+function txQueue:getMacAddr(number)
+  return self.dev:getMac(number)
 end
 
 --- Receive packets from a rx queue with a timeout.
