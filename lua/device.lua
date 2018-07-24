@@ -252,7 +252,7 @@ function dev:setRssQueues(n, baseQueue)
 	end
 	local ret = ffi.C.rte_eth_dev_rss_reta_update(self.id, entries, retaSize)
 	if ret ~= 0 then
-		log:fatal("Error setting up RETA table: " .. errors.getstr(-ret))
+		log:fatal("Error setting up RETA table: " .. strError(ret))
 	end
 end
 
