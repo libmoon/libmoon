@@ -58,6 +58,7 @@ namespace libmoon {
 			std::cerr << "Lua error: " << lua_tostring(L, -1) << std::endl;
 			return -1;
 		}
+		lua_close(L);
 		return 0;
 	}
 
