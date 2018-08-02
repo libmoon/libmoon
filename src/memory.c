@@ -81,6 +81,14 @@ uint16_t rte_mbuf_refcnt_update_export(struct rte_mbuf* m, int16_t value) {
 	return rte_mbuf_refcnt_update(m, value);
 }
 
+char *rte_pktmbuf_adj_export(struct rte_mbuf *m, uint16_t len) {
+	return rte_pktmbuf_adj(m, len);
+}
+
+int rte_pktmbuf_trim_export(struct rte_mbuf *m, uint16_t len) {
+	return rte_pktmbuf_trim(m, len);
+}
+
 
 void* alloc_huge(size_t size) {
 	void* mem = mmap(NULL, size, PROT_READ | PROT_WRITE, MAP_NORESERVE | MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
