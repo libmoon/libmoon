@@ -23,3 +23,9 @@
 [submodule "lua/lib/turbo"]
 	path = lua/lib/turbo
 	url = https://github.com/emmericp/turbo
+[submodule "deps/highwayhash"]
+	path = deps/highwayhash
+	url = https://github.com/google/highwayhash.git
+[submodule "deps/tbb"]
+	path = deps/tbb
+	url = https://github.com/01org/tbb.git
