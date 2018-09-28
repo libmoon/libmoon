@@ -109,7 +109,7 @@ function histogram:totals()
 	return self.numSamples, self.sum, self.avg
 end
 
-function histogram:avg()
+function histogram:average()
 	if self.dirty then self:calc() end
 
 	return self.avg
