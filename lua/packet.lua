@@ -151,6 +151,14 @@ function pkt:free()
 	dpdkc.rte_pktmbuf_free_export(self)
 end
 
+function pkt:removeFirst(bytes)
+	dpdkc.rte_pktmbuf_adj_export(self, bytes)
+end
+
+function pkt:removeLast(bytes)
+	dpdkc.rte_pktmbuf_trim_export(self, bytes)
+end
+
 -------------------------------------------------------------------------------------------------------
 ---- IPSec offloading
 -------------------------------------------------------------------------------------------------------

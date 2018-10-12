@@ -245,6 +245,8 @@ ffi.cdef[[
 	void rte_pktmbuf_free_export(struct rte_mbuf* m);
 	uint16_t rte_mbuf_refcnt_read_export(struct rte_mbuf* m);
 	uint16_t rte_mbuf_refcnt_update_export(struct rte_mbuf* m, int16_t value);
+	char *rte_pktmbuf_adj_export(struct rte_mbuf *m, uint16_t len);
+	int rte_pktmbuf_trim_export(struct rte_mbuf *m, uint16_t len);
 
 	// devices
 	int rte_pci_probe();
