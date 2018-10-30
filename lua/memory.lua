@@ -244,7 +244,7 @@ function mempool:retain()
 end
 
 function mempool:alloc(l)
-	local r = dpdkc.alloc_mbuf(self)
+	local r = dpdkc.rte_pktmbuf_alloc_export(self)
 	r.pkt_len = l
 	r.data_len = l
 	return r
