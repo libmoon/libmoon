@@ -245,8 +245,10 @@ end
 
 function mempool:alloc(l)
 	local r = dpdkc.rte_pktmbuf_alloc_export(self)
-	r.pkt_len = l
-	r.data_len = l
+	if r ~= nil then
+		r.pkt_len = l
+		r.data_len = l
+	end
 	return r
 end
 
