@@ -28,9 +28,8 @@ struct rte_mempool* init_mem(uint32_t nb_mbuf, uint32_t socket, uint32_t mbuf_si
 	return pool;
 }
 
-struct rte_mbuf* alloc_mbuf(struct rte_mempool* mp) {
-	struct rte_mbuf* res = rte_pktmbuf_alloc(mp);
-	return res;
+struct rte_mbuf* rte_pktmbuf_alloc_export(struct rte_mempool* mp) {
+	return rte_pktmbuf_alloc(mp);
 }
 
 void alloc_mbufs(struct rte_mempool* mp, struct rte_mbuf* bufs[], uint32_t len, uint16_t pkt_len) {
