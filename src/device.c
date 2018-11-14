@@ -119,8 +119,9 @@ int dpdk_configure_device(struct libmoon_device_config* cfg) {
 			.header_split = 0,
 			.hw_ip_checksum = !cfg->disable_offloads,
 			.hw_vlan_filter = 0,
-			.jumbo_frame = 0,
+			.jumbo_frame = 1,
 			.hw_strip_crc = 1,
+			.max_rx_pkt_len= 9218,
 			.hw_vlan_strip = cfg->strip_vlan ? 1 : 0,
 		},
 		.txmode = {
