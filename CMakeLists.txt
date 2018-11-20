@@ -29,6 +29,8 @@ SET(FILES
 	src/timestamping_i40e
 	src/timestamping_ixgbe
 	src/timestamping_igb
+	src/bytesizedring
+	src/pktsizedring
 )
 
 SET(DPDK_LIBS

@@ -24,6 +24,7 @@ local SYSTIMEL   = 0x0000B600
 local SYSTIMEH   = 0x0000B604
 local TIMEADJL   = 0x0000B60C
 local TIMEADJH   = 0x0000B610
+local SRRCTL_TIMESTAMP = 0x40000000
 
 local SRRCTL_82580 = {}
 for i = 0, 7 do

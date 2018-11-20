@@ -12,6 +12,7 @@ extern "C" {
 struct rte_ring* create_ring(uint32_t count, int32_t socket);
 int ring_enqueue(struct rte_ring* r, void* const* obj, int n);
 int ring_dequeue(struct rte_ring* r, void** obj, int n);
+int ring_count(struct rte_ring* r);
 
 #ifdef __cplusplus
 }
