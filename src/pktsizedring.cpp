@@ -23,7 +23,7 @@ struct ps_ring* create_psring(uint32_t capacity, int32_t socket) {
 		count *= 2;
 	}
 	char ring_name[32];
-	struct ps_ring* psr = (struct ps_ring*)malloc(sizeof(struct ps_ring*));
+	struct ps_ring* psr = (struct ps_ring*)malloc(sizeof(struct ps_ring));
 	psr->capacity = capacity;
 	sprintf(ring_name, "mbuf_ps_ring%d", __sync_fetch_and_add(&ring_cnt, 1));
 	psr->ring = rte_ring_create(ring_name, count, socket, RING_F_SP_ENQ | RING_F_SC_DEQ);
