@@ -8,7 +8,7 @@ In order to use MoonGen/libmoon with Mellanox NICs some addtional steps are nece
 Additional prerequisites
 ------------------------
 
- - Mellanox OFED version: ``4.1``; Download from [here](http://www.mellanox.com/page/products_dyn?product_family=26&mtag=linux). Other versions may work (check the [driver compatibility matrix](http://www.mellanox.com/page/mlnx_ofed_matrix?mtag=linux_sw_drivers)), though that has not been tested.
+ - Mellanox OFED version: ``4.1``; Download from [here](http://www.mellanox.com/page/products_dyn?product_family=26&mtag=linux). Other versions may work (check the [driver compatibility matrix](http://www.mellanox.com/page/mlnx_ofed_matrix?mtag=linux_sw_drivers)), though that has not been tested. On the other hand, the complete ``OFED 4.1`` might no more be installable on current distributions.
 	
 	Use one of the following options for installation:
 
@@ -52,7 +52,7 @@ If all prerequisites are fulfilled, install MoonGen/libmoon by executing:
 
 	build.sh --mlx5 --mlx4
 
-Leave out Flags which are not needed. Currently only mlx5 is tested and has custom driver patches. However, user reported success with mlx4 devices.
+Leave out Flags which are not needed. Currently only mlx5 is tested and has custom driver patches. However, user reported success with mlx4 devices. For mlx5, the warnings from ``bind-interfaces.sh`` can be ignored, since it is using a bifurcated driver (see DPDK docs about the MLX5 PMD). Just leave out ``bind-interfaces.sh`` and continue with ``setup-hugetlbfs.sh`` instead.
 
 
 Troubleshooting
