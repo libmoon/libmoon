@@ -8,7 +8,7 @@ In order to use MoonGen/libmoon with Mellanox NICs some addtional steps are nece
 Additional prerequisites
 ------------------------
 
- - Mellanox OFED version: ``4.1``; Download from [here](http://www.mellanox.com/page/products_dyn?product_family=26&mtag=linux). Other versions may work (check the [driver compatibility matrix](http://www.mellanox.com/page/mlnx_ofed_matrix?mtag=linux_sw_drivers)), though that has not been tested. On the other hand, the complete ``OFED 4.1`` might no more be installable on current distributions.
+ - Mellanox OFED version: ``4.1``; Download from [here](http://www.mellanox.com/page/products_dyn?product_family=26&mtag=linux). Other versions may work (check the [driver compatibility matrix](http://www.mellanox.com/page/mlnx_ofed_matrix?mtag=linux_sw_drivers)), though currently only ``OFED 4.1`` and ``OFED 4.4`` have been tested.
 	
 	Use one of the following options for installation:
 
