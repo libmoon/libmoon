@@ -65,6 +65,7 @@ fi
 if ${MLX4} ; then
 	sed -ri 's,(MLX4_PMD=).*,\1y,' x86_64-native-linuxapp-gcc/.config
 fi
+export EXTRA_CFLAGS="-Wno-stringop-overflow -Wno-cast-function-type -Wno-array-bounds -Wno-stringop-truncation -Wno-format-overflow"
 make -j $NUM_CPUS O=x86_64-native-linuxapp-gcc
 )
 
