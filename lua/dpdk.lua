@@ -33,7 +33,7 @@ mod.PKT_RX_TUNNEL_IPV6_HDR	= bit.lshift(1ULL, 12)
 mod.PKT_RX_FDIR_ID			= bit.lshift(1ULL, 13)
 mod.PKT_RX_FDIR_FLX			= bit.lshift(1ULL, 14)
 
-mod.PKT_TX_NO_CRC_CSUM		= bit.lshift(1ULL, 48)
+mod.PKT_TX_NO_CRC_CSUM		= bit.lshift(1ULL, 61)
 mod.PKT_TX_QINQ_PKT			= bit.lshift(1ULL, 49)
 mod.PKT_TX_TCP_SEG			= bit.lshift(1ULL, 50)
 mod.PKT_TX_IEEE1588_TMST	= bit.lshift(1ULL, 51)
@@ -152,9 +152,6 @@ function mod.init()
 		coreMask = bit.bor(coreMask, bit.lshift(1ULL, v))
 	end
 	local argv = { "libmoon" }
-	local coreMaskUpper = tonumber(bit.rshift(coreMask, 32ULL))
-	local coreMaskLower = tonumber(bit.band(coreMask, 0xFFFFFFFFULL))
-	argv[#argv + 1] = ("-c0x%08X%08X"):format(coreMaskUpper, coreMaskLower)
 	-- core mapping, shared cores use the highest IDs
 	local maxCore = cfg.cores[#cfg.cores]
 	local coreMapping = ("%d-%d,(%d-%d)@%d"):format(cfg.cores[1], maxCore, maxCore + 1, maxCore + libmoon.config.numSharedCores, cfg.cores[1])

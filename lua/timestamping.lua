@@ -93,6 +93,7 @@ function timestamper:measureLatency(pktSize, packetModifier, maxWait)
 			-- i40e driver fdir filters are broken
 			-- it is not possible to match on flex bytes in udp packets without matching IPs and ports as well
 			-- so we have to look at that packet and reconfigure the filters
+			-- TODO: this might be fixed by now
 			self.rxQueue.dev:reconfigureUdpTimestampFilter(self.rxQueue, buf:getUdpPacket())
 		end
 	end

@@ -22,7 +22,6 @@ SET(FILES
 	src/lock
 	src/namespaces
 	src/ring
-	src/kni
 	src/filter
 	src/pcap
 	src/timestamping
@@ -34,11 +33,11 @@ SET(FILES
 )
 
 SET(DPDK_LIBS
-	rte_net	     rte_ethdev       rte_distributor 	 rte_kni       rte_mbuf       	  rte_pmd_bond         rte_pmd_ring  	rte_power  
+	rte_net      rte_ethdev       rte_distributor 	 rte_mbuf      rte_pmd_bond       rte_kni              rte_pmd_ring     rte_power  
 	rte_acl      rte_eal          rte_kvargs   	 rte_mempool   rte_mempool_ring	  rte_pmd_e1000        rte_pmd_virtio   rte_ring
 	rte_cfgfile  rte_hash         rte_lpm      	 rte_meter     rte_pmd_i40e   	  rte_pmd_vmxnet3_uio  rte_sched        rte_timer
 	rte_cmdline  rte_ip_frag      rte_pipeline 	 rte_pmd_ixgbe rte_mempool_stack  rte_port             rte_table        rte_pmd_bnxt
-	rte_pmd_ena  rte_pmd_nfp
+	rte_pmd_ena  rte_pmd_nfp      rte_stack          rte_bus_vdev  rte_bus_pci        rte_pci              rte_cryptodev
 )
 
 #Add Mellanox libraries if options are specified
@@ -79,7 +78,7 @@ SET(ALL_LIBS
 )
 
 INCLUDE_DIRECTORIES(
-	${CMAKE_CURRENT_SOURCE_DIR}/deps/dpdk/x86_64-native-linuxapp-gcc/include
+	${CMAKE_CURRENT_SOURCE_DIR}/deps/dpdk/x86_64-native-linux-gcc/include
 	${CMAKE_CURRENT_SOURCE_DIR}/deps/dpdk/drivers/net/bnxt
 	${CMAKE_CURRENT_SOURCE_DIR}/deps/dpdk/drivers/net/ixgbe/base
 	${CMAKE_CURRENT_SOURCE_DIR}/deps/dpdk/drivers/net/ixgbe
@@ -95,7 +94,7 @@ INCLUDE_DIRECTORIES(
 )
 
 LINK_DIRECTORIES(
-	${CMAKE_CURRENT_SOURCE_DIR}/deps/dpdk/x86_64-native-linuxapp-gcc/lib
+	${CMAKE_CURRENT_SOURCE_DIR}/deps/dpdk/x86_64-native-linux-gcc/lib
 	${CMAKE_CURRENT_SOURCE_DIR}/deps/luajit/usr/local/lib
 	${CMAKE_CURRENT_SOURCE_DIR}/deps/highwayhash/lib
 )

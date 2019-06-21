@@ -5,7 +5,9 @@
 #define X722_SUPPORT
 #define X722_A0_SUPPORT
 
-// i40e_ethdev depends on i40e_type.h but doesn't include it
+// i40e_ethdev.h depends on lots of stuff that it doesn't include
+#define PF_DRIVER
+#include <base/i40e_register.h>
 #include <i40e_type.h>
 #include <virtchnl.h>
 #include <i40e_ethdev.h>

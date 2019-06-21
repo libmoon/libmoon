@@ -7,7 +7,7 @@
 	path = deps/dpdk
 	url = https://github.com/emmericp/dpdk
 	ignore = untracked
-	branch = v17.08
+	branch = v19.05-libmoon
 [submodule "deps/pciids"]
 	path = deps/pciids
 	url = https://github.com/emmericp/pciids
@@ -26,6 +26,8 @@
 [submodule "deps/highwayhash"]
 	path = deps/highwayhash
 	url = https://github.com/google/highwayhash.git
+	ignore = untracked
 [submodule "deps/tbb"]
 	path = deps/tbb
 	url = https://github.com/01org/tbb.git
+	ignore = untracked

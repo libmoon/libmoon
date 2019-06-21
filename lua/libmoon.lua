@@ -240,7 +240,7 @@ end
 
 --- get the CPU's TSC
 function mod.getCycles()
-	return dpdkc.rte_rdtsc()
+	return dpdkc.read_rdtsc()
 end
 
 --- get the TSC frequency

@@ -6,6 +6,8 @@
 #include <rte_common.h>
 #include <rte_ethdev.h>
 
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+
 // copy & pasted from dpdk test-pmd/config.c
 
 static char *flowtype_to_str(uint16_t flow_type);

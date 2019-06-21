@@ -8,6 +8,7 @@
 #include <rte_mbuf.h>
 #include <rte_eth_ctrl.h>
 #include <rte_pci.h>
+#include <rte_bus_pci.h>
 
 #include "rdtsc.h"
 
@@ -21,23 +22,23 @@
 
 static volatile uint8_t* registers[RTE_MAX_ETHPORTS];
 
-uint32_t read_reg32(uint8_t port, uint32_t reg) {
+uint32_t read_reg32(uint16_t port, uint32_t reg) {
 	return *(volatile uint32_t*)(registers[port] + reg);
 }
 
-void write_reg32(uint8_t port, uint32_t reg, uint32_t val) {
+void write_reg32(uint16_t port, uint32_t reg, uint32_t val) {
 	*(volatile uint32_t*)(registers[port] + reg) = val;
 }
 
-uint64_t read_reg64(uint8_t port, uint32_t reg) {
+uint64_t read_reg64(uint16_t port, uint32_t reg) {
 	return *(volatile uint64_t*)(registers[port] + reg);
 }
 
-void write_reg64(uint8_t port, uint32_t reg, uint64_t val) {
+void write_reg64(uint16_t port, uint32_t reg, uint64_t val) {
 	*(volatile uint64_t*)(registers[port] + reg) = val;
 }
 
-volatile uint32_t* get_reg_addr(uint8_t port, uint32_t reg) {
+volatile uint32_t* get_reg_addr(uint16_t port, uint32_t reg) {
 	return (volatile uint32_t*)(registers[port] + reg);
 }
 
@@ -62,6 +63,8 @@ struct libmoon_device_config {
 int dpdk_configure_device(struct libmoon_device_config* cfg) {
 	const char* driver = dpdk_get_driver_name(cfg->port);
 	bool is_i40e_device = strcmp("net_i40e", driver) == 0;
+	struct rte_eth_dev_info dev_info;
+	rte_eth_dev_info_get(cfg->port, &dev_info);
 	// TODO: make fdir configurable
 	struct rte_fdir_conf fdir_conf = {
 		.mode = RTE_FDIR_MODE_PERFECT,
@@ -110,41 +113,42 @@ int dpdk_configure_device(struct libmoon_device_config* cfg) {
 	struct rte_eth_rss_conf rss_conf = {
 		.rss_key = NULL,
 		.rss_key_len = 0,
-		.rss_hf = cfg->rss_mask,
+		.rss_hf = cfg->rss_mask & dev_info.flow_type_rss_offloads,
 	};
+	uint64_t rx_offloads = (cfg->disable_offloads ?
+		(DEV_RX_OFFLOAD_JUMBO_FRAME | DEV_RX_OFFLOAD_TIMESTAMP)
+		: (DEV_RX_OFFLOAD_CHECKSUM | (cfg->strip_vlan ? DEV_RX_OFFLOAD_VLAN_STRIP : 0) | DEV_RX_OFFLOAD_VLAN_EXTEND | DEV_RX_OFFLOAD_JUMBO_FRAME | DEV_RX_OFFLOAD_TIMESTAMP))
+		& dev_info.rx_offload_capa;
+	uint64_t tx_offloads = (cfg->disable_offloads ?
+		DEV_TX_OFFLOAD_MBUF_FAST_FREE
+		: (DEV_TX_OFFLOAD_VLAN_INSERT | DEV_TX_OFFLOAD_IPV4_CKSUM | DEV_TX_OFFLOAD_UDP_CKSUM | DEV_TX_OFFLOAD_TCP_CKSUM | DEV_TX_OFFLOAD_MBUF_FAST_FREE))
+		& dev_info.tx_offload_capa;
 	struct rte_eth_conf port_conf = {
 		.rxmode = {
 			.mq_mode = cfg->enable_rss ? ETH_MQ_RX_RSS : ETH_MQ_RX_NONE,
 			.split_hdr_size = 0,
-			.header_split = 0,
-			.hw_ip_checksum = !cfg->disable_offloads,
-			.hw_vlan_filter = 0,
-			.jumbo_frame = 1,
-			.hw_strip_crc = 1,
-			.max_rx_pkt_len= 9218,
-			.hw_vlan_strip = cfg->strip_vlan ? 1 : 0,
+			.offloads = rx_offloads,
+			.max_rx_pkt_len = dev_info.max_rx_pktlen
 		},
 		.txmode = {
 			.mq_mode = ETH_MQ_TX_NONE,
+			.offloads = tx_offloads
 		},
 		.fdir_conf = fdir_conf,
-		// FIXME: update link speed API for dpdk 16.04
 		.link_speeds = ETH_LINK_SPEED_AUTONEG,
-    	.rx_adv_conf = {
+	  	.rx_adv_conf = {
 			.rss_conf = rss_conf,
 		}
 	};
 	int rc = rte_eth_dev_configure(cfg->port, cfg->rx_queues, cfg->tx_queues, &port_conf);
 	if (rc) return rc;
-	struct rte_eth_dev_info dev_info;
-	rte_eth_dev_info_get(cfg->port, &dev_info);
 	struct rte_eth_txconf tx_conf = {
 		.tx_thresh = {
 			.pthresh = dev_info.default_txconf.tx_thresh.pthresh,
 			.hthresh = dev_info.default_txconf.tx_thresh.hthresh,
 			.wthresh = dev_info.default_txconf.tx_thresh.wthresh,
 		},
-		.txq_flags = ETH_TXQ_FLAGS_NOMULTSEGS | (cfg->disable_offloads ? ETH_TXQ_FLAGS_NOOFFLOADS : 0),
+		.offloads = tx_offloads,
 	};
 	for (int i = 0; i < cfg->tx_queues; i++) {
 		rc = rte_eth_tx_queue_setup(cfg->port, i, cfg->tx_descs ? cfg->tx_descs : DEFAULT_TX_DESCS, SOCKET_ID_ANY, &tx_conf);
@@ -160,6 +164,7 @@ int dpdk_configure_device(struct libmoon_device_config* cfg) {
 			.hthresh = dev_info.default_rxconf.rx_thresh.hthresh,
 			.wthresh = dev_info.default_rxconf.rx_thresh.wthresh,
 		},
+		.offloads = rx_offloads,
 	};
 	for (int i = 0; i < cfg->rx_queues; i++) {
 		rc = rte_eth_rx_queue_setup(cfg->port, i, cfg->rx_descs ? cfg->rx_descs : DEFAULT_RX_DESCS, SOCKET_ID_ANY, &rx_conf, cfg->mempools[i]);
@@ -169,11 +174,10 @@ int dpdk_configure_device(struct libmoon_device_config* cfg) {
 		}
 	}
 	rc = rte_eth_dev_start(cfg->port);
-	// save memory address of the register file
-	if (dev_info.pci_dev) {
-		registers[cfg->port] = (uint8_t*) dev_info.pci_dev->mem_resource[0].addr;
+	if (RTE_DEV_TO_PCI(dev_info.device)) {
+		registers[cfg->port] = (uint8_t*) RTE_DEV_TO_PCI(dev_info.device)->mem_resource[0].addr;
 	} else {
-		registers[cfg->port] = NULL; // TODO: provide dummy memory area here? check for null on access?
+		registers[cfg->port] = NULL;
 	}
 	return rc;
 }
@@ -185,8 +189,8 @@ void* dpdk_get_eth_dev(int port) {
 int dpdk_get_pci_function(int port) {
 	struct rte_eth_dev_info dev_info;
 	rte_eth_dev_info_get(port, &dev_info);
-	if (dev_info.pci_dev) {
-		return dev_info.pci_dev->addr.function;
+	if (RTE_DEV_TO_PCI(dev_info.device)) {
+		return RTE_DEV_TO_PCI(dev_info.device)->addr.function;
 	} else {
 		return 0;
 	}
@@ -207,22 +211,22 @@ uint64_t dpdk_get_mac_addr(int port, char* buf) {
 	return addr.addr_bytes[0] | (addr.addr_bytes[1] << 8) | (addr.addr_bytes[2] << 16) | ((uint64_t) addr.addr_bytes[3] << 24) | ((uint64_t) addr.addr_bytes[4] << 32) | ((uint64_t) addr.addr_bytes[5] << 40);
 }
 
-uint32_t dpdk_get_pci_id(uint8_t port) {
+uint32_t dpdk_get_pci_id(uint16_t port) {
 	struct rte_eth_dev_info dev_info;
 	rte_eth_dev_info_get(port, &dev_info);
-	if (!dev_info.pci_dev) {
+	if (!RTE_DEV_TO_PCI(dev_info.device)) {
 		return 0;
 	}
-	return dev_info.pci_dev->id.vendor_id << 16 | dev_info.pci_dev->id.device_id;
+	return RTE_DEV_TO_PCI(dev_info.device)->id.vendor_id << 16 | RTE_DEV_TO_PCI(dev_info.device)->id.device_id;
 }
 
-uint8_t dpdk_get_socket(uint8_t port) {
+uint8_t dpdk_get_socket(uint16_t port) {
 	struct rte_eth_dev_info dev_info;
 	rte_eth_dev_info_get(port, &dev_info);
-	if (!dev_info.pci_dev) {
+	if (!RTE_DEV_TO_PCI(dev_info.device)) {
 		return 0;
 	}
-	int node = dev_info.pci_dev->device.numa_node;
+	int node = RTE_DEV_TO_PCI(dev_info.device)->device.numa_node;
 	if (node == -1) {
 		node = 0;
 	}
@@ -235,15 +239,19 @@ uint32_t dpdk_get_rte_queue_stat_cntrs_num() {
 
 // the following functions are static inline function in header files
 // this is the easiest/least ugly way to make them available to luajit (#defining static before including the header breaks stuff)
-uint16_t rte_eth_rx_burst_export(uint8_t port_id, uint16_t queue_id, void* rx_pkts, uint16_t nb_pkts) {
+uint16_t rte_eth_rx_burst_export(uint16_t port_id, uint16_t queue_id, void* rx_pkts, uint16_t nb_pkts) {
 	return rte_eth_rx_burst(port_id, queue_id, rx_pkts, nb_pkts);
 }
 
-uint16_t rte_eth_tx_burst_export(uint8_t port_id, uint16_t queue_id, void* tx_pkts, uint16_t nb_pkts) {
+uint16_t rte_eth_tx_burst_export(uint16_t port_id, uint16_t queue_id, void* tx_pkts, uint16_t nb_pkts) {
 	return rte_eth_tx_burst(port_id, queue_id, tx_pkts, nb_pkts);
 }
 
-void dpdk_send_all_packets(uint8_t port_id, uint16_t queue_id, struct rte_mbuf** pkts, uint16_t num_pkts) {
+uint16_t rte_eth_tx_prepare_export(uint16_t port_id, uint16_t queue_id, void* tx_pkts, uint16_t nb_pkts) {
+	return rte_eth_tx_prepare(port_id, queue_id, tx_pkts, nb_pkts);
+}
+
+void dpdk_send_all_packets(uint16_t port_id, uint16_t queue_id, struct rte_mbuf** pkts, uint16_t num_pkts) {
 	uint32_t sent = 0;
 	while (1) {
 		sent += rte_eth_tx_burst(port_id, queue_id, pkts + sent, num_pkts - sent);
@@ -254,7 +262,7 @@ void dpdk_send_all_packets(uint8_t port_id, uint16_t queue_id, struct rte_mbuf**
 	return;
 }
 
-void dpdk_send_single_packet(uint8_t port_id, uint16_t queue_id, struct rte_mbuf* pkt) {
+void dpdk_send_single_packet(uint16_t port_id, uint16_t queue_id, struct rte_mbuf* pkt) {
 	uint32_t sent = 0;
 	while (1) {
 		sent = rte_eth_tx_burst(port_id, queue_id, &pkt, 1);
@@ -266,7 +274,7 @@ void dpdk_send_single_packet(uint8_t port_id, uint16_t queue_id, struct rte_mbuf
 }
 
 
-uint16_t dpdk_try_send_single_packet(uint8_t port_id, uint16_t queue_id, struct rte_mbuf* pkt) {
+uint16_t dpdk_try_send_single_packet(uint16_t port_id, uint16_t queue_id, struct rte_mbuf* pkt) {
 	uint16_t sent = 0;
 	sent = rte_eth_tx_burst(port_id, queue_id, &pkt, 1);
 	return sent;
@@ -274,7 +282,7 @@ uint16_t dpdk_try_send_single_packet(uint8_t port_id, uint16_t queue_id, struct 
 
 // receive packets and save the tsc at the time of the rx call
 // this prevents potential gc/jit pauses right between the rdtsc and rx calls
-uint16_t dpdk_receive_with_timestamps_software(uint8_t port_id, uint16_t queue_id, struct rte_mbuf* rx_pkts[], uint16_t nb_pkts) {
+uint16_t dpdk_receive_with_timestamps_software(uint16_t port_id, uint16_t queue_id, struct rte_mbuf* rx_pkts[], uint16_t nb_pkts) {
 	uint32_t cycles_per_byte = rte_get_tsc_hz() / 10000000.0 / 0.8;
 	while (is_running(0)) {
 		uint64_t tsc = read_rdtsc();

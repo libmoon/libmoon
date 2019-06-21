@@ -26,18 +26,6 @@ ffi.cdef[[
 	typedef uint8_t  MARKER8[0];
 	typedef uint64_t MARKER64[0];
 	
-	struct rte_mbuf;
-	union rte_ipsec {
-		uint32_t data;
-		//struct {
-		//	uint16_t sa_idx:10;
-		//	uint16_t esp_len:9;
-		//	uint8_t type:1;
-		//	uint8_t mode:1;
-		//	uint16_t unused:11; /**< These 11 bits are unused. */
-		//} sec;
-	};
-
 	struct rte_mbuf {
 		MARKER cacheline0;
 
@@ -112,9 +100,10 @@ ffi.cdef[[
 
 	// device status/info
 	struct rte_eth_link {
-		uint16_t link_speed;
-		uint16_t link_duplex;
-		uint8_t link_status: 1;
+		uint32_t link_speed;
+		uint16_t link_duplex: 1;
+		uint16_t link_autoneg: 1;
+		uint16_t link_status: 1;
 	} __attribute__((aligned(8)));
 
 	struct rte_fdir_filter {
@@ -168,46 +157,82 @@ ffi.cdef[[
 		uint8_t hthresh; 
 		uint8_t wthresh; 
 	};
+	struct rte_eth_switch_info {
+		const char *name;	/**< switch name */
+		uint16_t domain_id;	/**< switch domain id */
+		uint16_t port_id;
+	};
+	struct rte_eth_dev_portconf {
+		uint16_t burst_size; /**< Device-preferred burst size */
+		uint16_t ring_size; /**< Device-preferred size of queue rings */
+		uint16_t nb_queues; /**< Device-preferred number of queues */
+	};
 	struct rte_eth_rxconf {
-		struct rte_eth_thresh rx_thresh; 
-		uint16_t rx_free_thresh; 
-		uint8_t rx_drop_en; 
-		uint8_t rx_deferred_start; 
+		struct rte_eth_thresh rx_thresh; /**< RX ring threshold registers. */
+		uint16_t rx_free_thresh; /**< Drives the freeing of RX descriptors. */
+		uint8_t rx_drop_en; /**< Drop packets if no descriptors are available. */
+		uint8_t rx_deferred_start; /**< Do not start queue with rte_eth_dev_start(). */
+		uint64_t offloads;
 	};
+
 	struct rte_eth_txconf {
-		struct rte_eth_thresh tx_thresh; 
-		uint16_t tx_rs_thresh; 
-		uint16_t tx_free_thresh; 
-		uint32_t txq_flags; 
-		uint8_t tx_deferred_start; 
+		struct rte_eth_thresh tx_thresh; /**< TX ring threshold registers. */
+		uint16_t tx_rs_thresh; /**< Drives the setting of RS bit on TXDs. */
+		uint16_t tx_free_thresh; /**< Start freeing TX buffers if there are
+				      less free descriptors than this value. */
+
+		uint8_t tx_deferred_start; /**< Do not start queue with rte_eth_dev_start(). */
+		uint64_t offloads;
 	};
+
 	struct rte_eth_dev_info {
-		void* pci_dev; 
-		const char* driver_name; 
-		unsigned int if_index; 
-		uint32_t min_rx_bufsize; 
-		uint32_t max_rx_pktlen; 
-		uint16_t max_rx_queues; 
-		uint16_t max_tx_queues; 
-		uint32_t max_mac_addrs; 
+		void *device; /** Generic device information */
+		const char *driver_name; /**< Device Driver name. */
+		unsigned int if_index; /**< Index to bound host interface, or 0 if none.
+					 Use if_indextoname() to translate into an interface name. */
+		uint16_t min_mtu;       /**< Minimum MTU allowed */
+		uint16_t max_mtu;       /**< Maximum MTU allowed */
+		const uint32_t *dev_flags; /**< Device flags */
+		uint32_t min_rx_bufsize; /**< Minimum size of RX buffer. */
+		uint32_t max_rx_pktlen; /**< Maximum configurable length of RX pkt. */
+		uint16_t max_rx_queues; /**< Maximum number of RX queues. */
+		uint16_t max_tx_queues; /**< Maximum number of TX queues. */
+		uint32_t max_mac_addrs; /**< Maximum number of MAC addresses. */
 		uint32_t max_hash_mac_addrs;
-		uint16_t max_vfs; 
-		uint16_t max_vmdq_pools; 
-		uint32_t rx_offload_capa; 
-		uint32_t tx_offload_capa; 
+		/** Maximum number of hash MAC addresses for MTA and UTA. */
+		uint16_t max_vfs; /**< Maximum number of VFs. */
+		uint16_t max_vmdq_pools; /**< Maximum number of VMDq pools. */
+		uint64_t rx_offload_capa;
+		/**< All RX offload capabilities including all per-queue ones */
+		uint64_t tx_offload_capa;
+		/**< All TX offload capabilities including all per-queue ones */
+		uint64_t rx_queue_offload_capa;
+		/**< Device per-queue RX offload capabilities. */
+		uint64_t tx_queue_offload_capa;
+		/**< Device per-queue TX offload capabilities. */
 		uint16_t reta_size;
-		uint8_t hash_key_size; 
+		/**< Device redirection table size, the total number of entries. */
+		uint8_t hash_key_size; /**< Hash key size in bytes */
+		/** Bit mask of RSS offloads, the bit offset also means flow type */
 		uint64_t flow_type_rss_offloads;
-		struct rte_eth_rxconf default_rxconf; 
-		struct rte_eth_txconf default_txconf; 
-		uint16_t vmdq_queue_base; 
-		uint16_t vmdq_queue_num;  
-		uint16_t vmdq_pool_base;  
-		struct rte_eth_desc_lim rx_desc_lim;  
-		struct rte_eth_desc_lim tx_desc_lim;  
-		uint32_t speed_capa;  
-		uint16_t nb_rx_queues; 
-		uint16_t nb_tx_queues; 
+		struct rte_eth_rxconf default_rxconf; /**< Default RX configuration */
+		struct rte_eth_txconf default_txconf; /**< Default TX configuration */
+		uint16_t vmdq_queue_base; /**< First queue ID for VMDQ pools. */
+		uint16_t vmdq_queue_num;  /**< Queue number for VMDQ pools. */
+		uint16_t vmdq_pool_base;  /**< First ID of VMDQ pools. */
+		struct rte_eth_desc_lim rx_desc_lim;  /**< RX descriptors limits */
+		struct rte_eth_desc_lim tx_desc_lim;  /**< TX descriptors limits */
+		uint32_t speed_capa;  /**< Supported speeds bitmap (ETH_LINK_SPEED_). */
+		/** Configured number of rx/tx queues */
+		uint16_t nb_rx_queues; /**< Number of RX queues. */
+		uint16_t nb_tx_queues; /**< Number of TX queues. */
+		/** Rx parameter recommendations */
+		struct rte_eth_dev_portconf default_rxportconf;
+		/** Tx parameter recommendations */
+		struct rte_eth_dev_portconf default_txportconf;
+		/** Generic device capabilities (RTE_ETH_DEV_CAPA_). */
+		uint64_t dev_capa;
+		struct rte_eth_switch_info switch_info;
 	};
 
 	struct libmoon_device_config {
@@ -271,20 +296,21 @@ ffi.cdef[[
 	int dpdk_get_max_ports();
 	int rte_eth_dev_mac_addr_add(uint8_t port, void* mac, uint32_t pool);
 	int rte_eth_dev_mac_addr_remove(uint8_t port, void* mac);
-	void rte_eth_macaddr_get(uint8_t port_id, struct ether_addr* mac_addr);
-	int rte_eth_set_queue_rate_limit(uint8_t port_id, uint16_t queue_idx, uint16_t tx_rate);
-	void rte_eth_dev_info_get(uint8_t port_id, struct rte_eth_dev_info* info);
-	void rte_eth_dev_stop(uint8_t port_id);
-	int rte_eth_dev_fw_version_get(uint8_t port_id, char* fw_version, size_t fw_size);
+	void rte_eth_macaddr_get(uint16_t port_id, struct ether_addr* mac_addr);
+	int rte_eth_set_queue_rate_limit(uint16_t port_id, uint16_t queue_idx, uint16_t tx_rate);
+	void rte_eth_dev_info_get(uint16_t port_id, struct rte_eth_dev_info* info);
+	void rte_eth_dev_stop(uint16_t port_id);
+	int rte_eth_dev_fw_version_get(uint16_t port_id, char* fw_version, size_t fw_size);
 
 	// rx & tx
-	uint16_t rte_eth_rx_burst_export(uint8_t port_id, uint16_t queue_id, struct rte_mbuf** rx_pkts, uint16_t nb_pkts);
-	uint16_t rte_eth_tx_burst_export(uint8_t port_id, uint16_t queue_id, struct rte_mbuf** tx_pkts, uint16_t nb_pkts);
-	int rte_eth_dev_tx_queue_start(uint8_t port_id, uint16_t rx_queue_id);
-	int rte_eth_dev_tx_queue_stop(uint8_t port_id, uint16_t rx_queue_id);
-	void dpdk_send_all_packets(uint8_t port_id, uint16_t queue_id, struct rte_mbuf** pkts, uint16_t num_pkts);
-	void dpdk_send_single_packet(uint8_t port_id, uint16_t queue_id, struct rte_mbuf* pkt);
-	uint16_t dpdk_try_send_single_packet(uint8_t port_id, uint16_t queue_id, struct rte_mbuf* pkt);
+	uint16_t rte_eth_rx_burst_export(uint16_t port_id, uint16_t queue_id, struct rte_mbuf** rx_pkts, uint16_t nb_pkts);
+	uint16_t rte_eth_tx_burst_export(uint16_t port_id, uint16_t queue_id, struct rte_mbuf** tx_pkts, uint16_t nb_pkts);
+	uint16_t rte_eth_tx_prepare_export(uint16_t port_id, uint16_t queue_id, struct rte_mbuf** tx_pkts, uint16_t nb_pkts);
+	int rte_eth_dev_tx_queue_start(uint16_t port_id, uint16_t rx_queue_id);
+	int rte_eth_dev_tx_queue_stop(uint16_t port_id, uint16_t rx_queue_id);
+	void dpdk_send_all_packets(uint16_t port_id, uint16_t queue_id, struct rte_mbuf** pkts, uint16_t num_pkts);
+	void dpdk_send_single_packet(uint16_t port_id, uint16_t queue_id, struct rte_mbuf* pkt);
+	uint16_t dpdk_try_send_single_packet(uint16_t port_id, uint16_t queue_id, struct rte_mbuf* pkt);
 
 	// stats
 	uint32_t dpdk_get_rte_queue_stat_cntrs_num();
@@ -299,7 +325,7 @@ ffi.cdef[[
 	// timers
 	void rte_delay_ms_export(uint32_t ms);
 	void rte_delay_us_export(uint32_t us);
-	uint64_t rte_rdtsc();
+	uint64_t read_rdtsc();
 	uint64_t rte_get_tsc_hz();
 
 	// lifecycle
@@ -307,11 +333,11 @@ ffi.cdef[[
 	void set_runtime(uint32_t ms);
 
 	// timestamping
-	uint16_t dpdk_receive_with_timestamps_software(uint8_t port_id, uint16_t queue_id, struct rte_mbuf** rx_pkts, uint16_t nb_pkts);
-	int rte_eth_timesync_enable(uint8_t port_id);
-	int rte_eth_timesync_read_tx_timestamp(uint8_t port_id, struct timespec* timestamp);
-	int rte_eth_timesync_read_rx_timestamp(uint8_t port_id, struct timespec* timestamp, uint32_t timesync);
-	int rte_eth_timesync_read_time(uint8_t port_id, struct timespec* time);
+	uint16_t dpdk_receive_with_timestamps_software(uint16_t port_id, uint16_t queue_id, struct rte_mbuf** rx_pkts, uint16_t nb_pkts);
+	int rte_eth_timesync_enable(uint16_t port_id);
+	int rte_eth_timesync_read_tx_timestamp(uint16_t port_id, struct timespec* timestamp);
+	int rte_eth_timesync_read_rx_timestamp(uint16_t port_id, struct timespec* timestamp, uint32_t timesync);
+	int rte_eth_timesync_read_time(uint16_t port_id, struct timespec* time);
 	void libmoon_sync_clocks(uint8_t port1, uint8_t port2, uint32_t timl, uint32_t timh, uint32_t adjl, uint32_t adjh);
 
 

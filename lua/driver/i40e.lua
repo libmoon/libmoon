@@ -181,7 +181,7 @@ local function getFdirFilter(queue, ptpType, ver, udpFilter)
 	return ffi.new("struct rte_eth_fdir_filter", {
 		soft_id = 1,
 		input = {
-			flow_type = dpdkc.RTE_ETH_FLOW_NONFRAG_IPV4_UDP,
+			flow_type = require"filter".RTE_ETH_FLOW_NONFRAG_IPV4_UDP,
 			flow = {
 				udp4_flow = {
 					ip = {
@@ -189,7 +189,7 @@ local function getFdirFilter(queue, ptpType, ver, udpFilter)
 						dst_ip = udpFilter.dstIp or 0
 					},
 					src_port = udpFilter.srcPort or 0,
-					dst_port = udpFilter.dstPort or 0--]]
+					dst_port = udpFilter.dstPort or 0
 				}
 			},
 			flow_ext = {

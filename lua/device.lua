@@ -386,7 +386,7 @@ function dev:wait(maxWait)
 		end
 	until link.status
 	self.speed = link.speed
-	local out = string.format("Device %d (%s) is %s: %s%s MBit/s", self.id, self:getMacString(), link.status and "up" or "DOWN", link.duplexAutoneg and "" or link.duplex and "full-duplex " or "half-duplex ", link.speed)
+	local out = string.format("Device %d (%s) is %s: %s%s MBit/s", self.id, self:getMacString(), link.status and "up" or "DOWN", link.duplex and "full-duplex " or "half-duplex ", link.speed)
 	if link.status then
 		log:info(out)
 	else
@@ -399,7 +399,7 @@ end
 function dev:getLinkStatus()
 	local link = ffi.new("struct rte_eth_link")
 	dpdkc.rte_eth_link_get_nowait(self.id, link)
-	return {status = link.link_status == 1, duplexAutoneg = link.link_duplex == 0, duplex = link.link_duplex == 2, speed = link.link_speed}
+	return {status = link.link_status == 1, autoneg = link.link_autoneg == 1, duplex = link.link_duplex == 1, speed = link.link_speed}
 end
 
 function dev:getMacString()
