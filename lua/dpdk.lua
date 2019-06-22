@@ -33,7 +33,7 @@ mod.PKT_RX_TUNNEL_IPV6_HDR	= bit.lshift(1ULL, 12)
 mod.PKT_RX_FDIR_ID			= bit.lshift(1ULL, 13)
 mod.PKT_RX_FDIR_FLX			= bit.lshift(1ULL, 14)
 
-mod.PKT_TX_NO_CRC_CSUM		= bit.lshift(1ULL, 61)
+mod.PKT_TX_NO_CRC_CSUM		= bit.lshift(1ULL, 63)
 mod.PKT_TX_QINQ_PKT			= bit.lshift(1ULL, 49)
 mod.PKT_TX_TCP_SEG			= bit.lshift(1ULL, 50)
 mod.PKT_TX_IEEE1588_TMST	= bit.lshift(1ULL, 51)
