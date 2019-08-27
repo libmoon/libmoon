@@ -203,6 +203,7 @@ function mod.config(args)
 	if dev.init then
 		dev:init()
 	end
+	dev.txvlan = args.txvlan
 	dev:store()
 	dev:setPromisc(true)
 	if dev:getDriverName():match("i40e") then
