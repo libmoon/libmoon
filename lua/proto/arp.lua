@@ -422,6 +422,28 @@ function arp.stopArpTask()
 	arpTable.stopTask = true
 end
 
+
+
+local function arpSendOnNic(nic, txBufs, req, ipSrc, ipDst, ethSrc, ethDst)
+   txBufs:alloc(60)
+   local pkt = txBufs[1]:getArpPacket()
+   local vlan = nic.txQueue.dev:getTxVlan()
+   if vlan ~= 0 then
+      pkt.eth:setType(eth.TYPE_8021Q)
+      pkt = txBufs[1]:getArpVlanPacket()
+      pkt.eth:setType(eth.TYPE_ARP)
+      pkt.eth:setVlanTag(vlan)
+   end
+   pkt.eth:setDstString(ethDst)
+   pkt.eth:setSrcString(ethSrc)
+   pkt.arp:setOperation(req)
+   pkt.arp:setHardwareDstString(ethDst)
+   pkt.arp:setProtoDst(ipDst)
+   pkt.arp:setProtoSrc(ipSrc)
+   pkt.arp:setHardwareSrcString(ethSrc)
+   nic.txQueue:send(txBufs)
+end
+
 local function handleArpPacket(rxBufs, txBufs, nic, ipToMac)
 	local rxPkt = rxBufs[1]:getArpPacket()
 	if rxPkt.eth:getType() == eth.TYPE_ARP then
@@ -429,17 +451,9 @@ local function handleArpPacket(rxBufs, txBufs, nic, ipToMac)
 			local ip = rxPkt.arp:getProtoDst()
 			local mac = ipToMac[ip]
 			if mac then
-				txBufs:alloc(60)
-				-- TODO: a single-packet API would be nice for things like this
-				local pkt = txBufs[1]:getArpPacket()
-				pkt.eth:setSrcString(mac)
-				pkt.eth:setDst(rxPkt.eth:getSrc())
-				pkt.arp:setOperation(arp.OP_REPLY)
-				pkt.arp:setHardwareDst(rxPkt.arp:getHardwareSrc())
-				pkt.arp:setHardwareSrcString(mac)
-				pkt.arp:setProtoDst(rxPkt.arp:getProtoSrc())
-				pkt.arp:setProtoSrc(ip)
-				nic.txQueue:send(txBufs)
+                           arpSendOnNic(nic, txBufs, arp.OP_REPLY, ip,
+                                        rxPkt.arp:getProtoSrc(),
+                                        mac, rxPkt.arp:getHardwareSrc())
 			end
 		elseif rxPkt.arp:getOperation() == arp.OP_REPLY then
 			-- learn from all arp replies we see (yes, that makes arp cache poisoning easy)
@@ -454,6 +468,15 @@ local function handleArpPacket(rxBufs, txBufs, nic, ipToMac)
 		end
 	end
 	rxBufs:freeAll()
+end
+
+local function arpSendReqToAllNics(qs, txBufs, ip)
+   for _, nic in ipairs(qs) do
+      -- targeted or gratuitous arp request
+      local ipDst = ip or parseIPAddress(nic.ips[1])
+      arpSendOnNic(nic, txBufs, arp.OP_REQUEST, parseIPAddress(nic.ips[1]),
+                   ipDst, nic.txQueue.dev:getMacString(), eth.BROADCAST)
+   end
 end
 
 local function arpTask(qs)
@@ -501,19 +524,7 @@ local function arpTask(qs)
 		-- send out gratuitous arp
 		if gratArpTimer:expired() then
 			gratArpTimer:reset(qs.gratArpInterval or math.huge)
-			for _, nic in ipairs(qs) do
-				txBufs:alloc(60)
-				local pkt = txBufs[1]:getArpPacket()
-				pkt.eth:setDstString(eth.BROADCAST)
-				local mac = nic.txQueue.dev:getMacString()
-				pkt.eth:setSrcString(mac)
-				pkt.arp:setOperation(arp.OP_REQUEST)
-				pkt.arp:setHardwareDstString(eth.BROADCAST)
-				pkt.arp:setProtoDst(parseIPAddress(nic.ips[1]))
-				pkt.arp:setProtoSrc(parseIPAddress(nic.ips[1]))
-				pkt.arp:setHardwareSrcString(mac)
-				nic.txQueue:send(txBufs)
-			end
+                        arpSendReqToAllNics(qs, txBufs, nil)
 		end
 		for i, nic in ipairs(qs) do
 			if nic.rxQueue then
@@ -566,20 +577,8 @@ local function arpTask(qs)
 			value.timestamp = ts
 			arpTable[ip] = value
 			ip = tonumber(ip)
-			for _, nic in ipairs(qs) do
-				-- TODO: do not send requests on all devices, but only the relevant
-				txBufs:alloc(60)
-				local pkt = txBufs[1]:getArpPacket()
-				pkt.eth:setDstString(eth.BROADCAST)
-				pkt.arp:setOperation(arp.OP_REQUEST)
-				pkt.arp:setHardwareDstString(eth.BROADCAST)
-				pkt.arp:setProtoDst(ip)
-				local mac = nic.txQueue.dev:getMacString()
-				pkt.eth:setSrcString(mac)
-				pkt.arp:setProtoSrc(parseIPAddress(nic.ips[1]))
-				pkt.arp:setHardwareSrcString(mac)
-				nic.txQueue:send(txBufs)
-			end
+                        -- TODO: do not send requests on all devices, but only the relevant
+                        arpSendReqToAllNics(qs, txBufs, ip)
 		end)
 		for _, ip in ipairs(timedOutEntries) do
 			arpTable[ip] = nil
