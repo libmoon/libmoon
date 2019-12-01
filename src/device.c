@@ -58,6 +58,8 @@ struct libmoon_device_config {
 	uint8_t disable_offloads;
 	uint8_t strip_vlan;
 	uint32_t rss_mask;
+	uint8_t* rss_key;
+	uint8_t  rss_key_length;
 };
 
 int dpdk_configure_device(struct libmoon_device_config* cfg) {
@@ -111,8 +113,8 @@ int dpdk_configure_device(struct libmoon_device_config* cfg) {
 	};
 
 	struct rte_eth_rss_conf rss_conf = {
-		.rss_key = NULL,
-		.rss_key_len = 0,
+		.rss_key = cfg->rss_key,
+		.rss_key_len = cfg->rss_key_length,
 		.rss_hf = cfg->rss_mask & dev_info.flow_type_rss_offloads,
 	};
 	uint64_t rx_offloads = (cfg->disable_offloads ?
