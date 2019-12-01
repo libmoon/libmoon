@@ -19,6 +19,8 @@
 #define DEFAULT_RX_DESCS 512
 #define DEFAULT_TX_DESCS 256
 
+static const uint8_t symm_rss_hash_key_length = 40//Source: http://www.ndsl.kaist.edu/~kyoungsoo/papers/TR-symRSS.pdf
+static uint8_t symm_rss_hash_key[symm_rss_hash_key_length] = { 0x6D, 0x5A, 0x6D, 0x5A, 0x6D, 0x5A, 0x6D, 0x5A, 0x6D, 0x5A, 0x6D, 0x5A, 0x6D, 0x5A, 0x6D, 0x5A, 0x6D, 0x5A, 0x6D, 0x5A, 0x6D, 0x5A, 0x6D, 0x5A, 0x6D, 0x5A, 0x6D, 0x5A, 0x6D, 0x5A, 0x6D, 0x5A, 0x6D, 0x5A, 0x6D, 0x5A, 0x6D, 0x5A, 0x6D, 0x5A, };
 
 static volatile uint8_t* registers[RTE_MAX_ETHPORTS];
 
@@ -58,8 +60,7 @@ struct libmoon_device_config {
 	uint8_t disable_offloads;
 	uint8_t strip_vlan;
 	uint32_t rss_mask;
-	uint8_t* rss_key;
-	uint8_t  rss_key_length;
+	uint8_t enable_rss_symm;
 };
 
 int dpdk_configure_device(struct libmoon_device_config* cfg) {
@@ -113,8 +114,8 @@ int dpdk_configure_device(struct libmoon_device_config* cfg) {
 	};
 
 	struct rte_eth_rss_conf rss_conf = {
-		.rss_key = cfg->rss_key,
-		.rss_key_len = cfg->rss_key_length,
+		.rss_key = cfg->enable_rss_symm?symm_rss_hash_key:NULL,
+		.rss_key_len = cfg->enable_rss_symm?symm_rss_hash_key_length:0,
 		.rss_hf = cfg->rss_mask & dev_info.flow_type_rss_offloads,
 	};
 	uint64_t rx_offloads = (cfg->disable_offloads ?

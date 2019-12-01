@@ -196,8 +196,7 @@ function mod.config(args)
 		rss_mask = rssMask,
 		disable_offloads = args.disableOffloads,
 		strip_vlan = args.stripVlan,
-		rss_key = args.rssHashKey,
-		rss_key_length = args.rssHashKeyLen
+		enable_rss_symm = args.enable_rss_symm
 	}))
 	if rc ~= 0 then
 	    log:fatal("Could not configure device %d: error %s", args.port, strError(rc))
