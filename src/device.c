@@ -115,8 +115,8 @@ int dpdk_configure_device(struct libmoon_device_config* cfg) {
 	};
 
 	struct rte_eth_rss_conf rss_conf = {
-		.rss_key = cfg->enable_rss_symm?symm_rss_hash_key:NULL,
-		.rss_key_len = cfg->enable_rss_symm?SYMM_RSS_HASHKEY_LENGTH:0,
+		.rss_key = cfg->enable_rss_symm ? symm_rss_hash_key : NULL,
+		.rss_key_len = cfg->enable_rss_symm ? SYMM_RSS_HASHKEY_LENGTH : 0,
 		.rss_hf = cfg->rss_mask & dev_info.flow_type_rss_offloads,
 	};
 	uint64_t rx_offloads = (cfg->disable_offloads ?
