@@ -154,6 +154,9 @@ function mod.init()
 	local argv = { "libmoon" }
 	-- core mapping, shared cores use the highest IDs
 	local maxCore = cfg.cores[#cfg.cores]
+	if libmoon.config.includeSharedCores then
+		maxCore = maxCore - libmoon.config.numSharedCores---Required in order to use some specific hosts for execution host
+	end
 	local coreMapping = ("%d-%d,(%d-%d)@%d"):format(cfg.cores[1], maxCore, maxCore + 1, maxCore + libmoon.config.numSharedCores, cfg.cores[1])
 	argv[#argv + 1] = ("--lcores=%s"):format(coreMapping)
 
