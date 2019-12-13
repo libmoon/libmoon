@@ -89,6 +89,8 @@ local devices = namespaces:get()
 ---	  disableOffloads optional (default = false) Disable all offloading features, this significantly speeds up some drivers (e.g., ixgbe).
 ---                   set by default for drivers that do not support offloading (e.g., virtio)
 ---   stripVlan (default = true) Strip the VLAN tag on the NIC.
+---   rssHashKey (default = nil) (optional) Hash Key to use in the RSS selection process
+---   rssHashKeyLen (dafault = 0) (optional) Hash Key Length, if a custom one is selected.
 function mod.config(args)
 	if not args or not args.port then
 		log:fatal("usage: device.config({ port = x, ... })")
@@ -129,7 +131,10 @@ function mod.config(args)
 		log:fatal("device supports between %d and %d tx descriptors in steps of %d, requested %d",
 			info.tx_desc_lim.nb_min, info.tx_desc_lim.nb_max, info.tx_desc_lim.nb_align, args.txDescs)
 	end
+
 	args.rssQueues = args.rssQueues or 0
+	args.rssHashKey = args.rssHashKey or nil---Setting the HashKey for RSS default value
+	args.rssHashKeyLen = args.rssHashKeyLen or 0---Setting the default value for HashKey Length in RSS
 	if args.disableOffloads == nil then
 		args.disableOffloads = driverInfo.disableOffloads
 	end
@@ -190,7 +195,8 @@ function mod.config(args)
 		enable_rss = args.rssQueues > 1,
 		rss_mask = rssMask,
 		disable_offloads = args.disableOffloads,
-		strip_vlan = args.stripVlan
+		strip_vlan = args.stripVlan,
+		enable_rss_symm = args.enable_rss_symm
 	}))
 	if rc ~= 0 then
 	    log:fatal("Could not configure device %d: error %s", args.port, strError(rc))
