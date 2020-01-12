@@ -66,7 +66,7 @@ fi
 if ${MLX4} ; then
 	sed -ri 's,(MLX4_PMD=).*,\1y,' x86_64-native-linux-gcc/.config
 fi
-make -j $NUM_CPUS O=x86_64-native-linux-gcc
+EXTRA_CFLAGS="-Wno-error" make -j $NUM_CPUS O=x86_64-native-linux-gcc
 )
 
 (
