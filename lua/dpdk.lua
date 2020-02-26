@@ -156,6 +156,13 @@ function mod.init()
 	local coreMaskLower = tonumber(bit.band(coreMask, 0xFFFFFFFFULL))
 	argv[#argv + 1] = ("-c0x%08X%08X"):format(coreMaskUpper, coreMaskLower)
 	-- core mapping, shared cores use the highest IDs
+	if #cfg.cores + libmoon.config.numSharedCores >= 128 then
+		-- --lcores is restricted to 0-127 in DPDK; this is a problem on large CPUs
+		for i = #cfg.cores, math.max(1, #cfg.cores - libmoon.config.numSharedCores + 1), -1 do
+			cfg.cores[i] = nil
+		end
+		libmoon.config.cores = cfg.cores
+	end
 	local maxCore = cfg.cores[#cfg.cores]
 	local coreMapping = ("%d-%d,(%d-%d)@%d"):format(cfg.cores[1], maxCore, maxCore + 1, maxCore + libmoon.config.numSharedCores, cfg.cores[1])
 	argv[#argv + 1] = ("--lcores=%s"):format(coreMapping)
