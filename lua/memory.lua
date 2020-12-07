@@ -298,28 +298,30 @@ function bufArray:resize(size)
 	self.size = size
 end
 
-function bufArray:offloadUdpChecksums(ipv4, l2Len, l3Len)
+function bufArray:offloadUdpChecksums(ipv4, l2Len, l3Len, n)
 	ipv4 = ipv4 == nil or ipv4
 	l2Len = l2Len or 14
+	n = n or self.size
 	if ipv4 then
 		l3Len = l3Len or 20
-		for i = 0, self.size - 1 do
+		for i = 0, n - 1 do
 			self.array[i].ol_flags = bit.bor(self.array[i].ol_flags, dpdk.PKT_TX_IPV4, dpdk.PKT_TX_IP_CKSUM, dpdk.PKT_TX_UDP_CKSUM)
 			self.array[i].tx_offload = l2Len + l3Len * 128
 		end
-		dpdkc.calc_ipv4_pseudo_header_checksums(self.array, self.size, 20)
+		dpdkc.calc_ipv4_pseudo_header_checksums(self.array, n, 20)
 	else 
 		l3Len = l3Len or 40
-		for i = 0, self.size - 1 do
+		for i = 0, n - 1 do
 			self.array[i].ol_flags = bit.bor(self.array[i].ol_flags, dpdk.PKT_TX_IPV6, dpdk.PKT_TX_IP_CKSUM, dpdk.PKT_TX_UDP_CKSUM)
 			self.array[i].tx_offload = l2Len + l3Len * 128
 		end
-		dpdkc.calc_ipv6_pseudo_header_checksums(self.array, self.size, 30)
+		dpdkc.calc_ipv6_pseudo_header_checksums(self.array, n, 30)
 	end
 end
 
-function bufArray:offloadIPSec(idx, mode, sec_type)
-	for i = 0, self.size - 1 do
+function bufArray:offloadIPSec(idx, mode, sec_type, n)
+	n = n or self.size
+	for i = 0, n - 1 do
 		local buf = self.array[i]
 		buf:offloadIPSec(idx, mode, sec_type)
 	end
