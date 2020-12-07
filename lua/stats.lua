@@ -197,7 +197,7 @@ local function newCounter(ctrType, name, dev, format, file, direction)
 			openFiles[fileName].refCount = openFiles[fileName].refCount + 1
 			file = openFiles[fileName].file
 		else
-			file = io.open(file, "w+")
+			file = assert(io.open(file, "w+"))
 			openFiles[fileName] = {refCount = 1, file = file}
 		end
 	end
