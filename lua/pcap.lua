@@ -27,7 +27,7 @@ typedef struct {
 
 typedef struct {
 	uint32_t ts_sec;   /* timestamp seconds */
-	uint32_t ts_usec;  /* timestamp microseconds */
+	uint32_t ts_usec;  /* timestamp microseconds or nanoseconds*/
 	uint32_t incl_len; /* number of octets of packet saved in file */
 	uint32_t orig_len; /* actual length of packet */
 	uint8_t data[];
@@ -145,9 +145,9 @@ reader.__index = reader
 
 local function readHeader(ptr)
 	local hdr = headerPointer(ptr)
-	if hdr.magic_number == 0xd4c3b2a1 then
+	if hdr.magic_number == 0xd4c3b2a1 or hdr.magic_number == 0x4d3cb2a1 then
 		log:fatal("big endian pcaps are not supported")
-	elseif hdr.magic_number ~= 0xa1b2c3d4 then
+	elseif hdr.magic_number ~= 0xa1b2c3d4 and hdr.magic_number ~= 0xa1b23c4d then
 		log:fatal("not a pcap file")
 	end
 	if hdr.version_major ~= 2 or hdr.version_minor ~= 4 then
