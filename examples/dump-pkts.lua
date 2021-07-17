@@ -28,10 +28,11 @@ function configure(parser)
 	parser:option("-s --snap-len", "Truncate packets to this size."):convert(tonumber):target("snapLen")
 	parser:option("-t --threads", "Number of threads."):convert(tonumber):default(1)
 	parser:option("-o --output", "File to output statistics to.")
+	parser:flag("-B --bpf", "Use libpcap to compile BPF."):default(false)
 	parser:argument("filter", "A BPF filter expression."):args("*"):combine()
 	local args = parser:parse()
 	if args.filter then
-		local ok, err = pcall(pf.compile_filter, args.filter)
+		local ok, err = pcall(pf.compile_filter, args.filter, {bpf=args.bpf})
 		if not ok then
 			parser:error(err)
 		end
@@ -62,7 +63,7 @@ end
 function dumper(queue, args, threadId, devId)
 	local handleArp = args.arp
 	-- default: show everything
-	local filter = args.filter and pf.compile_filter(args.filter) or function() return true end
+	local filter = args.filter and pf.compile_filter(args.filter, {bpf=args.bpf}) or function() return true end
 	local snapLen = args.snapLen
 	local writer
 	local captureCtr, filterCtr
