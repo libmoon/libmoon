@@ -22,16 +22,18 @@ local pcap   = require "pcap"
 local pf     = require "pf"
 
 function configure(parser)
-	parser:argument("dev", "Device to use."):args(1):convert(tonumber)
+	parser:argument("devs", "Device(s) to use."):args(1)
 	parser:option("-a --arp", "Respond to ARP queries on the given IP."):argname("ip")
 	parser:option("-f --file", "Write result to a pcap file.")
 	parser:option("-s --snap-len", "Truncate packets to this size."):convert(tonumber):target("snapLen")
 	parser:option("-t --threads", "Number of threads."):convert(tonumber):default(1)
-	parser:option("-o --output", "File to output statistics to")
+	parser:option("-o --output", "File to output statistics to.")
+	parser:flag("-B --bpf", "Use libpcap to compile BPF."):default(false)
+	parser:flag("-V --vlans", "Keep vlan tags."):default(false)
 	parser:argument("filter", "A BPF filter expression."):args("*"):combine()
 	local args = parser:parse()
 	if args.filter then
-		local ok, err = pcall(pf.compile_filter, args.filter)
+		local ok, err = pcall(pf.compile_filter, args.filter, {bpf=args.bpf})
 		if not ok then
 			parser:error(err)
 		end
@@ -40,37 +42,43 @@ function configure(parser)
 end
 
 function master(args)
-	local dev = device.config{port = args.dev, txQueues = args.arp and 2 or 1, rxQueues = args.threads, rssQueues = args.threads}
-	device.waitForLinks()
-	if args.arp then
-		arp.startArpTask{txQueue = dev:getTxQueue(1), ips = args.arp}
-		arp.waitForStartup() -- race condition with arp.handlePacket() otherwise
-	end
-	stats.startStatsTask{rxDevices = {dev}, file = args.output}
-	for i = 1, args.threads do
-		lm.startTask("dumper", dev:getRxQueue(i - 1), args, i)
+	for portId in args.devs:gmatch("%d+") do
+		local dev = device.config{port = tonumber(portId), txQueues = args.arp and 2 or 1, rxQueues = args.threads, rssQueues = args.threads, stripVlan = (not args.vlans)}
+		device.waitForLinks()
+		if args.arp then
+			arp.startArpTask{txQueue = dev:getTxQueue(1), ips = args.arp}
+			arp.waitForStartup() -- race condition with arp.handlePacket() otherwise
+		end
+		local output = args.output
+		if output and args.devs:match("%D+") then
+			output = output .. "-d" .. portId
+		end
+		stats.startStatsTask{rxDevices = {dev}, file = output}
+		for i = 1, args.threads do
+			lm.startTask("dumper", dev:getRxQueue(i - 1), args, i, portId)
+		end
 	end
 	lm.waitForTasks()
 end
 
-function dumper(queue, args, threadId)
+function dumper(queue, args, threadId, devId)
 	local handleArp = args.arp
 	-- default: show everything
-	local filter = args.filter and pf.compile_filter(args.filter) or function() return true end
+	local filter = args.filter and pf.compile_filter(args.filter, {bpf=args.bpf}) or function() return true end
 	local snapLen = args.snapLen
 	local writer
 	local captureCtr, filterCtr
 	if args.file then
-		if args.threads > 1 then
-			if args.file:match("%.pcap$") then
-				args.file = args.file:gsub("%.pcap$", "")
-			end
-			args.file = args.file .. "-thread-" .. threadId .. ".pcap"
-		else
-			if not args.file:match("%.pcap$") then
-				args.file = args.file .. ".pcap"
-			end
+		if args.file:match("%.pcap$") then
+			args.file = args.file:gsub("%.pcap$", "")
 		end
+		if args.threads > 1 then
+			args.file = args.file .. "-t" .. threadId
+		end
+		if args.devs:match("%D+") then
+			args.file = args.file .. "-d" .. devId
+		end
+		args.file = args.file .. ".pcap"
 		writer = pcap:newWriter(args.file)
 		captureCtr = stats:newPktRxCounter("Capture, thread #" .. threadId)
 		filterCtr = stats:newPktRxCounter("Filter reject, thread #" .. threadId)
