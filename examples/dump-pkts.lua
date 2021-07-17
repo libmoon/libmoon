@@ -29,6 +29,7 @@ function configure(parser)
 	parser:option("-t --threads", "Number of threads."):convert(tonumber):default(1)
 	parser:option("-o --output", "File to output statistics to.")
 	parser:flag("-B --bpf", "Use libpcap to compile BPF."):default(false)
+	parser:flag("-V --vlans", "Keep vlan tags."):default(false)
 	parser:argument("filter", "A BPF filter expression."):args("*"):combine()
 	local args = parser:parse()
 	if args.filter then
@@ -42,7 +43,7 @@ end
 
 function master(args)
 	for portId in args.devs:gmatch("%d+") do
-		local dev = device.config{port = tonumber(portId), txQueues = args.arp and 2 or 1, rxQueues = args.threads, rssQueues = args.threads}
+		local dev = device.config{port = tonumber(portId), txQueues = args.arp and 2 or 1, rxQueues = args.threads, rssQueues = args.threads, stripVlan = (not args.vlans)}
 		device.waitForLinks()
 		if args.arp then
 			arp.startArpTask{txQueue = dev:getTxQueue(1), ips = args.arp}
