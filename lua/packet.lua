@@ -995,4 +995,6 @@ pkt.getGreQinQUdpPacket = function(self, ip4)
 	end
 end
 
+pkt.getMPLSPacket = createStack("eth", "mpls")
+
 return pkt

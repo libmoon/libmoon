@@ -42,6 +42,9 @@ eth.TYPE_8021Q = 0x8100
 --- EtherType for LACP (Actually, 'Slow Protocols')
 eth.TYPE_LACP = 0x8809
 
+--- EtherType for MPLS Unicast
+eth.TYPE_MPLS = 0x8847
+
 --- Special addresses
 --- Ethernet broadcast address
 eth.BROADCAST	= "ff:ff:ff:ff:ff:ff"
@@ -435,6 +438,7 @@ local mapNameType = {
 	arp = eth.TYPE_ARP,
 	ptp = eth.TYPE_PTP, 
 	lacp = eth.TYPE_LACP,
+	mpls = eth.TYPE_MPLS,
 }
 
 --- Resolve which header comes after this one (in a packet).
