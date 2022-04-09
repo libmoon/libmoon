@@ -4,7 +4,7 @@ PROJECT(libmoon C CXX)
 option(USE_MLX5 "Compile with mlx5 driver" OFF)
 option(USE_MLX4 "Compile with mlx4 driver" OFF)
 
-SET(CMAKE_CXX_FLAGS "-fno-stack-protector -Wall -Wextra -Wno-unused-parameter -g -O3 -std=gnu++11 -march=native -msse4.2")
+SET(CMAKE_CXX_FLAGS "-fno-stack-protector -Wall -Wextra -Wno-unused-parameter -g -O3 -std=gnu++11 -march=native -msse4.2 -Xlinker --allow-multiple-definition")
 SET(CMAKE_C_FLAGS "-fno-stack-protector -Wall -Wextra -Wno-unused-parameter -g -O3 -std=gnu11 -march=native -msse4.2")
 SET(CMAKE_EXE_LINKER_FLAGS "-rdynamic") # to access functions from luajit
 
